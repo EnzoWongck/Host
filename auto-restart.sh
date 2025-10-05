@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# 自動重啟腳本
+# 監控檔案變化並自動重啟 Expo 應用程式
+
+echo "🚀 啟動自動重啟監控..."
+echo "📁 監控目錄: $(pwd)/src"
+echo "⏹️  按 Ctrl+C 停止監控"
+echo ""
+
+# 檢查是否已安裝 nodemon
+if ! command -v nodemon &> /dev/null; then
+    echo "📦 正在安裝 nodemon..."
+    npm install -g nodemon
+fi
+
+# 使用 nodemon 監控 src 目錄的變化
+nodemon --watch src --ext ts,tsx,js,jsx --exec "echo '🔄 檔案已修改，正在重啟應用程式...' && npx expo start --ios" --ignore "node_modules" --ignore "dist"
+
+
+
+
+

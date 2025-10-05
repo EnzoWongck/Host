@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Host",
+    "slug": "poker-host",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/pokercard.png",
+    "userInterfaceStyle": "light",
+    "scheme": "pokerhost",
+    "sdkVersion": "54.0.0",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF",
+      "dark": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pokerhost.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/pokercard.png",
+        "backgroundColor": "#007AFF"
+      },
+      "package": "com.pokerhost.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "Poker Host",
+      "shortName": "Poker Host",
+      "lang": "zh-TW",
+      "dir": "ltr",
+      "scope": "/",
+      "themeColor": "#007AFF",
+      "backgroundColor": "#FFFFFF",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait"
+    },
+    "plugins": [
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0a3c34f2-33cc-4893-abdc-5c2159d3059b"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007AFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0056CC;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="4.8" ry="4.8" fill="url(#grad1)"/>
+  <rect x="3.2" y="4.8" width="25.6" height="22.4" rx="1.6" ry="1.6" fill="white"/>
+  
+  <!-- 撲克牌符號 -->
+  <text x="16" y="11.2" font-family="Arial, sans-serif" font-size="4.8" font-weight="bold" text-anchor="middle" fill="#007AFF">♠</text>
+  <text x="16" y="17.6" font-family="Arial, sans-serif" font-size="4.8" font-weight="bold" text-anchor="middle" fill="#FF3B30">♥</text>
+  <text x="16" y="24" font-family="Arial, sans-serif" font-size="4.8" font-weight="bold" text-anchor="middle" fill="#007AFF">♣</text>
+  <text x="16" y="30.4" font-family="Arial, sans-serif" font-size="4.8" font-weight="bold" text-anchor="middle" fill="#FF3B30">♦</text>
+</svg>
