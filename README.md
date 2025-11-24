@@ -63,7 +63,7 @@ PokerHost/
 ### 前置需求
 - Node.js (推薦 18.x 或更高版本)
 - npm 或 yarn
-- Expo CLI
+- Expo CLI（可選，全局安裝）
 
 ### 安裝步驟
 
@@ -76,7 +76,7 @@ PokerHost/
 
 2. **啟動開發服務器**
    ```bash
-   npm start
+   npm start 
    # 或
    yarn start
    ```
@@ -85,6 +85,18 @@ PokerHost/
    - **iOS**: `npm run ios` 或在 Expo Go 中掃描 QR 碼
    - **Android**: `npm run android` 或在 Expo Go 中掃描 QR 碼
    - **Web**: `npm run web`
+
+### Windows 用戶
+
+如果您在 Windows 上開發，請參考 [WINDOWS_SETUP.md](./WINDOWS_SETUP.md) 獲取詳細的設置指南。
+
+**快速開始（Windows）：**
+- 雙擊 `start-web.bat` 啟動 Web 版本
+- 雙擊 `start-dev.bat` 啟動完整開發模式（包含 WebSocket）
+
+**從 macOS 傳送到 Windows：**
+- 查看 [TRANSFER_TO_WINDOWS.md](./TRANSFER_TO_WINDOWS.md) 獲取詳細的傳送指南
+- 或執行 `./prepare-transfer.sh` 自動準備傳送檔案
 
 ## 開發指南
 
