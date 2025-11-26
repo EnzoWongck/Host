@@ -4,7 +4,7 @@ import Modal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
-import { Swipeable } from 'react-native-gesture-handler';
+import { useLanguage } from '../context/LanguageContext';
 import InsuranceEditModal from './InsuranceEditModal';
 
 interface InsuranceRecordsModalProps {
@@ -15,12 +15,15 @@ interface InsuranceRecordsModalProps {
 
 const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, onClose, onAddInsurance }) => {
   const { theme } = useTheme();
+  const { t, language } = useLanguage();
   const { state, updateInsurance, deleteInsurance } = useGame();
   const currentGame = state.currentGame;
   const scrollRef = React.useRef<ScrollView>(null);
   const [editVisible, setEditVisible] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [editAmount, setEditAmount] = React.useState('');
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = React.useState(false);
+  const [insuranceToDelete, setInsuranceToDelete] = React.useState<{ id: string; label: string } | null>(null);
 
   const styles = StyleSheet.create({
     section: {
@@ -48,6 +51,37 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
+    rowLeft: {
+      flexDirection: 'column',
+      flex: 1,
+    },
+    rowRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: theme.spacing.sm,
+    },
+    actionButton: {
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.sm,
+      marginLeft: theme.spacing.xs,
+    },
+    editButton: {
+      backgroundColor: theme.colors.primary,
+    },
+    deleteButton: {
+      backgroundColor: theme.colors.error,
+    },
+    actionText: {
+      color: '#FFF',
+      fontWeight: '600',
+      fontSize: theme.fontSize.sm,
+    },
+    partnersText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.fontSize.sm,
+      // 同行顯示時沿用樣式（目前僅作為文字色彩與字級）
+    },
   });
 
   React.useEffect(() => {
@@ -58,9 +92,9 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
   }, [visible]);
 
   return (
-    <Modal visible={visible} onClose={onClose} title="保險紀錄">
+    <Modal visible={visible} onClose={onClose} title={t('modals.insurance')}>
       {!currentGame ? (
-        <Text style={{ color: theme.colors.textSecondary }}>沒有進行中的牌局</Text>
+        <Text style={{ color: theme.colors.textSecondary }}>{t('insurance.errorNoGame')}</Text>
       ) : (
         <View>
           <View style={[styles.section, styles.listContainer]}> 
@@ -71,73 +105,134 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
                 .map((ins) => {
                   const amt = ins.amount;
                   const isPos = amt >= 0;
+                  const partnersLabel =
+                    (ins.partners || []).length > 0
+                      ? (ins.partners || [])
+                          .map(p => `${p.name} ${p.percentage}%`)
+                          .join('、')
+                      : '';
+                  const timeString = new Date(ins.timestamp).toLocaleString(
+                    language === 'zh-TW' ? 'zh-TW' : 'zh-CN',
+                  );
+                  const headerLabel = partnersLabel
+                    ? `${timeString}  ${partnersLabel}`
+                    : timeString;
                   return (
-                    <Swipeable
-                      key={ins.id}
-                      renderRightActions={() => (
-                        <View style={{ flexDirection: 'row' }}>
-                          <TouchableOpacity
-                            style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.primary, marginRight: theme.spacing.xs, borderRadius: theme.borderRadius.sm }}
-                            onPress={() => {
-                              setEditId(ins.id);
-                              setEditAmount(String(ins.amount));
-                              setEditVisible(true);
-                            }}
-                          >
-                            <Text style={{ color: '#FFF', fontWeight: '600' }}>編輯</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.error, borderRadius: theme.borderRadius.sm }}
-                            onPress={() => {
-                              if (!currentGame) return;
-                              Alert.alert('刪除保險', '確定刪除這筆保險紀錄？', [
-                                { text: '取消', style: 'cancel' },
-                                { text: '刪除', style: 'destructive', onPress: () => deleteInsurance(currentGame.id, ins.id) },
-                              ]);
-                            }}
-                          >
-                            <Text style={{ color: '#FFF', fontWeight: '600' }}>刪除</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    >
+                    <View key={ins.id} style={styles.row}>
                       <TouchableOpacity
+                        style={styles.rowLeft}
                         onPress={() => {
                           setEditId(ins.id);
                           setEditAmount(String(ins.amount));
                           setEditVisible(true);
                         }}
-                        activeOpacity={1}
+                        activeOpacity={0.7}
                       >
-                        <View style={styles.row}>
-                          <Text style={styles.timeText}>{new Date(ins.timestamp).toLocaleString('zh-TW')}</Text>
-                          <Text style={isPos ? styles.amountPositive : styles.amountNegative}>
-                            {isPos ? '+' : ''}${Math.abs(amt).toLocaleString()}
-                          </Text>
-                        </View>
+                        <Text style={styles.timeText}>{headerLabel}</Text>
+                        <Text style={isPos ? styles.amountPositive : styles.amountNegative}>
+                          {isPos ? '+' : ''}${Math.abs(amt).toLocaleString()}
+                        </Text>
                       </TouchableOpacity>
-                    </Swipeable>
+                      <View style={styles.rowRight}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.editButton]}
+                          onPress={() => {
+                            setEditId(ins.id);
+                            setEditAmount(String(ins.amount));
+                            setEditVisible(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.actionText}>{t('common.edit')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.deleteButton]}
+                          onPress={() => {
+                            if (!currentGame) return;
+                            const label = `${new Date(ins.timestamp).toLocaleString(
+                              language === 'zh-TW' ? 'zh-TW' : 'zh-CN',
+                            )}  $${Math.abs(amt).toLocaleString()}`;
+                            setInsuranceToDelete({ id: ins.id, label });
+                            setDeleteConfirmVisible(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.actionText}>{t('common.delete')}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   );
                 })}
               {currentGame.insurances.length === 0 && (
                 <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', paddingVertical: theme.spacing.md }}>
-                  尚無保險紀錄
+                  {t('insurance.noRecords')}
                 </Text>
               )}
             </ScrollView>
           </View>
 
-          <Button title="新增保險" onPress={onAddInsurance} size="lg" />
+          <Button title={t('insurance.addInsurance')} onPress={onAddInsurance} size="lg" />
+
+          {/* 刪除保險紀錄確認視窗（避免使用 Alert，在 Web 上也可正常顯示） */}
+          <Modal
+            visible={deleteConfirmVisible}
+            onClose={() => {
+              setDeleteConfirmVisible(false);
+              setInsuranceToDelete(null);
+            }}
+            title={t('insurance.delete') || '刪除保險'}
+          >
+            <View style={{ paddingVertical: theme.spacing.md }}>
+              <Text
+                style={{
+                  fontSize: theme.fontSize.md,
+                  color: theme.colors.text,
+                  marginBottom: theme.spacing.lg,
+                }}
+              >
+                {insuranceToDelete
+                  ? `${t('insurance.deleteConfirm') || '確定刪除這筆保險紀錄？'}\n\n${insuranceToDelete.label}`
+                  : t('insurance.deleteConfirm') || '確定刪除這筆保險紀錄？'}
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setDeleteConfirmVisible(false);
+                    setInsuranceToDelete(null);
+                  }}
+                  style={{ marginRight: theme.spacing.md }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: theme.colors.textSecondary, fontWeight: '600' }}>
+                    {t('common.cancel')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!currentGame || !insuranceToDelete) return;
+                    deleteInsurance(currentGame.id, insuranceToDelete.id);
+                    setDeleteConfirmVisible(false);
+                    setInsuranceToDelete(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: theme.colors.error, fontWeight: '700' }}>
+                    {t('common.delete')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
           <InsuranceEditModal
             visible={editVisible}
             onClose={() => setEditVisible(false)}
             amount={editAmount}
             setAmount={setEditAmount}
-            onSave={({ amount }) => {
+            onSave={({ amount, partners }) => {
               if (!currentGame || !editId) return;
               const origin = currentGame.insurances.find(i => i.id === editId);
               if (!origin) return;
-              updateInsurance(currentGame.id, { ...origin, amount });
+              updateInsurance(currentGame.id, { ...origin, amount, partners });
               setEditVisible(false);
               setEditId(null);
             }}

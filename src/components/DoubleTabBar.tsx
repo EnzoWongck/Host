@@ -3,11 +3,13 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
+import { useLanguage } from '../context/LanguageContext';
 import Button from './Button';
 import TabBarIcon from './TabBarIcon';
 
 const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const { state: gameState, setGameSummaryModalVisible } = useGame();
 
   const getTabTextColor = (routeName: string, isFocused: boolean) => {
@@ -73,7 +75,7 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
       {showUpper && (
         <View style={styles.upperRow}>
           <Button
-            title="牌局總結"
+            title={t('modals.gameSummary')}
             onPress={() => {
               console.log('牌局總結按鈕被點擊');
               setGameSummaryModalVisible(true);
@@ -83,7 +85,7 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             leftIconName="number"
           />
           <Button
-            title="結束牌局"
+            title={t('modals.endGame')}
             onPress={() => {
               // 直接導航到結束牌局頁面，顯示 EndGameModal
               navigation.navigate('Game', { action: 'end_direct' });

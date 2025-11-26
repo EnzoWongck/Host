@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import Icon from './Icon';
 
 interface InOutModalProps {
@@ -17,6 +18,7 @@ const InOutModal: React.FC<InOutModalProps> = ({
   onCashOut,
 }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
 
   const styles = StyleSheet.create({
     overlay: {
@@ -120,7 +122,7 @@ const InOutModal: React.FC<InOutModalProps> = ({
             >
               <View style={styles.buttonContent}>
                 <Icon name="buy-in" size={22} />
-                <Text style={styles.buttonText}>買入</Text>
+                <Text style={styles.buttonText}>{t('inOut.buyIn')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -134,7 +136,7 @@ const InOutModal: React.FC<InOutModalProps> = ({
             >
               <View style={styles.buttonContent}>
                 <Icon name="cashout" size={22} />
-                <Text style={styles.buttonText}>兌現</Text>
+                <Text style={styles.buttonText}>{t('inOut.cashOut')}</Text>
               </View>
             </TouchableOpacity>
           </View>

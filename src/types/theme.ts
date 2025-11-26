@@ -36,6 +36,11 @@ export interface Theme {
     lg: number;
     xl: number;
   };
+  fontFamily: {
+    default: string;
+    zhTW: string;
+    zhCN: string;
+  };
   colorMode: ColorMode;
 }
 
@@ -75,6 +80,11 @@ export const lightTheme: Theme = {
     lg: 16,
     xl: 20,
   },
+  fontFamily: {
+    default: undefined,
+    zhTW: undefined,
+    zhCN: 'Microsoft YaHei',
+  },
   colorMode: 'light',
 };
 
@@ -113,6 +123,11 @@ export const darkTheme: Theme = {
     md: 12,
     lg: 16,
     xl: 20,
+  },
+  fontFamily: {
+    default: undefined,
+    zhTW: undefined,
+    zhCN: 'Microsoft YaHei',
   },
   colorMode: 'dark',
 };

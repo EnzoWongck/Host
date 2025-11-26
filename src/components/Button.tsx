@@ -79,7 +79,7 @@ const Button: React.FC<ButtonProps> = ({
 
   const getTextStyle = () => {
     const baseTextStyle = {
-      fontWeight: '500' as const,
+      fontWeight: '600' as const,
       letterSpacing: 0.3,
       ...textSizes[size],
     };

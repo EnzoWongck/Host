@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import Icon from '../components/Icon';
-import { signInWithGoogle as firebaseGoogleSignIn, signInWithAppleFirebase, signInWithEmailAndPasswordFirebase } from '../services/firebaseAuth';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { signInWithGoogle as firebaseGoogleSignIn, signInWithEmailAndPasswordFirebase } from '../services/firebaseAuth';
 
 interface LoginScreenProps {
   onBack: () => void;
@@ -21,7 +23,8 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSignup }) => {
   const { theme, colorMode } = useTheme();
-  const { signInWithApple, signInWithGoogle, signInWithEmail, isSignedIn } = useAuth();
+  const { t } = useLanguage();
+  const { signInWithGoogle, signInWithEmail, isSignedIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +33,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colorMode === 'dark' ? '#0A0A0A' : '#F5F5F7',
+      backgroundColor: colorMode === 'dark' ? '#0A0A0A' : '#F8FAFC',
     },
     content: {
       flex: 1,
@@ -40,28 +43,37 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     },
     card: {
       backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
-      borderRadius: 16,
-      padding: theme.spacing.xl,
+      borderRadius: 20,
+      padding: theme.spacing.xl + 8,
       width: '100%',
-      maxWidth: 400,
+      maxWidth: 420,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
-        height: 4,
+        height: 8,
       },
-      shadowOpacity: colorMode === 'dark' ? 0.3 : 0.1,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowOpacity: colorMode === 'dark' ? 0.4 : 0.15,
+      shadowRadius: 16,
+      elevation: 12,
+      borderWidth: colorMode === 'dark' ? 1 : 0,
+      borderColor: colorMode === 'dark' ? '#2A2A2A' : 'transparent',
     },
     logoContainer: {
       alignItems: 'center',
       marginBottom: theme.spacing.xl,
     },
     hostTitle: {
-      fontSize: 36,
+      fontSize: 40,
       fontWeight: '700',
-      color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
-      letterSpacing: -1,
+      color: colorMode === 'dark' ? '#FFFFFF' : '#1E293B',
+      letterSpacing: -1.5,
+      marginBottom: theme.spacing.sm,
+    },
+    subtitle: {
+      fontSize: theme.fontSize.sm,
+      color: colorMode === 'dark' ? '#9CA3AF' : '#64748B',
+      textAlign: 'center',
+      marginBottom: theme.spacing.xl,
     },
     socialContainer: {
       marginBottom: theme.spacing.xl,
@@ -79,10 +91,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     googleButton: {
       backgroundColor: '#4285F4',
       borderColor: '#4285F4',
-    },
-    appleButton: {
-      backgroundColor: '#000000',
-      borderColor: '#000000',
     },
     socialIcon: {
       marginRight: theme.spacing.sm,
@@ -146,20 +154,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       marginTop: theme.spacing.sm,
     },
     loginButton: {
-      backgroundColor: '#007AFF',
-      paddingVertical: theme.spacing.md,
+      backgroundColor: theme.colors.primary,
+      paddingVertical: theme.spacing.md + 4,
       paddingHorizontal: theme.spacing.lg,
       borderRadius: 12,
       alignItems: 'center',
       marginTop: theme.spacing.lg,
-      shadowColor: '#007AFF',
+      shadowColor: theme.colors.primary,
       shadowOffset: {
         width: 0,
-        height: 2,
+        height: 4,
       },
       shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 4,
+      shadowRadius: 8,
+      elevation: 6,
     },
     loginButtonText: {
       color: '#FFFFFF',
@@ -183,25 +191,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     },
   });
 
-  const handleAppleLogin = async () => {
-    setIsLoading(true);
-    try {
-      await signInWithAppleFirebase();
-      onLoginSuccess();
-    } catch (error) {
-      Alert.alert('登入失敗', 'Apple 登入時發生錯誤');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
+      // 先透過 Firebase 完成實際登入（取得 token 等）
       await firebaseGoogleSignIn();
+      // 再更新全域 AuthContext，讓設定畫面等地方知道「已登入」
+      await signInWithGoogle();
       onLoginSuccess();
     } catch (error) {
-      Alert.alert('登入失敗', 'Google 登入時發生錯誤');
+      Alert.alert(t('auth.loginFailed'), t('auth.loginFailed') + ' - Google');
     } finally {
       setIsLoading(false);
     }
@@ -209,16 +208,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('錯誤', '請輸入完整的電子郵件和密碼');
+      Alert.alert(t('common.error') || '錯誤', t('auth.errorEmailRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
+      // 先透過 Firebase 完成實際登入驗證
       await signInWithEmailAndPasswordFirebase(email, password);
+      // 再更新全域 AuthContext 狀態（簡化為用 email 當顯示名稱）
+      await signInWithEmail(email);
       onLoginSuccess();
     } catch (error) {
-      Alert.alert('登入失敗', '電子郵件登入時發生錯誤');
+      Alert.alert(t('auth.loginFailed'), t('auth.loginFailed') + ' - ' + t('auth.email'));
     } finally {
       setIsLoading(false);
     }
@@ -230,95 +232,65 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
         <View style={styles.card}>
           <View style={styles.logoContainer}>
             <Text style={styles.hostTitle}>Host</Text>
+            <Text style={styles.subtitle}>{t('auth.login')}</Text>
           </View>
 
           <View style={styles.socialContainer}>
-            <TouchableOpacity 
-              style={[styles.socialButton, styles.appleButton]} 
-              onPress={handleAppleLogin}
-              disabled={isLoading || isSignedIn}
-              activeOpacity={0.7}
-            >
-              <Icon 
-                name="apple" 
-                size={20} 
-                color="#FFFFFF" 
-                style={styles.socialIcon}
-              />
-              <Text style={styles.socialText}>Log in with Apple</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity 
               style={[styles.socialButton, styles.googleButton]} 
               onPress={handleGoogleLogin}
               disabled={isLoading || isSignedIn}
               activeOpacity={0.7}
             >
-              <Icon 
-                name="chrome" 
+              <MaterialCommunityIcons 
+                name="google" 
                 size={20} 
                 color="#FFFFFF" 
                 style={styles.socialIcon}
               />
-              <Text style={styles.socialText}>Log in with Google</Text>
+              <Text style={styles.socialText}>{t('auth.loginWithGoogle')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t('auth.email')}</Text>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="Enter your email"
+                  placeholder={t('auth.enterEmail')}
                   placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <Icon 
-                  name="mail" 
-                  size={20} 
-                  color="#007AFF" 
-                  style={styles.inputIcon}
-                />
               </View>
             </View>
 
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t('auth.password')}</Text>
               <TouchableOpacity style={styles.forgotPassword}>
-                <Text>Forgot password?</Text>
+                <Text style={{ color: theme.colors.primary }}>{t('auth.forgotPassword')}</Text>
               </TouchableOpacity>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Enter your password"
+                  placeholder={t('auth.enterPassword')}
                   placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <TouchableOpacity 
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.inputIcon}
-                >
-                  <Icon 
-                    name={showPassword ? "eye" : "eye-off"} 
-                    size={20} 
-                    color="#007AFF"
-                  />
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -331,15 +303,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
               disabled={isLoading || !email.trim() || !password.trim()}
               activeOpacity={0.8}
             >
-              <Text style={styles.loginButtonText}>Log in</Text>
+              <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>
-              Don't have an account? 
+              {t('auth.noAccount')}
               <TouchableOpacity onPress={onSignup}>
-                <Text style={styles.signupLink}> Sign up for free!</Text>
+                <Text style={styles.signupLink}> {t('auth.signupForFree')}</Text>
               </TouchableOpacity>
             </Text>
           </View>

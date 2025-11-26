@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import Icon from '../components/Icon';
-import { signInWithGoogle as firebaseGoogleSignIn, signInWithAppleFirebase, signUpWithEmailAndPassword } from '../services/firebaseAuth';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { signInWithGoogle as firebaseGoogleSignIn, signUpWithEmailAndPassword } from '../services/firebaseAuth';
 
 interface SignupScreenProps {
   onBack: () => void;
@@ -22,7 +24,8 @@ interface SignupScreenProps {
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSuccess }) => {
   const { theme, colorMode } = useTheme();
-  const { signInWithApple, signInWithGoogle } = useAuth();
+  const { t } = useLanguage();
+  const { signInWithGoogle } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +36,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F5F5F7',
+      backgroundColor: colorMode === 'dark' ? '#0A0A0A' : '#F8FAFC',
     },
     content: {
       flex: 1,
@@ -60,26 +63,35 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
 
   const stylesCard = StyleSheet.create({
     card: {
-      backgroundColor: colorMode === 'dark' ? '#2A2A2A' : '#FFFFFF',
-      borderRadius: 16,
-      padding: theme.spacing.xl,
+      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      borderRadius: 20,
+      padding: theme.spacing.xl + 8,
       width: '100%',
-      maxWidth: 400,
+      maxWidth: 420,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
-        height: 4,
+        height: 8,
       },
-      shadowOpacity: colorMode === 'dark' ? 0.5 : 0.1,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowOpacity: colorMode === 'dark' ? 0.4 : 0.15,
+      shadowRadius: 16,
+      elevation: 12,
+      borderWidth: colorMode === 'dark' ? 1 : 0,
+      borderColor: colorMode === 'dark' ? '#2A2A2A' : 'transparent',
     },
     title: {
-      fontSize: theme.fontSize.xl,
+      fontSize: theme.fontSize.xxl,
       fontWeight: '700',
-      color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
-      marginBottom: theme.spacing.xl,
+      color: colorMode === 'dark' ? '#FFFFFF' : '#1E293B',
+      marginBottom: theme.spacing.sm,
       textAlign: 'center',
+      letterSpacing: -0.5,
+    },
+    subtitle: {
+      fontSize: theme.fontSize.sm,
+      color: colorMode === 'dark' ? '#9CA3AF' : '#64748B',
+      textAlign: 'center',
+      marginBottom: theme.spacing.xl,
     },
     fieldContainer: {
       marginBottom: theme.spacing.lg,
@@ -152,20 +164,20 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       color: '#007AFF',
     },
     signupButton: {
-      backgroundColor: '#007AFF',
-      paddingVertical: theme.spacing.md,
+      backgroundColor: theme.colors.primary,
+      paddingVertical: theme.spacing.md + 4,
       paddingHorizontal: theme.spacing.lg,
       borderRadius: 12,
       alignItems: 'center',
       marginBottom: theme.spacing.lg,
-      shadowColor: '#007AFF',
+      shadowColor: theme.colors.primary,
       shadowOffset: {
         width: 0,
-        height: 2,
+        height: 4,
       },
       shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 4,
+      shadowRadius: 8,
+      elevation: 6,
     },
     signupButtonText: {
       color: '#FFFFFF',
@@ -207,10 +219,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       backgroundColor: '#4285F4',
       borderColor: '#4285F4',
     },
-    appleButton: {
-      backgroundColor: '#000000',
-      borderColor: '#000000',
-    },
     socialIcon: {
       marginRight: theme.spacing.sm,
     },
@@ -245,22 +253,22 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
 
   const handleNameSignup = async () => {
     if (!name.trim()) {
-      Alert.alert('錯誤', '請輸入姓名');
+      Alert.alert(t('common.error') || '錯誤', t('auth.errorNameRequired'));
       return;
     }
 
     if (!email.trim()) {
-      Alert.alert('錯誤', '請輸入電子郵件');
+      Alert.alert(t('common.error') || '錯誤', t('auth.errorEmailRequired'));
       return;
     }
 
     if (!password.trim()) {
-      Alert.alert('錯誤', '請輸入密碼');
+      Alert.alert(t('common.error') || '錯誤', t('auth.errorPasswordRequired'));
       return;
     }
 
     if (!acceptTerms) {
-      Alert.alert('錯誤', '請接受服務條款和隱私政策');
+      Alert.alert(t('common.error') || '錯誤', t('auth.errorTermsRequired'));
       return;
     }
 
@@ -269,19 +277,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       await signUpWithEmailAndPassword(email, password);
       onSignupSuccess();
     } catch (error) {
-      Alert.alert('註冊失敗', '註冊時發生錯誤，請重試');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAppleSignup = async () => {
-    setIsLoading(true);
-    try {
-      await signInWithAppleFirebase();
-      onSignupSuccess();
-    } catch (error) {
-      Alert.alert('註冊失敗', 'Apple 註冊時發生錯誤');
+      Alert.alert(t('auth.signupFailed'), t('auth.signupFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +289,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       await firebaseGoogleSignIn();
       onSignupSuccess();
     } catch (error) {
-      Alert.alert('註冊失敗', 'Google 註冊時發生錯誤');
+      Alert.alert(t('auth.signupFailed'), t('auth.signupFailed') + ' - Google');
     } finally {
       setIsLoading(false);
     }
@@ -313,16 +309,17 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
         </View>
 
         <View style={stylesCard.card}>
-          <Text style={stylesCard.title}>SIGN UP</Text>
+          <Text style={stylesCard.title}>{t('auth.signup')}</Text>
+          <Text style={stylesCard.subtitle}>{t('welcome.subtitle')}</Text>
 
           <View style={stylesCard.fieldContainer}>
-            <Text style={stylesCard.label}>Name</Text>
+            <Text style={stylesCard.label}>{t('auth.name')}</Text>
             <View style={stylesCard.inputContainer}>
               <TextInput
                 style={stylesCard.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="Enter your name"
+                placeholder={t('auth.enterName')}
                 placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
                 autoCapitalize="words"
                 autoCorrect={false}
@@ -331,20 +328,20 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
                 <Icon 
                   name="user" 
                   size={20} 
-                  color="#007AFF"
+                  color={theme.colors.primary}
                 />
               </View>
             </View>
           </View>
 
           <View style={stylesCard.fieldContainer}>
-            <Text style={stylesCard.label}>Email</Text>
+            <Text style={stylesCard.label}>{t('auth.email')}</Text>
             <View style={stylesCard.inputContainer}>
               <TextInput
                 style={stylesCard.input}
                 value={email}
                 onChangeText={setEmail}
-                placeholder="Enter your email"
+                placeholder={t('auth.enterEmail')}
                 placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -354,20 +351,20 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
                 <Icon 
                   name="mail" 
                   size={20} 
-                  color="#007AFF"
+                  color={theme.colors.primary}
                 />
               </View>
             </View>
           </View>
 
           <View style={stylesCard.fieldContainer}>
-            <Text style={stylesCard.label}>Password</Text>
+            <Text style={stylesCard.label}>{t('auth.password')}</Text>
             <View style={stylesCard.inputContainer}>
               <TextInput
                 style={stylesCard.passwordInput}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder={t('auth.enterPassword')}
                 placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -380,7 +377,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
                 <Icon 
                   name={showPassword ? "eye" : "eye-off"} 
                   size={20} 
-                  color="#007AFF"
+                  color={theme.colors.primary}
                 />
               </TouchableOpacity>
             </View>
@@ -399,10 +396,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
                 )}
               </View>
               <Text style={stylesCard.termsText}>
-                I accept the{' '}
-                <Text style={stylesCard.termsLink}>terms of service</Text>
-                {' '}and{' '}
-                <Text style={stylesCard.termsLink}>privacy policy</Text>
+                {t('auth.acceptTerms')}{' '}
+                <Text style={stylesCard.termsLink}>{t('auth.termsOfService')}</Text>
+                {' '}{t('auth.or')}{' '}
+                <Text style={stylesCard.termsLink}>{t('auth.privacyPolicy')}</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -416,56 +413,41 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
             disabled={isLoading || !name.trim() || !email.trim() || !password.trim() || !acceptTerms}
             activeOpacity={0.8}
           >
-            <Text style={stylesCard.signupButtonText}>Sign up</Text>
+            <Text style={stylesCard.signupButtonText}>{t('auth.signup')}</Text>
           </TouchableOpacity>
 
           <View style={stylesCard.dividerContainer}>
             <View style={stylesCard.dividerLine} />
-            <Text style={stylesCard.dividerText}>or</Text>
+            <Text style={stylesCard.dividerText}>{t('auth.or')}</Text>
             <View style={stylesCard.dividerLine} />
           </View>
 
           <View style={stylesCard.socialContainer}>
-            <TouchableOpacity 
-              style={[stylesCard.socialButton, stylesCard.appleButton]} 
-              onPress={handleAppleSignup}
-              disabled={isLoading}
-              activeOpacity={0.7}
-            >
-              <Icon 
-                name="apple" 
-                size={20} 
-                color="#FFFFFF" 
-                style={stylesCard.socialIcon}
-              />
-              <Text style={stylesCard.socialText}>Sign up with Apple</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity 
               style={[stylesCard.socialButton, stylesCard.googleButton]} 
               onPress={handleGoogleSignup}
               disabled={isLoading}
               activeOpacity={0.7}
             >
-              <Icon 
-                name="chrome" 
+              <MaterialCommunityIcons 
+                name="google" 
                 size={20} 
                 color="#FFFFFF" 
                 style={stylesCard.socialIcon}
               />
-              <Text style={stylesCard.socialText}>Sign up with Google</Text>
+              <Text style={stylesCard.socialText}>{t('auth.signupWithGoogle')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={stylesCard.loginContainer}>
-            <Text style={stylesCard.loginText}>Already have an account?</Text>
+            <Text style={stylesCard.loginText}>{t('auth.haveAccount')}</Text>
             <TouchableOpacity 
               style={stylesCard.loginButton}
               onPress={onLogin}
               disabled={isLoading}
               activeOpacity={0.8}
             >
-              <Text style={stylesCard.loginButtonText}>Log in here!</Text>
+              <Text style={stylesCard.loginButtonText}>{t('auth.loginHere')}</Text>
             </TouchableOpacity>
           </View>
         </View>

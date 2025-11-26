@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,28 @@ import {
   SafeAreaView,
   TouchableOpacity,
   TextInput,
+  Modal,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useCollaboration } from '../context/CollaborationContext';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Icon from '../components/Icon';
+import { Language } from '../types/language';
 
 const SettingsScreen: React.FC = () => {
   const { theme, colorMode, setColorMode } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const { state: collaborationState } = useCollaboration();
-  const { user, isSignedIn, signInWithApple, signInWithGoogle, signInWithEmail, signOut } = useAuth();
+  const { user, isSignedIn, signInWithGoogle, signInWithEmail, signOut } = useAuth();
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+
+  const handleLanguageSelect = (lang: Language) => {
+    setLanguage(lang);
+    setLanguageModalVisible(false);
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -55,7 +65,7 @@ const SettingsScreen: React.FC = () => {
     },
     settingLabel: {
       fontSize: theme.fontSize.md,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.colors.text,
     },
     picker: {
@@ -97,12 +107,12 @@ const SettingsScreen: React.FC = () => {
     lightModeText: {
       color: colorMode === 'light' ? theme.colors.primary : '#FFFFFF',
       fontSize: theme.fontSize.sm,
-      fontWeight: '500',
+      fontWeight: '600',
     },
     darkModeText: {
       color: '#FFFFFF',
       fontSize: theme.fontSize.sm,
-      fontWeight: '500',
+      fontWeight: '600',
     },
     statusText: {
       fontSize: theme.fontSize.xs,
@@ -123,7 +133,7 @@ const SettingsScreen: React.FC = () => {
     },
     dataItemTitle: {
       fontSize: theme.fontSize.md,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.colors.text,
     },
     dataItemSubtitle: {
@@ -146,7 +156,7 @@ const SettingsScreen: React.FC = () => {
     },
     aboutValue: {
       fontSize: theme.fontSize.sm,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.colors.text,
     },
     linksContainer: {
@@ -159,7 +169,7 @@ const SettingsScreen: React.FC = () => {
     },
     link: {
       color: theme.colors.primary,
-      fontWeight: '500',
+      fontWeight: '600',
       fontSize: theme.fontSize.sm,
     },
     linkSeparator: {
@@ -207,33 +217,52 @@ const SettingsScreen: React.FC = () => {
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.xs,
     },
+    languageButton: {
+      position: 'absolute',
+      top: theme.spacing.md,
+      right: theme.spacing.md,
+      padding: theme.spacing.sm,
+      zIndex: 1000,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
   });
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity
+        style={styles.languageButton}
+        onPress={() => setLanguageModalVisible(true)}
+        activeOpacity={0.7}
+      >
+        <Text style={{ fontSize: 24, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
+          🌐
+        </Text>
+      </TouchableOpacity>
       <View style={styles.header}>
-        <Text style={styles.title}>設定</Text>
+        <Text style={styles.title}>{t('settings.title')}</Text>
       </View>
 
       {/* 登入區塊 */}
       <View style={styles.authCard}>
-        <Text style={styles.authTitle}>{isSignedIn ? '已登入' : '登入'}</Text>
+        <Text style={styles.authTitle}>{isSignedIn ? t('settings.loggedIn') : t('settings.login')}</Text>
         {isSignedIn ? (
           <>
             <Text style={styles.authUserLine}>{user?.name}{user?.email ? ` ・ ${user.email}` : ''}</Text>
             <View style={styles.authRow}>
-              <Button title="登出" size="sm" onPress={signOut} />
+              <Button title={t('settings.logout')} size="sm" onPress={signOut} />
             </View>
           </>
         ) : (
           <>
             <View style={styles.authRow}>
-              <Button title="以 Apple 登入" size="sm" onPress={signInWithApple} style={{ marginRight: theme.spacing.sm }} />
-              <Button title="以 Google 登入" size="sm" onPress={signInWithGoogle} />
+              <Button title={t('settings.loginWithGoogle')} size="sm" onPress={signInWithGoogle} />
             </View>
             <View style={styles.authEmailInputRow}>
               <TextInput style={styles.authEmailInput} placeholder="name@example.com" placeholderTextColor={theme.colors.textSecondary} autoCapitalize="none" keyboardType="email-address" />
-              <Button title="Email 登入" size="sm" onPress={() => signInWithEmail('name@example.com')} />
+              <Button title={t('settings.loginWithEmail')} size="sm" onPress={() => signInWithEmail('name@example.com')} />
             </View>
           </>
         )}
@@ -242,48 +271,53 @@ const SettingsScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* General Settings */}
-          <Text style={styles.sectionTitle}>一般設定</Text>
+          <Text style={styles.sectionTitle}>{t('settings.general')}</Text>
           <Card>
             <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>語言</Text>
-              <TouchableOpacity style={styles.picker}>
-                <Text style={styles.pickerText}>繁體中文</Text>
+              <Text style={styles.settingLabel}>{t('settings.language')}</Text>
+              <TouchableOpacity 
+                style={styles.picker}
+                onPress={() => setLanguageModalVisible(true)}
+              >
+                <Text style={styles.pickerText}>
+                  {language === 'zh-TW' ? t('settings.traditionalChinese') : t('settings.simplifiedChinese')}
+                </Text>
               </TouchableOpacity>
             </View>
 
             <View>
-              <Text style={styles.settingLabel}>用戶介面顏色模式</Text>
+              <Text style={styles.settingLabel}>{t('settings.colorMode')}</Text>
               <View style={styles.colorModeContainer}>
                 <TouchableOpacity
                   style={[styles.colorModeButton, styles.lightModeButton]}
                   onPress={() => setColorMode('light')}
                 >
-                  <Text style={styles.lightModeText}>淺色模式</Text>
+                  <Text style={styles.lightModeText}>{t('settings.lightMode')}</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity
                   style={[styles.colorModeButton, styles.darkModeButton]}
                   onPress={() => setColorMode('dark')}
                 >
-                  <Text style={styles.darkModeText}>深色模式</Text>
+                  <Text style={styles.darkModeText}>{t('settings.darkMode')}</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.statusText}>
-                目前使用：{colorMode === 'light' ? '淺色模式' : '深色模式'}
+                {t('settings.currentlyUsing')}{colorMode === 'light' ? t('settings.lightMode') : t('settings.darkMode')}
               </Text>
             </View>
           </Card>
 
           {/* Collaboration Settings */}
-          <Text style={styles.sectionTitle}>協作設置</Text>
+          <Text style={styles.sectionTitle}>{t('settings.collaboration')}</Text>
           <Card padding="sm">
             <TouchableOpacity style={styles.dataManagementItem}>
               <View style={styles.dataItemContent}>
-                <Text style={styles.dataItemTitle}>協作狀態</Text>
+                <Text style={styles.dataItemTitle}>{t('settings.collaborationStatus')}</Text>
                 <Text style={styles.dataItemSubtitle}>
                   {collaborationState.isConnected 
-                    ? `已連接 (${collaborationState.activeUsers.length + 1}人)` 
-                    : '未連接'
+                    ? `${t('settings.connected')} (${collaborationState.activeUsers.length + 1}${t('settings.connectedUsers')})` 
+                    : t('settings.disconnected')
                   }
                 </Text>
               </View>
@@ -296,9 +330,9 @@ const SettingsScreen: React.FC = () => {
             
             <TouchableOpacity style={styles.dataManagementItem}>
               <View style={styles.dataItemContent}>
-                <Text style={styles.dataItemTitle}>衝突解決</Text>
+                <Text style={styles.dataItemTitle}>{t('settings.conflictResolution')}</Text>
                 <Text style={styles.dataItemSubtitle}>
-                  {collaborationState.conflictResolution === 'auto' ? '自動合併' : '手動處理'}
+                  {collaborationState.conflictResolution === 'auto' ? t('settings.autoMerge') : t('settings.manualHandle')}
                 </Text>
               </View>
               <Text style={styles.arrow}>→</Text>
@@ -307,9 +341,9 @@ const SettingsScreen: React.FC = () => {
             {collaborationState.lastSyncTime && (
               <View style={styles.dataManagementItem}>
                 <View style={styles.dataItemContent}>
-                  <Text style={styles.dataItemTitle}>最後同步</Text>
+                  <Text style={styles.dataItemTitle}>{t('settings.lastSync')}</Text>
                   <Text style={styles.dataItemSubtitle}>
-                    {new Date(collaborationState.lastSyncTime).toLocaleString('zh-TW')}
+                    {new Date(collaborationState.lastSyncTime).toLocaleString(language === 'zh-TW' ? 'zh-TW' : 'zh-CN')}
                   </Text>
                 </View>
                 <Icon name="refresh-cw" size={16} color={theme.colors.textSecondary} />
@@ -318,20 +352,20 @@ const SettingsScreen: React.FC = () => {
           </Card>
 
           {/* Data Management */}
-          <Text style={styles.sectionTitle}>資料管理</Text>
+          <Text style={styles.sectionTitle}>{t('settings.dataManagement')}</Text>
           <Card padding="sm">
             <TouchableOpacity style={styles.dataManagementItem}>
               <View style={styles.dataItemContent}>
-                <Text style={styles.dataItemTitle}>匯出資料</Text>
-                <Text style={styles.dataItemSubtitle}>將牌局資料匯出為 CSV 檔案</Text>
+                <Text style={styles.dataItemTitle}>{t('settings.exportData')}</Text>
+                <Text style={styles.dataItemSubtitle}>{t('settings.exportDataSubtitle')}</Text>
               </View>
               <Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.dataManagementItem}>
               <View style={styles.dataItemContent}>
-                <Text style={styles.dataItemTitle}>備份資料</Text>
-                <Text style={styles.dataItemSubtitle}>備份所有牌局和設定資料</Text>
+                <Text style={styles.dataItemTitle}>{t('settings.backupData')}</Text>
+                <Text style={styles.dataItemSubtitle}>{t('settings.backupDataSubtitle')}</Text>
               </View>
               <Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
@@ -340,35 +374,90 @@ const SettingsScreen: React.FC = () => {
           {/* 通知設定已移除 */}
 
           {/* About */}
-          <Text style={styles.sectionTitle}>關於</Text>
+          <Text style={styles.sectionTitle}>{t('settings.about')}</Text>
           <Card>
             <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>版本</Text>
+              <Text style={styles.aboutLabel}>{t('settings.version')}</Text>
               <Text style={styles.aboutValue}>1.0.0</Text>
             </View>
             
             <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>開發者</Text>
+              <Text style={styles.aboutLabel}>{t('settings.developer')}</Text>
               <Text style={styles.aboutValue}>Poker Host Team</Text>
             </View>
             
             <View style={styles.aboutInfo}>
-              <Text style={styles.aboutLabel}>最後更新</Text>
+              <Text style={styles.aboutLabel}>{t('settings.lastUpdate')}</Text>
               <Text style={styles.aboutValue}>2025/01/09</Text>
             </View>
 
             <View style={styles.linksContainer}>
               <TouchableOpacity>
-                <Text style={styles.link}>隱私政策</Text>
+                <Text style={styles.link}>{t('settings.privacyPolicy')}</Text>
               </TouchableOpacity>
               <Text style={styles.linkSeparator}>|</Text>
               <TouchableOpacity>
-                <Text style={styles.link}>服務條款</Text>
+                <Text style={styles.link}>{t('settings.termsOfService')}</Text>
               </TouchableOpacity>
             </View>
           </Card>
         </View>
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.lg,
+              minWidth: 200,
+            }}
+          >
+            <Text style={{ fontSize: theme.fontSize.lg, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing.md }}>
+              {t('settings.language')}
+            </Text>
+            <TouchableOpacity
+              style={{
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.sm,
+                backgroundColor: language === 'zh-TW' ? theme.colors.primary + '20' : 'transparent',
+                marginBottom: theme.spacing.sm,
+              }}
+              onPress={() => handleLanguageSelect('zh-TW')}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md }}>{t('settings.traditionalChinese')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.sm,
+                backgroundColor: language === 'zh-CN' ? theme.colors.primary + '20' : 'transparent',
+              }}
+              onPress={() => handleLanguageSelect('zh-CN')}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md, fontWeight: language === 'zh-CN' ? '700' : '400' }}>{t('settings.simplifiedChinese')}</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };

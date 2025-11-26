@@ -11,6 +11,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
 import Button from './Button';
 import { Rake } from '../types/game';
@@ -23,6 +24,7 @@ interface RakeModalProps {
 
 const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
+  const { t } = useLanguage();
   const { state, addRake } = useGame();
   const { showToast } = useToast();
   
@@ -97,13 +99,13 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
 
   const handleAddRake = () => {
     if (!currentGame) {
-      Alert.alert('錯誤', '沒有進行中的牌局');
+      Alert.alert(t('common.error') || '錯誤', t('rake.errorNoGame'));
       return;
     }
 
     const rakeAmount = parseFloat(amount);
     if (isNaN(rakeAmount) || rakeAmount <= 0) {
-      Alert.alert('錯誤', '請輸入有效的抽水金額');
+      Alert.alert(t('common.error') || '錯誤', t('rake.errorAmountRequired'));
       return;
     }
 
@@ -115,7 +117,7 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
 
     addRake(currentGame.id, newRake);
 
-    showToast(`已記錄抽水：$${rakeAmount.toLocaleString()} 時間：${rakeTime}`, 'success');
+    showToast(`${t('rake.successRecorded')}${rakeAmount.toLocaleString()} ${t('rake.time')}：${rakeTime}`, 'success');
 
     // 重置表單
     resetForm();
@@ -147,30 +149,30 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
         resetForm();
         onClose();
       }}
-      title="抽水"
+      title={t('modals.rake')}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* 查看抽水紀錄入口 */}
         <TouchableOpacity onPress={() => setRecordsVisible(true)} activeOpacity={1}>
           <Text style={{ color: theme.colors.primary, textAlign: 'center', fontWeight: '600', marginBottom: theme.spacing.sm }}>
-            查看抽水紀錄
+            {t('rake.viewRecords')}
           </Text>
         </TouchableOpacity>
 
         {/* 當前抽水統計（點擊可開啟列表） */}
         {currentGame && rakeCount > 0 && (
           <TouchableOpacity onPress={() => setRecordsVisible(true)} style={styles.summaryCard} activeOpacity={1}>
-            <Text style={styles.summaryTitle}>當前抽水統計</Text>
+            <Text style={styles.summaryTitle}>{t('rake.currentStats')}</Text>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>總抽水次數：</Text>
-              <Text style={styles.summaryValue}>{rakeCount} 次</Text>
+              <Text style={styles.summaryLabel}>{t('rake.totalCount')}</Text>
+              <Text style={styles.summaryValue}>{rakeCount} {t('rake.times')}</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>總抽水金額：</Text>
+              <Text style={styles.summaryLabel}>{t('rake.totalAmount')}</Text>
               <Text style={styles.summaryValue}>{formatCurrency(totalRakes)}</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>平均抽水：</Text>
+              <Text style={styles.summaryLabel}>{t('rake.average')}</Text>
               <Text style={styles.summaryValue}>{formatCurrency(averageRake)}</Text>
             </View>
           </TouchableOpacity>
@@ -178,12 +180,12 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
 
         {/* 抽水金額 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>抽水金額</Text>
+          <Text style={styles.label}>{t('rake.amount')}</Text>
           <TextInput
             style={styles.input}
             value={amount}
             onChangeText={setAmount}
-            placeholder="輸入抽水金額"
+            placeholder={t('rake.amountPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="numeric"
           />
@@ -191,19 +193,19 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
 
         {/* 時間 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>時間（可選）</Text>
+          <Text style={styles.label}>{t('rake.time')}</Text>
           <TextInput
             style={styles.input}
             value={time}
             onChangeText={setTime}
-            placeholder="自動填入當前時間"
+            placeholder={t('rake.timePlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
           />
         </View>
 
         {/* 確認按鈕 */}
         <Button
-          title="記錄抽水"
+          title={t('rake.recordRake')}
           onPress={handleAddRake}
           size="lg"
         />

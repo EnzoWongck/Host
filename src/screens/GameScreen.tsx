@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,13 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
+  Modal,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useLanguage } from '../context/LanguageContext';
+import { Language } from '../types/language';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -29,13 +32,23 @@ import NewGameModal from '../components/NewGameModal';
 import CollaborationButton from '../components/CollaborationButton';
 import GameCollaborationModal from '../components/GameCollaborationModal';
 import InOutModal from '../components/InOutModal';
+import EntryFeeModal from '../components/EntryFeeModal';
+import GameProfitShareSettingModal from './GameProfitShareSettingScreen';
 
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
+  const { t, language, setLanguage } = useLanguage();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { state, setGameSummaryModalVisible } = useGame();
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+
+  const handleLanguageSelect = (lang: Language) => {
+    setLanguage(lang);
+    setLanguageModalVisible(false);
+  };
   const [playersExpanded, setPlayersExpanded] = useState(false);
+  const playersScrollRef = useRef<ScrollView>(null);
   
   // Modal states
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
@@ -51,8 +64,16 @@ const GameScreen: React.FC = () => {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [collaborationModalVisible, setCollaborationModalVisible] = useState(false);
   const [inOutModalVisible, setInOutModalVisible] = useState(false);
+  const [entryFeeModalVisible, setEntryFeeModalVisible] = useState(false);
+  const [profitShareVisible, setProfitShareVisible] = useState(false);
 
   const currentGame = state.currentGame;
+  
+  // 計算玩家列表動態高度：根據玩家數量，最多600
+  const playerItemHeight = 70; // 每個玩家項目的估算高度（包括padding和margin）
+  const playerListHeight = currentGame?.players?.length 
+    ? Math.min(currentGame.players.length * playerItemHeight, 600)
+    : 0;
 
   // 處理導航參數
   useEffect(() => {
@@ -64,6 +85,32 @@ const GameScreen: React.FC = () => {
     }
   }, [route.params, navigation]);
 
+  // 當 Modal 關閉時，將玩家列表滾動到頂部
+  useEffect(() => {
+    if (!detailsVisible && !cashOutModalVisible && playersExpanded) {
+      // 延遲執行，確保 Modal 完全關閉
+      setTimeout(() => {
+        playersScrollRef.current?.scrollTo({ y: 0, animated: false });
+      }, 100);
+    }
+  }, [detailsVisible, cashOutModalVisible, playersExpanded]);
+
+  // 開啟牌局總結時，自動收起玩家列表（避免關閉時看到收回動畫）
+  useEffect(() => {
+    if (state.gameSummaryModalVisible) {
+      setPlayersExpanded(false);
+    }
+  }, [state.gameSummaryModalVisible]);
+
+  // 每次返回目前牌局頁面時，自動收起玩家列表
+  useFocusEffect(
+    useCallback(() => {
+      setPlayersExpanded(false);
+      return () => {};
+    }, [])
+  );
+
+
 
   const styles = StyleSheet.create({
     container: {
@@ -72,20 +119,54 @@ const GameScreen: React.FC = () => {
     },
     content: {
       padding: theme.spacing.lg,
-      paddingBottom: 120, // Space for fixed buttons and tab bar
+      paddingBottom: 180, // Space for fixed "新增玩家" button and tab bar
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       paddingHorizontal: theme.spacing.lg,
       paddingVertical: theme.spacing.xl,
     },
-    title: {
-      fontSize: theme.fontSize.xl,
+    headerLeft: {
+      width: 80, // 左側放設定按鈕，同時保持中間文字置中
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    headerTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    hostTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    gameTitle: {
+      fontSize: 18,
       fontWeight: '600',
       color: theme.colors.text,
       textAlign: 'center',
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      width: 80,
+      gap: theme.spacing.sm,
+    },
+    languageButton: {
+      padding: theme.spacing.sm,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    settingsButton: {
+      padding: theme.spacing.sm,
     },
     playersCard: {
       marginBottom: theme.spacing.md,
@@ -125,9 +206,44 @@ const GameScreen: React.FC = () => {
     },
     playersList: {
       marginTop: theme.spacing.md,
-      maxHeight: 200,
+      marginBottom: theme.spacing.md,
       borderRadius: theme.borderRadius.sm,
       overflow: 'hidden',
+    },
+    playersListFullScreen: {
+      marginTop: theme.spacing.md,
+      marginBottom: 0,
+      borderRadius: theme.borderRadius.sm,
+      overflow: 'hidden',
+    },
+    playersListContainer: {
+      position: 'relative',
+    },
+    playersScrollContainer: {
+      // 移除 paddingBottom，因為按鈕已經移到外面
+    },
+    fixedAddPlayerContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: theme.spacing.lg,
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      zIndex: 10,
+    },
+    fixedAddPlayerButton: {
+      position: 'absolute',
+      bottom: 90,
+      left: theme.spacing.lg,
+      right: theme.spacing.lg,
+      zIndex: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 5,
     },
     playerItem: {
       flexDirection: 'row',
@@ -145,7 +261,7 @@ const GameScreen: React.FC = () => {
     },
     playerName: {
       fontSize: theme.fontSize.md,
-      fontWeight: '500',
+      fontWeight: '600',
       color: theme.colors.text,
     },
     playerBuyIn: {
@@ -157,7 +273,7 @@ const GameScreen: React.FC = () => {
     },
     profitAmount: {
       fontSize: theme.fontSize.md,
-      fontWeight: '500',
+      fontWeight: '600',
     },
     playerStatus: {
       fontSize: theme.fontSize.xs,
@@ -190,11 +306,11 @@ const GameScreen: React.FC = () => {
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
-        height: 2,
+        height: 4,
       },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
+      shadowRadius: 12,
+      elevation: 6,
     },
     functionIcon: {
       marginBottom: theme.spacing.xs,
@@ -276,9 +392,9 @@ const GameScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={[styles.content, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={styles.title}>目前沒有進行中的牌局</Text>
+          <Text style={styles.title}>{t('game.noGameInProgress')}</Text>
           <Button
-            title="新增牌局"
+            title={t('game.newGame')}
             onPress={() => setNewGameModalVisible(true)}
             style={{ marginTop: theme.spacing.lg }}
           />
@@ -296,14 +412,56 @@ const GameScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>目前牌局</Text>
-        <CollaborationButton
-          onPress={() => {
-            console.log('GameScreen: 協作按鈕被點擊，設置模態框可見');
-            setCollaborationModalVisible(true);
-          }}
-          gameId={currentGame?.id || "default-game"}
-        />
+        {/* 左側：牌局設定按鈕 */}
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => {
+              setProfitShareVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
+              ⚙️
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 中間：兩行置中：Host（可點擊）＋ 牌局 - {name} */}
+        <View style={styles.headerTitleContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              // 返回 Host 主頁（Home Tab），接近 Welcome 體驗
+              navigation.navigate('Home' as never);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.hostTitle}>Host</Text>
+          </TouchableOpacity>
+          <Text style={styles.gameTitle}>
+            {currentGame ? `牌局 - ${currentGame.name}` : t('game.currentGame')}
+          </Text>
+        </View>
+
+        {/* 右側：語言切換與協作按鈕 */}
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.languageButton}
+            onPress={() => setLanguageModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
+              🌐
+            </Text>
+          </TouchableOpacity>
+          <CollaborationButton
+            onPress={() => {
+              console.log('GameScreen: 協作按鈕被點擊，設置模態框可見');
+              setCollaborationModalVisible(true);
+            }}
+            gameId={currentGame?.id || "default-game"}
+          />
+        </View>
       </View>
 
       <ScrollView 
@@ -318,15 +476,17 @@ const GameScreen: React.FC = () => {
           <Card style={styles.playersCard}>
             <TouchableOpacity 
               style={styles.playersHeader}
-              onPress={() => setPlayersExpanded(!playersExpanded)}
+              onPress={() => {
+                setPlayersExpanded(!playersExpanded);
+              }}
               activeOpacity={1}
             >
               <View style={styles.playersInfo}>
                 <Icon name="player2" size={34} style={{ marginRight: theme.spacing.sm }} />
                 <View>
-                  <Text style={styles.playersTitle}>玩家</Text>
+                  <Text style={styles.playersTitle}>{t('game.players')}</Text>
                   <Text style={styles.playersSubtitle}>
-                    {currentGame.players.length} 人進行中
+                    {currentGame.players.filter(p => p.status === 'active').length} {t('game.playersInProgress')}
                   </Text>
                 </View>
               </View>
@@ -343,10 +503,11 @@ const GameScreen: React.FC = () => {
             </TouchableOpacity>
 
             {playersExpanded && (
-              <View style={styles.playersList}>
+              <View style={[styles.playersList, { height: playerListHeight }]}>
                 <ScrollView 
+                  ref={playersScrollRef}
                   nestedScrollEnabled 
-                  showsVerticalScrollIndicator={false}
+                  showsVerticalScrollIndicator={true}
                   scrollEnabled={true}
                   bounces={true}
                   decelerationRate="fast"
@@ -355,78 +516,98 @@ const GameScreen: React.FC = () => {
                   .slice()
                   .sort((a, b) => (a.status === 'active' && b.status !== 'active' ? -1 : a.status !== 'active' && b.status === 'active' ? 1 : 0))
                   .map((player) => (
-                  <Swipeable
-                    key={player.id}
-                    renderRightActions={() => (
-                      <TouchableOpacity
-                        style={{ justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.error, paddingHorizontal: theme.spacing.lg, borderRadius: theme.borderRadius.sm }}
-                        onPress={() => Alert.alert('刪除玩家', `確定刪除 ${player.name}？`, [
-                          { text: '取消', style: 'cancel' },
-                          { text: '刪除', style: 'destructive', onPress: () => {
-                              // 接上 context 刪除玩家
-                              try {
-                                const { deletePlayer } = require('../context/GameContext');
-                              } catch {}
-                            } },
-                        ])}
-                      >
-                        <Text style={{ color: '#FFF', fontWeight: '700' }}>刪除</Text>
-                      </TouchableOpacity>
-                    )}
-                  >
-                  <TouchableOpacity style={styles.playerItem} onPress={() => { setDetailsPlayer(player); setDetailsVisible(true); }}>
-                    <View style={styles.playerInfo}>
-                      <Text style={styles.playerName}>{player.name}</Text>
-                      <Text style={styles.playerBuyIn}>
-                        買入: {formatCurrency(player.buyIn)}
-                      </Text>
-                    </View>
-                    <View style={styles.playerProfit}>
-                      <Text style={[
-                        styles.profitAmount,
-                        { color: getProfitColor(player.profit) }
-                      ]}>
-                        {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
-                      </Text>
-                      <Text style={[
-                        styles.playerStatus,
-                        { backgroundColor: getStatusColor(player.status) }
-                      ]}>
-                        {player.status === 'active' ? '進行中' : '已兌現'}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  </Swipeable>
-                ))}
+                    <Swipeable
+                      key={player.id}
+                      renderRightActions={() => (
+                        <TouchableOpacity
+                          style={{ justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.error, paddingHorizontal: theme.spacing.lg, borderRadius: theme.borderRadius.sm }}
+                            onPress={() => Alert.alert(t('game.deletePlayer'), `${t('game.confirmDelete')} ${player.name}？`, [
+                              { text: t('common.cancel'), style: 'cancel' },
+                              { text: t('common.delete'), style: 'destructive', onPress: () => {
+                                  // 接上 context 刪除玩家
+                                  try {
+                                    const { deletePlayer } = require('../context/GameContext');
+                                  } catch {}
+                                } },
+                            ])}
+                          >
+                            <Text style={{ color: '#FFF', fontWeight: '700' }}>{t('common.delete')}</Text>
+                        </TouchableOpacity>
+                      )}
+                    >
+                    <TouchableOpacity style={styles.playerItem} onPress={() => { setDetailsPlayer(player); setDetailsVisible(true); }}>
+                      <View style={styles.playerInfo}>
+                        <Text style={styles.playerName}>{player.name}</Text>
+                            <Text style={styles.playerBuyIn}>
+                              {t('game.buyIn')}: {formatCurrency(player.buyIn)}
+                            </Text>
+                      </View>
+                      <View style={styles.playerProfit}>
+                        {player.status === 'cashed_out' && (
+                          <Text style={[
+                            styles.profitAmount,
+                            { color: getProfitColor(player.profit) }
+                          ]}>
+                            {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
+                          </Text>
+                        )}
+                            <Text style={[
+                              styles.playerStatus,
+                              { backgroundColor: getStatusColor(player.status) }
+                            ]}>
+                              {player.status === 'active' ? t('game.inProgress') : t('game.cashedOut')}
+                            </Text>
+                      </View>
+                    </TouchableOpacity>
+                    </Swipeable>
+                  ))}
                 </ScrollView>
-                <Button
-                  title="+ 新增玩家"
-                  onPress={() => setBuyInModalVisible(true)}
-                  style={{ marginTop: theme.spacing.md }}
-                />
               </View>
             )}
           </Card>
 
+          {/* 新增玩家卡片 */}
+          {playersExpanded && (
+            <Card style={styles.playersCard}>
+              <Button
+                title={`+ ${t('game.addPlayer')}`}
+                onPress={() => setBuyInModalVisible(true)}
+                size="lg"
+              />
+            </Card>
+          )}
+
           {/* All Function Buttons in Grid Layout */}
-          <View style={styles.functionsGrid}>
+          {!playersExpanded && (
+            <View style={styles.functionsGrid}>
             <TouchableOpacity 
               style={[styles.functionButton, styles.functionCard]}
               onPress={() => setInOutModalVisible(true)}
               activeOpacity={1}
             >
               <Icon name="inout2" size={40} style={styles.functionIcon} />
-              <Text style={styles.functionText}>買入/兌現</Text>
+              <Text style={styles.functionText}>{t('game.functions.buyInCashOut')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.functionButton, styles.functionCard]}
-              onPress={() => setRakeModalVisible(true)}
-              activeOpacity={1}
-            >
-              <Icon name="rake" size={36} style={styles.functionIcon} />
-              <Text style={styles.functionText}>抽水</Text>
-            </TouchableOpacity>
+            {currentGame.gameMode === 'noRake' ? (
+              <TouchableOpacity 
+                style={[styles.functionButton, styles.functionCard]}
+                onPress={() => setEntryFeeModalVisible(true)}
+                activeOpacity={1}
+              >
+                <Icon name="rake" size={36} style={styles.functionIcon} />
+                <Text style={styles.functionText}>{t('game.functions.entryFee')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={[styles.functionButton, styles.functionCard]}
+                onPress={() => setRakeModalVisible(true)}
+                activeOpacity={1}
+              >
+                <Icon name="rake" size={36} style={styles.functionIcon} />
+                <Text style={styles.functionText}>{t('game.functions.rake')}</Text>
+              </TouchableOpacity>
+            )}
             
             <TouchableOpacity 
               style={[styles.functionButton, styles.functionCard]}
@@ -434,7 +615,7 @@ const GameScreen: React.FC = () => {
               activeOpacity={1}
             >
               <Icon name="cost" size={36} style={styles.functionIcon} />
-              <Text style={styles.functionText}>支出</Text>
+              <Text style={styles.functionText}>{t('game.functions.expense')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -443,12 +624,15 @@ const GameScreen: React.FC = () => {
               activeOpacity={1}
             >
               <Icon name="insurance" size={36} style={styles.functionIcon} />
-              <Text style={styles.functionText}>保險</Text>
+              <Text style={styles.functionText}>{t('game.functions.insurance')}</Text>
             </TouchableOpacity>
+
           </View>
+          )}
 
           {/* Dealer Card */}
-          <Card style={styles.dealerCard}>
+          {!playersExpanded && (
+            <Card style={styles.dealerCard}>
             <TouchableOpacity 
               style={styles.dealerHeader}
               onPress={() => setDealerModalVisible(true)}
@@ -457,15 +641,13 @@ const GameScreen: React.FC = () => {
               <View style={styles.dealerInfo}>
                 <Icon name="dealer" size={44} style={styles.dealerIcon} />
                 <View>
-                  <Text style={styles.dealerTitle}>發牌員</Text>
-                  <Text style={styles.dealerSubtitle}>
-                    {currentGame.dealers.length} 人發牌中
-                  </Text>
+                  <Text style={styles.dealerTitle}>{t('game.dealer')}</Text>
                 </View>
               </View>
               <Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
           </Card>
+          )}
         </View>
       </ScrollView>
 
@@ -538,6 +720,71 @@ const GameScreen: React.FC = () => {
         onBuyIn={() => setBuyInModalVisible(true)}
         onCashOut={() => setCashOutModalVisible(true)}
       />
+      <EntryFeeModal
+        visible={entryFeeModalVisible}
+        onClose={() => setEntryFeeModalVisible(false)}
+      />
+
+      {/* 牌局 Host Profit Share 設定（彈出視窗） */}
+      <GameProfitShareSettingModal
+        visible={profitShareVisible}
+        onClose={() => setProfitShareVisible(false)}
+      />
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.lg,
+              minWidth: 200,
+            }}
+          >
+            <Text style={{ fontSize: theme.fontSize.lg, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing.md }}>
+              {t('settings.language')}
+            </Text>
+            <TouchableOpacity
+              style={{
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.sm,
+                backgroundColor: language === 'zh-TW' ? theme.colors.primary + '20' : 'transparent',
+                marginBottom: theme.spacing.sm,
+              }}
+              onPress={() => handleLanguageSelect('zh-TW')}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md }}>{t('settings.traditionalChinese')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.sm,
+                backgroundColor: language === 'zh-CN' ? theme.colors.primary + '20' : 'transparent',
+              }}
+              onPress={() => handleLanguageSelect('zh-CN')}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md, fontWeight: language === 'zh-CN' ? '700' : '400' }}>{t('settings.simplifiedChinese')}</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };

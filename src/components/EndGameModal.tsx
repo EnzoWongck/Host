@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
+import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
 import Button from './Button';
 
@@ -19,6 +20,7 @@ interface EndGameModalProps {
 
 const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
   const { theme } = useTheme();
+  const { t, language } = useLanguage();
   const { state, endGame } = useGame();
   
   const [actualCollection, setActualCollection] = useState('');
@@ -158,9 +160,9 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
 
   if (!currentGame) {
     return (
-      <Modal visible={visible} onClose={onClose} title="結束牌局">
+      <Modal visible={visible} onClose={onClose} title={t('modals.endGame')}>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>沒有進行中的牌局</Text>
+          <Text style={styles.emptyText}>{t('endGame.noGame')}</Text>
         </View>
       </Modal>
     );
@@ -174,7 +176,7 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
     const diff = e.getTime() - s.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}小時 ${minutes}分鐘`;
+    return `${hours}${t('endGame.hours')} ${minutes}${t('endGame.minutes')}`;
   };
 
   // 計算財務統計
@@ -200,7 +202,7 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
       endGame(currentGame.id, { endTime, actualCollection: expectedNetIncome });
       onClose();
     } catch (error) {
-      Alert.alert('錯誤', '結束牌局時發生錯誤，請重試。');
+      Alert.alert(t('common.error') || '錯誤', t('endGame.errorEndFailed'));
     }
   };
 
@@ -220,18 +222,18 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
     <Modal
       visible={visible}
       onClose={onClose}
-      title="結束牌局"
+      title={t('modals.endGame')}
     >
       <View>
         {/* 確認訊息 */}
         <View style={styles.warningCard}>
           <Text style={styles.warningText}>
-            牌局狀態將更改為"已結束"，牌局記錄仍然可以進行修改
+            {t('endGame.warningMessage')}
           </Text>
         </View>
         
         <Button 
-          title="確認結束" 
+          title={t('endGame.confirmEnd')} 
           onPress={handleEndGame} 
           size="lg" 
           variant="danger"

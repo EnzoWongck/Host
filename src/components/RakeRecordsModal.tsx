@@ -4,6 +4,7 @@ import Modal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Rake } from '../types/game';
 import { Swipeable } from 'react-native-gesture-handler';
 
@@ -14,6 +15,7 @@ interface RakeRecordsModalProps {
 
 const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose }) => {
   const { theme } = useTheme();
+  const { t, language } = useLanguage();
   const { state, updateRake, deleteRake } = useGame();
   const currentGame = state.currentGame;
 
@@ -34,12 +36,12 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
   const startEdit = (r: Rake) => {
     setEditId(r.id);
     setEditAmount(String(r.amount));
-    setEditTime(new Date(r.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }));
+    setEditTime(new Date(r.timestamp).toLocaleTimeString(language === 'zh-TW' ? 'zh-TW' : 'zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }));
   };
 
   const confirmEdit = (r: Rake) => {
     const amt = parseFloat(editAmount);
-    if (isNaN(amt) || amt <= 0) { Alert.alert('錯誤', '請輸入有效金額'); return; }
+    if (isNaN(amt) || amt <= 0) { Alert.alert(t('common.error') || '錯誤', t('rake.errorAmountRequired')); return; }
     const tsBase = r.timestamp ? new Date(r.timestamp) : new Date();
     const [h,m] = (editTime || '').split(':');
     if (h && m) { tsBase.setHours(Number(h)); tsBase.setMinutes(Number(m)); }
@@ -48,16 +50,16 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
   };
 
   const askDelete = (id: string) => {
-    Alert.alert('刪除抽水', '確定刪除這筆抽水？', [
-      { text: '取消', style: 'cancel' },
-      { text: '刪除', style: 'destructive', onPress: () => deleteRake(currentGame!.id, id) },
+    Alert.alert(t('rake.deleteRake') || '刪除抽水', t('rake.deleteConfirm') || '確定刪除這筆抽水？', [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteRake(currentGame!.id, id) },
     ]);
   };
 
   return (
-    <Modal visible={visible} onClose={onClose} title="抽水紀錄">
+    <Modal visible={visible} onClose={onClose} title={t('rake.viewRecords')}>
       {!currentGame ? (
-        <Text style={{ color: theme.colors.textSecondary }}>沒有進行中的牌局</Text>
+        <Text style={{ color: theme.colors.textSecondary }}>{t('rake.errorNoGame')}</Text>
       ) : (
         <View style={styles.listContainer}>
           <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
@@ -70,32 +72,32 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
                   renderRightActions={() => (
                     <View style={{ flexDirection: 'row' }}>
                       <TouchableOpacity style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.primary, marginRight: theme.spacing.xs, borderRadius: theme.borderRadius.sm }} onPress={() => startEdit(r)} activeOpacity={1}>
-                        <Text style={{ color: '#FFF', fontWeight: '600' }}>編輯</Text>
+                        <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('common.edit')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.error, borderRadius: theme.borderRadius.sm }} onPress={() => askDelete(r.id)} activeOpacity={1}>
-                        <Text style={{ color: '#FFF', fontWeight: '600' }}>刪除</Text>
+                        <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('common.delete')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                 >
                   <View style={styles.row}>
                     <Text style={styles.amount}>$ {r.amount.toLocaleString()}</Text>
-                    <Text style={styles.time}>{new Date(r.timestamp).toLocaleString('zh-TW')}</Text>
+                    <Text style={styles.time}>{new Date(r.timestamp).toLocaleString(language === 'zh-TW' ? 'zh-TW' : 'zh-CN')}</Text>
                   </View>
                   {editId === r.id && (
                     <View style={styles.editRow}>
-                      <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} placeholder="金額" keyboardType="numeric" />
-                      <TextInput style={styles.input} value={editTime} onChangeText={setEditTime} placeholder="時間 HH:MM" />
+                      <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} placeholder={t('rake.rakeAmount')} keyboardType="numeric" />
+                      <TextInput style={styles.input} value={editTime} onChangeText={setEditTime} placeholder={t('rake.timePlaceholder')} />
                       <View style={styles.editActions}>
-                        <Button title="取消" variant="outline" onPress={() => setEditId(null)} style={{ marginRight: theme.spacing.sm }} />
-                        <Button title="儲存" onPress={() => confirmEdit(r)} />
+                        <Button title={t('common.cancel')} variant="outline" onPress={() => setEditId(null)} style={{ marginRight: theme.spacing.sm }} />
+                        <Button title={t('common.save')} onPress={() => confirmEdit(r)} />
                       </View>
                     </View>
                   )}
                 </Swipeable>
               ))}
             {currentGame.rakes.length === 0 && (
-              <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', paddingVertical: theme.spacing.md }}>尚無抽水紀錄</Text>
+              <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', paddingVertical: theme.spacing.md }}>{t('rake.noRecords')}</Text>
             )}
           </ScrollView>
         </View>

@@ -7,13 +7,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Modal as RNModal,
-  SafeAreaView,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
 import Button from './Button';
 import { Expense } from '../types/game';
@@ -30,6 +29,7 @@ type ExpenseCategory = Expense['category'];
 
 const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
+  const { t } = useLanguage();
   const { state, addExpense, updateExpense, deleteExpense } = useGame();
   const { showToast } = useToast();
   
@@ -50,54 +50,17 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const currentGame = state.currentGame;
 
   const expenseCategories = [
-    { id: 'takeout' as ExpenseCategory, icon: 'burger', label: '外賣' },
-    { id: 'miscellaneous' as ExpenseCategory, icon: 'misc711', label: '雜項' },
-    { id: 'taxi' as ExpenseCategory, icon: 'taxi', label: '的士' },
-    { id: 'venue' as ExpenseCategory, icon: 'table', label: '場租' }, // 第四個
-    { id: 'other' as ExpenseCategory, icon: 'other', label: '其他' }, // 第五個
+    { id: 'takeout' as ExpenseCategory, icon: 'burger', label: t('expenseCategories.takeout') },
+    { id: 'miscellaneous' as ExpenseCategory, icon: 'misc711', label: t('expenseCategories.miscellaneous') },
+    { id: 'taxi' as ExpenseCategory, icon: 'taxi', label: t('expenseCategories.taxi') },
+    { id: 'venue' as ExpenseCategory, icon: 'table', label: t('expenseCategories.venue') },
+    { id: 'other' as ExpenseCategory, icon: 'other', label: t('expenseCategories.other') },
   ];
 
   const firstRow = expenseCategories.slice(0, 3);
   const secondRow = expenseCategories.slice(3);
 
   const styles = StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContainer: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-    },
-    headerTitle: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: 'bold',
-      color: theme.colors.text,
-    },
-    closeButton: {
-      padding: theme.spacing.sm,
-      borderRadius: theme.borderRadius.sm,
-      backgroundColor: colorMode === 'light' ? '#F5F5F5' : theme.colors.surface,
-    },
-    closeButtonText: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: 'bold',
-      color: theme.colors.textSecondary,
-    },
-    scrollContainer: {
-      flex: 1,
-      padding: theme.spacing.md,
-    },
     categoriesGrid: {
       marginBottom: 0,
     },
@@ -275,7 +238,8 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     }
 
     const hosts = currentGame.hosts || [];
-    const hostToUse = hosts.length > 1 ? selectedHost : hosts[0] || null;
+    const firstHostName = hosts[0] ? (typeof hosts[0] === 'string' ? hosts[0] : hosts[0].name) : null;
+    const hostToUse = hosts.length > 1 ? selectedHost : firstHostName;
     if (hosts.length > 1 && !hostToUse) {
       Alert.alert('錯誤', '請選擇 Host');
       return;
@@ -329,27 +293,28 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           <TouchableOpacity
             style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: theme.colors.primary, marginRight: theme.spacing.xs, borderRadius: theme.borderRadius.sm }}
             onPress={() => {
-              // 使用獨立彈窗編輯
+              // 使用獨立彈窗編輯（已使用翻譯）
               setEditExpenseId(expense.id);
               setEditCategory(expense.category);
               setEditDescription(expense.description || '');
               setEditAmount(String(expense.amount));
+              setSelectedHost(expense.host || null);
               setEditVisible(true);
             }}
           >
-            <Text style={{ color: '#FFF', fontWeight: '600' }}>編輯</Text>
+            <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('expense.editExpense')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.error, borderRadius: theme.borderRadius.sm }}
             onPress={() => {
               if (!currentGame) return;
-              Alert.alert('刪除支出', '確定要刪除這筆支出嗎？', [
-                { text: '取消', style: 'cancel' },
-                { text: '刪除', style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
+              Alert.alert(t('expense.deleteExpense'), t('expense.deleteConfirm'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
               ]);
             }}
           >
-            <Text style={{ color: '#FFF', fontWeight: '600' }}>刪除</Text>
+            <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -365,40 +330,16 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     </Swipeable>
   );
 
-  if (!visible) {
-    return null;
-  }
-
   return (
-    <RNModal
+    <Modal
       visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
+      onClose={onClose}
+      title={t('modals.expense')}
     >
-      <View style={styles.modalOverlay}>
-        <SafeAreaView style={styles.modalContainer}>
-          {/* 頂部標題欄 */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>支出</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={1}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView 
-            style={styles.scrollContainer}
-            showsVerticalScrollIndicator={true}
-            bounces={true}
-            scrollEnabled={true}
-            decelerationRate="fast"
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled={true}
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* 支出類別選擇（按鈕樣式） */}
         <View style={[styles.inputGroup, styles.categoryGroup]}>
-          <Text style={styles.label}>支出類別</Text>
+          <Text style={styles.label}>{t('expense.category')}</Text>
           <View style={styles.categoriesGrid}>
             <View style={styles.categoryRow}>
               {firstRow.map((category) => (
@@ -479,12 +420,12 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
 
         {/* 支出描述 */}
         <View style={[styles.inputGroup, styles.descriptionGroup]}>
-          <Text style={styles.label}>支出描述（可選）</Text>
+          <Text style={styles.label}>{t('expense.description')}</Text>
           <TextInput
             style={styles.input}
             value={description}
             onChangeText={setDescription}
-            placeholder="輸入支出描述..."
+            placeholder={t('expense.descriptionPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             multiline={false}
             numberOfLines={1}
@@ -493,12 +434,12 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
 
         {/* 支出金額 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>支出金額</Text>
+          <Text style={styles.label}>{t('expense.amount')}</Text>
           <TextInput
             style={styles.input}
             value={amount}
             onChangeText={setAmount}
-            placeholder="輸入支出金額"
+            placeholder={t('expense.amountPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="numeric"
           />
@@ -507,14 +448,17 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
         {/* 選擇 Host（多 Host 顯示，單 Host 自動綁定不顯示） */}
         {!!currentGame && (currentGame.hosts?.length || 0) > 1 && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>選擇 Host</Text>
+            <Text style={styles.label}>{t('expense.selectHost')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.hostChips}>
-                {currentGame.hosts.map(h => (
-                  <TouchableOpacity key={h} style={[styles.chip, selectedHost === h && styles.chipActive]} onPress={() => setSelectedHost(h)} activeOpacity={1}>
-                    <Text style={styles.chipText}>{h}</Text>
+                {currentGame.hosts.map(h => {
+                  const hostName = typeof h === 'string' ? h : h.name;
+                  return (
+                  <TouchableOpacity key={hostName} style={[styles.chip, selectedHost === hostName && styles.chipActive]} onPress={() => setSelectedHost(hostName)} activeOpacity={1}>
+                    <Text style={styles.chipText}>{hostName}</Text>
                   </TouchableOpacity>
-                ))}
+                  );
+                })}
               </View>
             </ScrollView>
           </View>
@@ -522,7 +466,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
 
         {/* 新增按鈕 */}
         <Button
-          title={editingExpenseId ? '更新支出' : '新增支出'}
+          title={editingExpenseId ? t('expense.updateExpense') : t('expense.addExpense')}
           onPress={handleAddExpense}
           size="lg"
         />
@@ -537,7 +481,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
             >
               <View style={styles.recordsHeaderLeft}>
                 <Icon name="cost" size={24} style={{ marginRight: theme.spacing.sm }} />
-                <Text style={styles.recordsTitle}>支出記錄</Text>
+                <Text style={styles.recordsTitle}>{t('expense.records')}</Text>
               </View>
               <View style={styles.recordsHeaderRight}>
                 <Text style={styles.recordsTotal}>$ {totalExpenses.toLocaleString()}</Text>
@@ -561,7 +505,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
                     .sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     .map(renderRecord)}
                   {currentGame?.expenses.length === 0 && (
-                    <Text style={styles.emptyMessage}>尚無支出紀錄</Text>
+                    <Text style={styles.emptyMessage}>{t('expense.noRecords')}</Text>
                   )}
                 </ScrollView>
               </View>
@@ -571,25 +515,30 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
         {/* 編輯彈窗 */}
         <ExpenseEditModal
           visible={editVisible}
-          onClose={() => setEditVisible(false)}
+          onClose={() => {
+            setEditVisible(false);
+            setEditExpenseId(null);
+            setSelectedHost(null);
+          }}
           category={editCategory}
           description={editDescription}
           amount={editAmount}
           setCategory={(c) => setEditCategory(c)}
           setDescription={setEditDescription}
           setAmount={setEditAmount}
-          onSave={({ category, description, amount }) => {
+          defaultHost={selectedHost}
+          onSave={({ category, description, amount, host }) => {
             if (!currentGame || !editExpenseId) return;
             const origin = currentGame.expenses.find(e => e.id === editExpenseId);
             if (!origin) return;
-            updateExpense(currentGame.id, { ...origin, category, description, amount } as Expense);
+            updateExpense(currentGame.id, { ...origin, category, description, amount, host } as Expense);
             setEditVisible(false);
+            setEditExpenseId(null);
+            setSelectedHost(null);
           }}
           />
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-    </RNModal>
+      </ScrollView>
+    </Modal>
   );
 };
 

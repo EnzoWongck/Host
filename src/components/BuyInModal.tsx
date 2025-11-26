@@ -12,6 +12,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
 import Button from './Button';
 import { Player } from '../types/game';
@@ -23,6 +24,7 @@ interface BuyInModalProps {
 
 const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
+  const { t } = useLanguage();
   const { state, addPlayer, addBuyInEntry } = useGame();
   const { showToast } = useToast();
   
@@ -143,20 +145,20 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
 
   const handleBuyIn = () => {
     if (!currentGame) {
-      Alert.alert('錯誤', '沒有進行中的牌局');
+      Alert.alert(t('common.error') || '錯誤', t('buyIn.errorNoGame'));
       return;
     }
 
     const amount = parseFloat(buyInAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('錯誤', '請輸入有效的買入金額');
+      Alert.alert(t('common.error') || '錯誤', t('buyIn.errorAmountRequired'));
       return;
     }
 
     if (buyInType === 'new') {
       // 新增玩家
       if (!playerName.trim()) {
-        Alert.alert('錯誤', '請輸入玩家名稱');
+        Alert.alert(t('common.error') || '錯誤', t('buyIn.errorPlayerNameRequired'));
         return;
       }
 
@@ -169,16 +171,16 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
 
       addPlayer(currentGame.id, newPlayer);
       
-      showToast(`${playerName} 已加入牌局，買入 ${formatCurrency(amount)}`, 'success');
+      showToast(`${playerName} ${t('buyIn.successPlayerAdded')} ${formatCurrency(amount)}`, 'success');
     } else {
       // 現有玩家：新增一筆買入明細
       if (!selectedPlayer) {
-        Alert.alert('錯誤', '請選擇一個玩家');
+        Alert.alert(t('common.error') || '錯誤', t('buyIn.errorPlayerRequired'));
         return;
       }
 
       addBuyInEntry(currentGame.id, selectedPlayer.id, amount);
-      showToast(`${selectedPlayer.name} 新增買入 ${formatCurrency(amount)}`, 'success');
+      showToast(`${selectedPlayer.name} ${t('buyIn.successBuyInAdded')} ${formatCurrency(amount)}`, 'success');
     }
 
     // 重置表單
@@ -207,7 +209,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       <View style={styles.playerInfo}>
         <Text style={styles.playerName}>{item.name}</Text>
         <Text style={styles.playerStats}>
-          買入: {formatCurrency(item.buyIn)} | 盈虧: {formatCurrency(item.profit)}
+          {t('game.buyIn')}: {formatCurrency(item.buyIn)} | {t('game.profit')}: {formatCurrency(item.profit)}
         </Text>
       </View>
       <Text
@@ -216,7 +218,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
           item.status === 'active' ? styles.activeStatus : styles.inactiveStatus,
         ]}
       >
-        {item.status === 'active' ? '進行中' : '已兌現'}
+        {item.status === 'active' ? t('game.inProgress') : t('game.cashedOut')}
       </Text>
     </TouchableOpacity>
   );
@@ -228,7 +230,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
         resetForm();
         onClose();
       }}
-      title="買入"
+      title={t('modals.buyIn')}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* 買入類型選擇 */}
@@ -247,7 +249,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
                 buyInType === 'new' ? styles.typeButtonTextActive : styles.typeButtonTextInactive,
               ]}
             >
-              新增玩家
+              {t('buyIn.newPlayer')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -264,7 +266,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
                 buyInType === 'existing' ? styles.typeButtonTextActive : styles.typeButtonTextInactive,
               ]}
             >
-              現有玩家
+              {t('buyIn.existingPlayer')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -272,12 +274,12 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
         {/* 新增玩家表單 */}
         {buyInType === 'new' && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>玩家名稱</Text>
+            <Text style={styles.label}>{t('buyIn.playerName')}</Text>
             <TextInput
               style={styles.input}
               value={playerName}
               onChangeText={setPlayerName}
-              placeholder="輸入玩家名稱"
+              placeholder={t('buyIn.playerNamePlaceholder')}
               placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
@@ -286,7 +288,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
         {/* 現有玩家選擇 */}
         {buyInType === 'existing' && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>選擇玩家</Text>
+            <Text style={styles.label}>{t('buyIn.selectPlayer')}</Text>
             {currentGame?.players && currentGame.players.length > 0 ? (
               <View style={[styles.playersList, { maxHeight: 280 }]}> 
                 <ScrollView nestedScrollEnabled>
@@ -297,7 +299,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>目前沒有玩家</Text>
+                <Text style={styles.emptyText}>{t('buyIn.noPlayers')}</Text>
               </View>
             )}
           </View>
@@ -305,12 +307,12 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
 
         {/* 買入金額 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>買入金額</Text>
+          <Text style={styles.label}>{t('buyIn.amount')}</Text>
           <TextInput
             style={styles.input}
             value={buyInAmount}
             onChangeText={setBuyInAmount}
-            placeholder="輸入買入金額"
+            placeholder={t('buyIn.amountPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="numeric"
           />
@@ -318,7 +320,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
 
         {/* 確認按鈕 */}
         <Button
-          title="確認買入"
+          title={t('buyIn.confirmBuyIn')}
           onPress={handleBuyIn}
           size="lg"
         />

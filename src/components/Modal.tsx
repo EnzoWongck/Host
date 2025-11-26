@@ -14,7 +14,7 @@ import Icon from './Icon';
 interface ModalProps {
   visible: boolean;
   onClose: () => void;
-  title: string;
+  title: string | React.ReactNode;
   children: React.ReactNode;
   closeOnBackdropPress?: boolean;
   leftIconName?: string;
@@ -49,7 +49,7 @@ const Modal: React.FC<ModalProps> = ({
       backgroundColor: theme.colors.surface,
       borderRadius: fullScreen ? 0 : theme.borderRadius.lg,
       width: '100%',
-      maxWidth: fullScreen ? '100%' : 500,
+      maxWidth: fullScreen ? '100%' : 700,
       height: fullScreen ? '100%' : undefined,
       maxHeight: fullScreen ? '100%' : '90%',
       overflow: 'hidden',
@@ -67,8 +67,8 @@ const Modal: React.FC<ModalProps> = ({
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.xl + 8,
+      paddingVertical: theme.spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -77,6 +77,7 @@ const Modal: React.FC<ModalProps> = ({
       fontWeight: '600',
       color: theme.colors.text,
       flex: 1,
+      marginRight: theme.spacing.xl,
     },
     titleRow: {
       flexDirection: 'row',
@@ -90,7 +91,9 @@ const Modal: React.FC<ModalProps> = ({
       padding: theme.spacing.sm,
       borderRadius: theme.borderRadius.sm,
       backgroundColor: theme.colors.border,
-      marginLeft: theme.spacing.md,
+      minWidth: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     closeButtonText: {
       fontSize: theme.fontSize.md,
@@ -132,7 +135,11 @@ const Modal: React.FC<ModalProps> = ({
                   {leftIconName ? (
                     <Icon name={leftIconName as any} size={20} style={styles.titleIcon} />
                   ) : null}
-                  <Text style={styles.title}>{title}</Text>
+                  {typeof title === 'string' ? (
+                    <Text style={styles.title}>{title}</Text>
+                  ) : (
+                    title
+                  )}
                 </View>
                 <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
                   <Text style={styles.closeButtonText}>✕</Text>

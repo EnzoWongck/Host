@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
 import Modal from './Modal';
 import Button from './Button';
@@ -21,6 +22,7 @@ interface NewGameModalProps {
 
 const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
+  const { t } = useLanguage();
   const { createGame } = useGame();
   const navigation = useNavigation<any>();
   
@@ -30,6 +32,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const [bigBlind, setBigBlind] = useState(10);
   const [smallBlindInput, setSmallBlindInput] = useState('5');
   const [bigBlindInput, setBigBlindInput] = useState('10');
+  const [gameMode, setGameMode] = useState<'rake' | 'noRake'>('rake'); // 預設抽水
 
   const styles = StyleSheet.create({
     scrollContainer: {
@@ -142,6 +145,66 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       marginTop: theme.spacing.xl,
       marginBottom: theme.spacing.lg,
     },
+    modeButtonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginVertical: theme.spacing.lg,
+    },
+    modeButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      marginHorizontal: theme.spacing.xs,
+    },
+    activeMode: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '10',
+    },
+    activeText: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+      fontSize: theme.fontSize.md,
+    },
+    inactiveText: {
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+      fontSize: theme.fontSize.md,
+    },
+    entryFeeContainer: {
+      marginTop: theme.spacing.md,
+    },
+    entryFeeTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.md,
+    },
+    entryFeeModeContainer: {
+      flexDirection: 'row',
+      marginBottom: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    entryFeeTab: {
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      marginRight: theme.spacing.md,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    activeTab: {
+      borderBottomColor: theme.colors.primary,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    inactiveTab: {
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
   });
 
   const addHost = () => {
@@ -209,30 +272,42 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const handleCreateGame = () => {
     // 驗證輸入
     if (!gameName.trim()) {
-      Alert.alert('錯誤', '請輸入牌局名稱');
+      Alert.alert(t('common.error') || '錯誤', t('newGame.errorNameRequired'));
       return;
     }
 
     const validHosts = hosts.filter(host => host.trim() !== '');
     if (validHosts.length === 0) {
-      Alert.alert('錯誤', '請至少輸入一個 Host 名稱');
+      Alert.alert(t('common.error') || '錯誤', t('newGame.errorHostRequired'));
       return;
     }
 
     if (smallBlind < 5 || bigBlind < 5) {
-      Alert.alert('錯誤', '盲注最小金額為 $5');
+      Alert.alert(t('common.error') || '錯誤', t('newGame.errorBlindMin'));
       return;
     }
 
     try {
+      // 創建 Host 對象
+      const equalShare = validHosts.length > 0 ? 1 / validHosts.length : 0;
+      const hostObjects: Host[] = validHosts.map(name => ({
+        name,
+        cost: 0,
+        dealerSalary: 0,
+        totalCashOut: 0,
+        shareRatio: equalShare,
+        transferAmount: 0,
+      }));
+      
       // 創建新牌局
       createGame({
         name: gameName.trim(),
-        hosts: validHosts,
+        hosts: hostObjects,
         smallBlind,
         bigBlind,
         startTime: new Date(),
         status: 'active',
+        gameMode,
       });
 
       // 重置表單
@@ -242,12 +317,13 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       setBigBlind(10);
       setSmallBlindInput('5');
       setBigBlindInput('10');
+      setGameMode('rake');
 
       // 關閉 Modal 並導向「目前牌局」
       onClose();
       navigation.navigate('Game');
     } catch (error) {
-      Alert.alert('錯誤', '建立牌局時發生錯誤，請重試。');
+      Alert.alert(t('common.error') || '錯誤', t('newGame.errorCreateFailed'));
     }
   };
 
@@ -258,6 +334,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
     setBigBlind(10);
     setSmallBlindInput('5');
     setBigBlindInput('10');
+    setGameMode('rake');
   };
 
   return (
@@ -267,24 +344,24 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         resetForm();
         onClose();
       }}
-      title="新增牌局"
+      title={t('modals.newGame')}
     >
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* 牌局名稱 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>牌局名稱</Text>
+          <Text style={styles.label}>{t('newGame.gameName')}</Text>
           <TextInput
             style={styles.input}
             value={gameName}
             onChangeText={setGameName}
-            placeholder="輸入牌局名稱"
+            placeholder={t('newGame.gameNamePlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
           />
         </View>
 
         {/* Host 名稱 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Host 名稱</Text>
+          <Text style={styles.label}>{t('newGame.hostName')}</Text>
           {hosts.map((host, index) => (
             <View key={index} style={styles.hostContainer}>
               <View style={styles.hostRow}>
@@ -292,7 +369,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
                   style={[styles.input, styles.hostInput]}
                   value={host}
                   onChangeText={(value) => updateHost(index, value)}
-                  placeholder={`Host ${index + 1} 名稱`}
+                  placeholder={t('newGame.hostNamePlaceholder').replace('{index}', String(index + 1))}
                   placeholderTextColor={theme.colors.textSecondary}
                 />
                 {hosts.length > 1 && (
@@ -301,23 +378,23 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
                     onPress={() => removeHost(index)}
                     activeOpacity={1}
                   >
-                    <Text style={styles.removeHostText}>移除</Text>
+                    <Text style={styles.removeHostText}>{t('newGame.removeHost')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
             </View>
           ))}
           <TouchableOpacity style={styles.addHostButton} onPress={addHost} activeOpacity={1}>
-            <Text style={styles.addHostText}>+ 新增 Host</Text>
+            <Text style={styles.addHostText}>{t('newGame.addHost')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* 小盲/大盲 */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>小盲 / 大盲</Text>
+          <Text style={styles.label}>{t('summary.blinds')}</Text>
           <View style={styles.blindsContainer}>
             <View style={styles.blindGroup}>
-              <Text style={[styles.label, { textAlign: 'center' }]}>小盲</Text>
+              <Text style={[styles.label, { textAlign: 'center' }]}>{t('newGame.smallBlind')}</Text>
               <View style={styles.blindRow}>
                 <TouchableOpacity
                   style={styles.blindButton}
@@ -345,7 +422,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
             </View>
 
             <View style={styles.blindGroup}>
-              <Text style={[styles.label, { textAlign: 'center' }]}>大盲</Text>
+              <Text style={[styles.label, { textAlign: 'center' }]}>{t('newGame.bigBlind')}</Text>
               <View style={styles.blindRow}>
                 <TouchableOpacity
                   style={styles.blindButton}
@@ -374,10 +451,52 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
           </View>
         </View>
 
+        {/* 遊戲模式選擇 */}
+        <View style={styles.modeButtonContainer}>
+          <TouchableOpacity 
+            onPress={() => setGameMode('rake')} 
+            style={[styles.modeButton, gameMode === 'rake' && styles.activeMode]}
+            activeOpacity={0.7}
+          >
+            <Text style={gameMode === 'rake' ? styles.activeText : styles.inactiveText}>
+              {t('newGame.rakeMode')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => setGameMode('noRake')} 
+            style={[styles.modeButton, gameMode === 'noRake' && styles.activeMode]}
+            activeOpacity={0.7}
+          >
+            <Text style={gameMode === 'noRake' ? styles.activeText : styles.inactiveText}>
+              {t('newGame.noRakeMode')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 抽水模式說明 */}
+        {gameMode === 'rake' && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('newGame.rakeMode')}</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm }}>
+              {t('newGame.rakeModeDescription')}
+            </Text>
+          </View>
+        )}
+
+        {/* 不抽水模式說明 */}
+        {gameMode === 'noRake' && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('newGame.noRakeMode')}</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm }}>
+              {t('newGame.noRakeModeDescription')}
+            </Text>
+          </View>
+        )}
+
         {/* 建立按鈕 */}
         <View style={styles.createButtonContainer}>
           <Button
-            title="建立牌局"
+            title={t('newGame.createGame')}
             onPress={handleCreateGame}
             size="lg"
           />

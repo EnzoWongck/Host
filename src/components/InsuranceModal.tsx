@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
 import Button from './Button';
 import { Insurance, InsurancePartner } from '../types/game';
@@ -24,6 +25,7 @@ interface InsuranceModalProps {
 
 const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCompleted }) => {
   const { theme, colorMode } = useTheme();
+  const { t } = useLanguage();
   const { state, addInsurance, setDefaultInsurancePartners } = useGame();
   const { showToast } = useToast();
   
@@ -31,9 +33,9 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
   const [partnerName, setPartnerName] = useState('');
   const [partnerPercentage, setPartnerPercentage] = useState('');
   const [insuranceAmount, setInsuranceAmount] = useState('');
-  const [editingDefaults, setEditingDefaults] = useState(false);
+  const [defaultModalVisible, setDefaultModalVisible] = useState(false);
   const [editingCurrent, setEditingCurrent] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<'default' | 'custom' | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'default' | 'custom' | null>('default');
 
   const currentGame = state.currentGame;
 
@@ -139,32 +141,62 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
     },
   });
 
+  useEffect(() => {
+    if (visible) {
+      const current = state.currentGame;
+      const defaultPartners = current?.defaultInsurancePartners || [];
+
+      // 開啟視窗時，預設套用已儲存的預設分成，讓使用者可以直接輸入金額新增
+      setSelectedMethod('default');
+      setEditingCurrent(false);
+      if (defaultPartners.length > 0) {
+        setPartners(defaultPartners);
+      } else {
+        // 沒有預設分成時仍保持原本行為：不自動帶入任何分成
+        setPartners([]);
+      }
+    }
+  }, [visible, state.currentGame]);
+
   const addPartner = () => {
     if (!partnerName.trim()) {
-      Alert.alert('錯誤', '請輸入分成者名稱');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorPercentageRequired'));
       return;
     }
 
     const percentage = parseFloat(partnerPercentage);
     if (isNaN(percentage) || percentage <= 0 || percentage > 100) {
-      Alert.alert('錯誤', '請輸入有效的分成百分比（1-100）');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorPercentageRequired'));
       return;
     }
 
     // 檢查總百分比
-    const totalPercentage = partners.reduce((sum, p) => sum + p.percentage, 0) + percentage;
+    const totalPercentageExisting = partners.reduce((sum, p) => sum + p.percentage, 0);
+    const normalizedName = partnerName.trim();
+    const existingIndex = partners.findIndex(p => p.name === normalizedName);
+    const totalPercentage = existingIndex >= 0
+      ? totalPercentageExisting - partners[existingIndex].percentage + percentage
+      : totalPercentageExisting + percentage;
     if (totalPercentage > 100) {
-      Alert.alert('錯誤', '分成總百分比不能超過 100%');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorTotalPercentage'));
       return;
     }
 
-    const newPartner: InsurancePartner = {
-      id: Date.now().toString(),
-      name: partnerName.trim(),
-      percentage,
-    };
-
-    setPartners([...partners, newPartner]);
+    if (existingIndex >= 0) {
+      const updatedPartners = [...partners];
+      updatedPartners[existingIndex] = {
+        ...updatedPartners[existingIndex],
+        percentage,
+      };
+      setPartners(updatedPartners);
+    } else {
+      const newPartner: InsurancePartner = {
+        id: Date.now().toString(),
+        name: normalizedName,
+        percentage,
+      };
+      setPartners([...partners, newPartner]);
+    }
     setPartnerName('');
     setPartnerPercentage('');
   };
@@ -175,24 +207,24 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
 
   const handleAddInsurance = () => {
     if (!currentGame) {
-      Alert.alert('錯誤', '沒有進行中的牌局');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorNoGame'));
       return;
     }
 
     const amount = parseFloat(insuranceAmount);
     if (isNaN(amount)) {
-      Alert.alert('錯誤', '請輸入有效的保險金額（可為負數）');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorAmountRequired'));
       return;
     }
 
     if (partners.length === 0) {
-      Alert.alert('錯誤', '請至少新增一個分成者');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorPartnersRequired'));
       return;
     }
 
     const totalPercentage = partners.reduce((sum, p) => sum + p.percentage, 0);
     if (totalPercentage !== 100) {
-      Alert.alert('錯誤', '分成總百分比必須等於 100%');
+      Alert.alert(t('common.error') || '錯誤', t('insurance.errorTotalPercentage'));
       return;
     }
 
@@ -203,10 +235,13 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
 
     addInsurance(currentGame.id, newInsurance);
 
-    showToast(`已記錄保險：保險金額：$${amount.toLocaleString()} 分成者：${partners.length} 人`, 'success');
+    showToast(`${t('insurance.successRecorded')}$${amount.toLocaleString()} ${t('insurance.partnerName')}：${partners.length} ${t('summaryExport.people')}`, 'success');
 
     // 重置表單
     resetForm();
+    // 重置狀態，下一次新增時恢復預設
+    setSelectedMethod('default');
+    setEditingCurrent(false);
     onClose();
     onCompleted?.();
   };
@@ -232,10 +267,10 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
           // 先刪除舊項，再讓使用者按「新增」以更新（簡潔處理）
           removePartner(item.id);
         }}>
-          <Text style={styles.actionText}>修改</Text>
+          <Text style={styles.actionText}>{t('insurance.modify')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={() => removePartner(item.id)} activeOpacity={1}>
-          <Text style={styles.actionText}>刪除</Text>
+          <Text style={styles.actionText}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -250,100 +285,41 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
         resetForm();
         onClose();
       }}
-      title="保險"
+      title={t('modals.insurance')}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* 目前預設 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>目前預設</Text>
+          <Text style={styles.sectionTitle}>{t('insurance.defaultPartners')}</Text>
           {(state.currentGame?.defaultInsurancePartners || []).map(p => (
             <View key={p.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
               <Text style={styles.partnerInlineText}>{p.name}</Text>
               <Text style={styles.partnerInlinePct}>{p.percentage}%</Text>
             </View>
           ))}
-          <Button
-            title="設定預設分成"
+          <TouchableOpacity
+            style={{ backgroundColor: '#06b6d4', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, marginTop: theme.spacing.md }}
             onPress={() => {
               setPartners(state.currentGame?.defaultInsurancePartners || []);
-              setEditingDefaults(true);
+              setDefaultModalVisible(true);
             }}
-            size="md"
-            style={{ marginTop: theme.spacing.md }}
-          />
+            activeOpacity={0.9}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', textAlign: 'center' }}>設定預設分成</Text>
+          </TouchableOpacity>
 
-          {editingDefaults && (
-            <View style={{ marginTop: theme.spacing.md }}>
-              <View style={styles.partnerForm}>
-                <View style={styles.partnerNameInput}>
-                  <Text style={styles.label}>名稱</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={partnerName}
-                    onChangeText={setPartnerName}
-                    placeholder="分成者名稱"
-                    placeholderTextColor={theme.colors.textSecondary}
-                  />
-                </View>
-                <View style={styles.partnerPercentageInput}>
-                  <Text style={styles.label}>百分比</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={partnerPercentage}
-                    onChangeText={setPartnerPercentage}
-                    placeholder="%"
-                    placeholderTextColor={theme.colors.textSecondary}
-                    keyboardType="numeric"
-                  />
-                </View>
-                <TouchableOpacity style={styles.addPartnerButton} onPress={addPartner} activeOpacity={1}>
-                  <Text style={styles.addPartnerText}>新增</Text>
-                </TouchableOpacity>
-              </View>
-
-              {partners.length > 0 && (
-                <FlatList
-                  data={partners}
-                  renderItem={renderPartnerItem}
-                  keyExtractor={(item) => item.id}
-                  style={styles.partnersList}
-                  scrollEnabled={false}
-                />
-              )}
-
-              <View style={[styles.totalPercentage, isPercentageExceeded && styles.totalPercentageWarning]}>
-                <Text style={[styles.totalPercentageText, isPercentageExceeded && styles.totalPercentageWarningText]}>
-                  總分成比例：{totalPercentage}%{isPercentageValid ? ' ✓' : isPercentageExceeded ? ' (超過 100%)' : ' (需要 100%)'}
-                </Text>
-              </View>
-
-              <Button
-                title="儲存為預設"
-                onPress={() => {
-                  if (!isPercentageValid || partners.length === 0) {
-                    Alert.alert('錯誤', '預設分成需合計 100% 且至少 1 人');
-                    return;
-                  }
-                  if (!state.currentGame) return;
-                  setDefaultInsurancePartners(state.currentGame.id, partners);
-                  Alert.alert('完成', '已儲存預設分成');
-                  setEditingDefaults(false);
-                }}
-              />
-            </View>
-          )}
         </View>
 
         {/* 保險金額 + 快捷按鈕 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>保險金額</Text>
+          <Text style={styles.sectionTitle}>{t('insurance.insuranceAmount')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={[styles.insuranceFormItem, { marginHorizontal: 0 }]}> 
               <TextInput
                 style={styles.input}
                 value={insuranceAmount}
                 onChangeText={setInsuranceAmount}
-                placeholder="可輸入正負值"
+                placeholder={t('insurance.insuranceAmountPlaceholder')}
                 placeholderTextColor={theme.colors.textSecondary}
                 keyboardType="numbers-and-punctuation"
               />
@@ -362,7 +338,7 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
             />
             <View style={{ width: theme.spacing.sm }} />
             <Button
-              title={editingCurrent ? '完成分成' : '調整分成'}
+              title={editingCurrent ? '完成' : '調整本次分成'}
               onPress={() => {
                 const next = !editingCurrent;
                 setEditingCurrent(next);
@@ -379,17 +355,17 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
           <>
             <View style={styles.partnerForm}>
               <View style={styles.partnerNameInput}>
-                <Text style={styles.label}>名稱</Text>
+                <Text style={styles.label}>{t('insurance.partnerName')}</Text>
                 <TextInput
                   style={styles.input}
                   value={partnerName}
                   onChangeText={setPartnerName}
-                  placeholder="分成者名稱"
+                  placeholder={t('insurance.namePlaceholder')}
                   placeholderTextColor={theme.colors.textSecondary}
                 />
               </View>
               <View style={styles.partnerPercentageInput}>
-                <Text style={styles.label}>百分比</Text>
+                <Text style={styles.label}>{t('insurance.percentage')}</Text>
                 <TextInput
                   style={styles.input}
                   value={partnerPercentage}
@@ -400,7 +376,7 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
                 />
               </View>
               <TouchableOpacity style={styles.addPartnerButton} onPress={addPartner}>
-                <Text style={styles.addPartnerText}>新增</Text>
+                <Text style={styles.addPartnerText}>{t('insurance.addPartner')}</Text>
               </TouchableOpacity>
             </View>
             {partners.length > 0 && (
@@ -419,12 +395,79 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
 
         {/* 確認按鈕 */}
         <Button
-          title="記錄保險"
+          title={t('insurance.addInsurance')}
           onPress={handleAddInsurance}
           size="lg"
           disabled={!isPercentageValid || partners.length === 0}
         />
       </ScrollView>
+      <Modal
+        visible={defaultModalVisible}
+        onClose={() => setDefaultModalVisible(false)}
+        title="設定預設分成"
+        closeOnBackdropPress={false}
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={{ marginBottom: theme.spacing.lg }}>
+            <View style={styles.partnerForm}>
+              <View style={styles.partnerNameInput}>
+                <Text style={styles.label}>{t('insurance.partnerName')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={partnerName}
+                  onChangeText={setPartnerName}
+                  placeholder={t('insurance.namePlaceholder')}
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
+              </View>
+              <View style={styles.partnerPercentageInput}>
+                <Text style={styles.label}>{t('insurance.percentage')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={partnerPercentage}
+                  onChangeText={setPartnerPercentage}
+                  placeholder="%"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  keyboardType="numeric"
+                />
+              </View>
+              <TouchableOpacity style={styles.addPartnerButton} onPress={addPartner} activeOpacity={1}>
+                <Text style={styles.addPartnerText}>{t('insurance.addPartner')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {partners.length > 0 && (
+              <FlatList
+                data={partners}
+                renderItem={renderPartnerItem}
+                keyExtractor={(item) => item.id}
+                style={styles.partnersList}
+                scrollEnabled={false}
+              />
+            )}
+
+            <View style={[styles.totalPercentage, isPercentageExceeded && styles.totalPercentageWarning]}>
+              <Text style={[styles.totalPercentageText, isPercentageExceeded && styles.totalPercentageWarningText]}>
+                {t('insurance.totalPercentage')}{totalPercentage}%{isPercentageValid ? t('insurance.valid') : isPercentageExceeded ? t('insurance.exceeded') : t('insurance.needs100')}
+              </Text>
+            </View>
+
+            <Button
+              title={t('insurance.saveDefault')}
+              onPress={() => {
+                if (!isPercentageValid || partners.length === 0) {
+                  Alert.alert(t('common.error') || '錯誤', t('insurance.errorDefaultRequired'));
+                  return;
+                }
+                if (!state.currentGame) return;
+                setDefaultInsurancePartners(state.currentGame.id, partners);
+                Alert.alert(t('common.done') || '完成', t('insurance.successDefaultSaved'));
+                setDefaultModalVisible(false);
+              }}
+            />
+          </View>
+        </ScrollView>
+      </Modal>
     </Modal>
   );
 };

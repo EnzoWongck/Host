@@ -7,6 +7,11 @@ export interface Player {
   status: 'active' | 'cashed_out';
   createdAt: Date;
   updatedAt: Date;
+  buyInTime?: Date; // 買入時間（用於計算入場費）
+  cashOutTime?: Date; // 兌現時間（用於計算入場費）
+  cashOutAmount?: number;
+  entryFeeDeducted?: boolean;
+  customEntryFee?: number; // 自訂入場費（優先於計算值）
 }
 
 export interface BuyInEntry {
@@ -26,6 +31,7 @@ export interface Dealer {
   status: 'working' | 'off_duty';
   totalTips: number;
   estimatedSalary: number;
+  host?: string; // 負責此發牌員薪金的 Host 名稱
 }
 
 export interface Expense {
@@ -57,10 +63,19 @@ export interface InsurancePartner {
   percentage: number;
 }
 
+export interface Host {
+  name: string;
+  cost: number; // 原本的支出（從 expenses 拆分出來）
+  dealerSalary: number; // 發牌員薪金
+  totalCashOut: number; // 該 Host 收到的總兌現金額
+  shareRatio: number; // 分成比例（0-1）
+  transferAmount: number; // 轉帳金額（計算得出）
+}
+
 export interface Game {
   id: string;
   name: string;
-  hosts: string[];
+  hosts: (Host | string)[]; // 支持 Host[] 或 string[]（向後兼容）
   smallBlind: number;
   bigBlind: number;
   startTime: Date;
@@ -68,6 +83,10 @@ export interface Game {
   status: 'active' | 'completed';
   actualCollection?: number;
   finalNotes?: string;
+  gameMode?: 'rake' | 'noRake'; // 遊戲模式：抽水或不抽水
+  entryFeeMode?: 'fixed' | 'custom' | 'hourly'; // 入場費模式：統一或自訂/按時長（hourly 為舊資料）
+  fixedEntryFee?: number; // 統一入場費金額
+  hourlyRate?: number; // 每小時收費金額
   players: Player[];
   dealers: Dealer[];
   expenses: Expense[];

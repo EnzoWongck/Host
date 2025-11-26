@@ -25,6 +25,7 @@ type GameAction =
   | { type: 'DELETE_BUYIN'; payload: { gameId: string; playerId: string; entryId: string } }
   | { type: 'ADD_DEALER'; payload: { gameId: string; dealer: Dealer } }
   | { type: 'UPDATE_DEALER'; payload: { gameId: string; dealer: Dealer } }
+  | { type: 'DELETE_DEALER'; payload: { gameId: string; dealerId: string } }
   | { type: 'ADD_EXPENSE'; payload: { gameId: string; expense: Expense } }
   | { type: 'UPDATE_EXPENSE'; payload: { gameId: string; expense: Expense } }
   | { type: 'DELETE_EXPENSE'; payload: { gameId: string; expenseId: string } }
@@ -124,7 +125,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const buyIns = [...(p.buyIns || []), action.payload.entry];
         const buyIn = buyIns.reduce((s, e) => s + e.amount, 0);
         const profit = p.status === 'active' ? -buyIn : p.profit;
-        return { ...p, buyIns, buyIn, profit, updatedAt: new Date() };
+        // 如果還沒有 buyInTime，設置為第一筆買入的時間
+        const buyInTime = p.buyInTime || action.payload.entry.timestamp;
+        return { ...p, buyIns, buyIn, profit, buyInTime, updatedAt: new Date() };
       });
       return {
         ...state,
@@ -147,13 +150,19 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
     }
     case 'DELETE_BUYIN': {
-      const updatePlayers = (players: Player[]) => players.map(p => {
-        if (p.id !== action.payload.playerId) return p;
-        const buyIns = (p.buyIns || []).filter(e => e.id !== action.payload.entryId);
-        const buyIn = buyIns.reduce((s, e) => s + e.amount, 0);
-        const profit = p.status === 'active' ? -buyIn : p.profit;
-        return { ...p, buyIns, buyIn, profit, updatedAt: new Date() };
-      });
+      const updatePlayers = (players: Player[]) => {
+        return players
+          .map(p => {
+            if (p.id !== action.payload.playerId) return p;
+            const buyIns = (p.buyIns || []).filter(e => e.id !== action.payload.entryId);
+            // 如果刪除後沒有任何買入記錄，返回 null 標記需要刪除
+            if (buyIns.length === 0) return null;
+            const buyIn = buyIns.reduce((s, e) => s + e.amount, 0);
+            const profit = p.status === 'active' ? -buyIn : p.profit;
+            return { ...p, buyIns, buyIn, profit, updatedAt: new Date() };
+          })
+          .filter((p): p is Player => p !== null); // 過濾掉 null，即刪除沒有買入記錄的玩家
+      };
       return {
         ...state,
         games: state.games.map(g => g.id === action.payload.gameId ? { ...g, players: updatePlayers(g.players) } : g),
@@ -191,6 +200,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               dealers: state.currentGame.dealers.map(dealer => 
                 dealer.id === action.payload.dealer.id ? action.payload.dealer : dealer
               )
+            }
+          : state.currentGame,
+      };
+    case 'DELETE_DEALER':
+      return {
+        ...state,
+        games: state.games.map(game =>
+          game.id === action.payload.gameId
+            ? { 
+                ...game, 
+                dealers: game.dealers.filter(dealer => dealer.id !== action.payload.dealerId)
+              }
+            : game
+        ),
+        currentGame: state.currentGame?.id === action.payload.gameId
+          ? { 
+              ...state.currentGame, 
+              dealers: state.currentGame.dealers.filter(dealer => dealer.id !== action.payload.dealerId)
             }
           : state.currentGame,
       };
@@ -353,6 +380,7 @@ interface GameContextType {
   createGame: (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => void;
   endGame: (gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => void;
   selectCurrentGame: (gameId: string) => void;
+  updateGame: (game: Game) => void;
   addPlayer: (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updatePlayer: (gameId: string, player: Player) => void;
   deletePlayer: (gameId: string, playerId: string) => void;
@@ -361,6 +389,7 @@ interface GameContextType {
   deleteBuyInEntry: (gameId: string, playerId: string, entryId: string) => void;
   addDealer: (gameId: string, dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'>) => void;
   updateDealer: (gameId: string, dealer: Dealer) => void;
+  deleteDealer: (gameId: string, dealerId: string) => void;
   addExpense: (gameId: string, expenseData: Omit<Expense, 'id' | 'timestamp'>) => void;
   updateExpense: (gameId: string, expense: Expense) => void;
   deleteExpense: (gameId: string, expenseId: string) => void;
@@ -373,6 +402,8 @@ interface GameContextType {
   setDefaultInsurancePartners: (gameId: string, partners: InsurancePartner[]) => void;
   loadGames: () => void;
   setGameSummaryModalVisible: (visible: boolean) => void;
+  deleteGame: (gameId: string) => void;
+  reorderGames: (orderedIds: string[]) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -437,13 +468,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (game) AsyncStorage.setItem('currentGame', JSON.stringify(game));
   };
 
+  const updateGame = (game: Game) => {
+    dispatch({ type: 'UPDATE_GAME', payload: game });
+    const updatedGames = state.games.map(g => g.id === game.id ? game : g);
+    saveToStorage(updatedGames);
+    if (state.currentGame?.id === game.id) {
+      AsyncStorage.setItem('currentGame', JSON.stringify(game));
+    }
+  };
+
   const addPlayer = (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date();
     const newPlayer: Player = {
       ...playerData,
       id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      buyIns: playerData.buyIns || (playerData.buyIn ? [{ id: (Date.now()+1).toString(), amount: playerData.buyIn, timestamp: new Date() }] : []),
+      createdAt: now,
+      updatedAt: now,
+      buyInTime: now, // 記錄買入時間
+      buyIns: playerData.buyIns || (playerData.buyIn ? [{ id: (Date.now()+1).toString(), amount: playerData.buyIn, timestamp: now }] : []),
     };
     
     dispatch({ type: 'ADD_PLAYER', payload: { gameId, player: newPlayer } });
@@ -484,6 +526,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateDealer = (gameId: string, dealer: Dealer) => {
     dispatch({ type: 'UPDATE_DEALER', payload: { gameId, dealer } });
+  };
+
+  const deleteDealer = (gameId: string, dealerId: string) => {
+    dispatch({ type: 'DELETE_DEALER', payload: { gameId, dealerId } });
   };
 
   const addExpense = (gameId: string, expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
@@ -549,6 +595,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'SET_GAME_SUMMARY_MODAL_VISIBLE', payload: visible });
   };
 
+  const deleteGame = (gameId: string) => {
+    const updatedGames = state.games.filter((g) => g.id !== gameId);
+    const newCurrent =
+      state.currentGame && state.currentGame.id === gameId
+        ? null
+        : state.currentGame;
+
+    dispatch({ type: 'SET_GAMES', payload: updatedGames });
+    dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
+
+    saveToStorage(updatedGames);
+    if (newCurrent) {
+      AsyncStorage.setItem('currentGame', JSON.stringify(newCurrent));
+    } else {
+      AsyncStorage.removeItem('currentGame');
+    }
+  };
+
+  const reorderGames = (orderedIds: string[]) => {
+    if (!orderedIds.length) return;
+    const idSet = new Set(orderedIds);
+    const reordered: Game[] = [
+      ...orderedIds
+        .map((id) => state.games.find((g) => g.id === id))
+        .filter((g): g is Game => !!g),
+      ...state.games.filter((g) => !idSet.has(g.id)),
+    ];
+
+    dispatch({ type: 'SET_GAMES', payload: reordered });
+    saveToStorage(reordered);
+  };
+
   const endGame = (gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => {
     const game = state.games.find(g => g.id === gameId);
     if (!game) return;
@@ -581,6 +659,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     createGame,
     endGame,
     selectCurrentGame,
+    updateGame,
     addPlayer,
     updatePlayer,
     deletePlayer,
@@ -589,6 +668,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     deleteBuyInEntry,
     addDealer,
     updateDealer,
+    deleteDealer,
     addExpense,
     updateExpense,
     deleteExpense,
@@ -601,6 +681,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDefaultInsurancePartners,
     loadGames,
     setGameSummaryModalVisible,
+    deleteGame,
+    reorderGames,
   };
 
   return (
