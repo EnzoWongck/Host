@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
   <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F4S72NL76B"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-F4S72NL76B');
+    </script>
+    
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
@@ -22,17 +32,11 @@
     <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
     <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167x167.png" />
     
     <!-- Standard Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
-    
-    <!-- Microsoft Tiles -->
-    <meta name="msapplication-TileColor" content="#007AFF" />
-    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
-    <meta name="msapplication-config" content="/browserconfig.xml" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -40,13 +44,13 @@
     <meta property="og:description" content="專業的撲克牌局管理和費用追蹤應用程式" />
     <meta property="og:image" content="https://pokerhost.com/icons/icon-512x512.png" />
     <meta property="og:url" content="https://pokerhost.com/" />
-    <meta property="og:site_name" content="Poker Host" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Poker Host - 撲克牌局管理" />
     <meta name="twitter:description" content="專業的撲克牌局管理和費用追蹤應用程式" />
     <meta name="twitter:image" content="https://pokerhost.com/icons/icon-512x512.png" />
+    
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -65,7 +69,7 @@
         flex: 1;
       }
     </style>
-  </head>
+</head>
 
   <body>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
@@ -74,23 +78,6 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-    
-    <!-- PWA Service Worker Registration -->
-    <script>
-      // 簡化的 Service Worker 註冊
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('Service Worker 註冊成功');
-            })
-            .catch((error) => {
-              console.log('Service Worker 註冊失敗:', error);
-            });
-        });
-      }
-    </script>
-    
-  <script src="/_expo/static/js/web/AppEntry-43681ccde7f6b217a6ceca2983d97b3e.js" defer></script>
+  <script src="/_expo/static/js/web/AppEntry-5de05f7dcd33268326a81f129caa3c5b.js" defer></script>
 </body>
 </html>

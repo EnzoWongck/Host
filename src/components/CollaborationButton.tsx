@@ -35,14 +35,14 @@ const CollaborationButton: React.FC<CollaborationButtonProps> = ({
       activeOpacity={1}
     >
       {hasMultipleEditors ? (
-        <View style={{ width: 50 + 16, height: 50 }}>
-          <Icon name="connect2" size={50} style={{ position: 'absolute', left: 0, top: 0 }} />
-          <Icon name="connect2" size={50} style={{ position: 'absolute', left: 16, top: 0 }} />
+        <View style={{ width: 60 + 16, height: 60 }}>
+          <Icon name="connect2" size={60} style={{ position: 'absolute', left: 0, top: 0 }} />
+          <Icon name="connect2" size={60} style={{ position: 'absolute', left: 16, top: 0 }} />
         </View>
       ) : (
         <Icon 
           name="connect2" 
-          size={50} 
+          size={60} 
         />
       )}
     </TouchableOpacity>
@@ -51,8 +51,8 @@ const CollaborationButton: React.FC<CollaborationButtonProps> = ({
 
 const createStyles = (theme: any) => StyleSheet.create({
   button: {
-    width: 60,
-    height: 60,
+    width: 70,
+    height: 70,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',

@@ -24,7 +24,7 @@ interface ExpenseEditModalProps {
 }
 
 const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, onSave, category, description, amount, setCategory, setDescription, setAmount, defaultHost }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { state } = useGame();
   const [selectedHost, setSelectedHost] = useState<string | null>(defaultHost || null);
@@ -59,11 +59,11 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.sm, padding: theme.spacing.md, color: theme.colors.text, backgroundColor: theme.colors.background },
     row: { flexDirection: 'row', justifyContent: 'space-between' },
     chip: { width: '30%', aspectRatio: 1, borderWidth: 2, borderColor: theme.colors.border, borderRadius: theme.borderRadius.md, justifyContent: 'center', alignItems: 'center', marginBottom: theme.spacing.md, backgroundColor: theme.colors.background },
-    chipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '10' },
+    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
     chipText: { marginTop: theme.spacing.sm, color: theme.colors.text, fontWeight: '600' },
     hostChips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     hostChip: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.borderRadius.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background },
-    hostChipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '10' },
+    hostChipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
     hostChipText: { color: theme.colors.text, fontWeight: '600' },
   });
 

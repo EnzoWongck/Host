@@ -24,7 +24,7 @@ const Button: React.FC<ButtonProps> = ({
   textStyle,
   leftIconName,
 }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
 
   const getButtonStyle = () => {
     const baseStyle = {
@@ -86,6 +86,10 @@ const Button: React.FC<ButtonProps> = ({
 
     switch (variant) {
       case 'primary':
+        return {
+          ...baseTextStyle,
+          color: colorMode === 'light' ? '#64748B' : '#FFFFFF',
+        };
       case 'danger':
         return {
           ...baseTextStyle,

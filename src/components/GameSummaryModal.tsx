@@ -23,9 +23,12 @@ interface GameSummaryModalProps {
 }
 
 const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t, language } = useLanguage();
   const { state, updatePlayer } = useGame();
+  
+  // 獲取正數顏色（深色模式下為白色，淺色模式下為綠色）
+  const getPositiveColor = () => colorMode === 'dark' ? theme.colors.text : theme.colors.success;
   
   console.log('GameSummaryModal visible:', visible);
 
@@ -106,7 +109,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     cardTitle: {
       fontSize: 17,
       fontWeight: '600',
-      color: '#333333',
+      color: theme.colors.text, // 深色模式下為白色，淺色模式下為深色
       marginTop: Platform.OS === 'android' ? -1 : 0,
     },
     infoRow: {
@@ -144,7 +147,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       alignItems: 'center',
       paddingVertical: theme.spacing.md,
       borderBottomWidth: 1,
-      borderBottomColor: theme.colors.primary + '20',
+      borderBottomColor: colorMode === 'dark' ? theme.colors.border + '30' : theme.colors.primary + '20',
     },
     financialLabel: {
       fontSize: theme.fontSize.md,
@@ -163,18 +166,18 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       alignItems: 'center',
       paddingTop: theme.spacing.md,
       borderTopWidth: 4,
-      borderTopColor: theme.colors.primary,
+      borderTopColor: colorMode === 'dark' ? theme.colors.border : theme.colors.primary,
       marginTop: theme.spacing.sm,
     },
     totalLabel: {
       fontSize: theme.fontSize.lg,
       fontWeight: '800',
-      color: theme.colors.primary,
+      color: theme.colors.text, // 深色模式下為白色
     },
     totalValue: {
       fontSize: theme.fontSize.lg,
       fontWeight: '800',
-      color: theme.colors.primary,
+      color: theme.colors.text, // 深色模式下為白色
     },
     entryFeeList: {
       marginTop: theme.spacing.md,
@@ -199,7 +202,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     },
     entryFeeCustomLabel: {
       fontSize: theme.fontSize.xs,
-      color: theme.colors.primary,
+      color: theme.colors.textSecondary,
       fontWeight: '500',
       marginTop: 2,
     },
@@ -221,7 +224,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     entryFeeTotalAmount: {
       fontSize: theme.fontSize.lg,
       fontWeight: '700',
-      color: theme.colors.primary,
+      color: theme.colors.text,
     },
     entryFeeSummaryCard: {
       marginTop: theme.spacing.lg,
@@ -253,7 +256,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     },
     playerItem: {
       padding: theme.spacing.md,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.background,
       borderRadius: theme.borderRadius.md,
       marginBottom: theme.spacing.sm,
       borderWidth: 1,
@@ -285,7 +288,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       color: theme.colors.textSecondary,
     },
     positiveProfit: {
-      color: theme.colors.success,
+      color: colorMode === 'dark' ? theme.colors.text : theme.colors.success,
     },
     negativeProfit: {
       color: theme.colors.error,
@@ -1018,14 +1021,14 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
             
             <View style={styles.financialRow}>
               <Text style={styles.financialLabel}>{t('summary.insuranceProfitLoss')}</Text>
-              <Text style={[styles.financialValue, { color: insuranceProfit >= 0 ? theme.colors.success : theme.colors.error }]}>
+              <Text style={[styles.financialValue, { color: insuranceProfit >= 0 ? getPositiveColor() : theme.colors.error }]}>
                 {insuranceProfit >= 0 ? '+' : ''}{formatCurrency(insuranceProfit)}
               </Text>
             </View>
             
             <View style={[styles.totalRow, { borderTopWidth: 0 }]}>
               <Text style={styles.totalLabel}>{t('summary.netIncome')}</Text>
-              <Text style={[styles.totalValue, { color: netIncome >= 0 ? theme.colors.success : theme.colors.error }]}>
+              <Text style={[styles.totalValue, { color: netIncome >= 0 ? getPositiveColor() : theme.colors.error }]}>
                 {netIncome >= 0 ? '+' : ''}{formatCurrency(netIncome)}
               </Text>
             </View>
@@ -1043,9 +1046,9 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                 styles.financialValue, 
                 { 
                   color: isBalanced 
-                    ? theme.colors.success 
+                    ? getPositiveColor()
                     : difference > 0 
-                      ? theme.colors.success 
+                      ? getPositiveColor()
                       : theme.colors.error 
                 }
               ]}>
@@ -1134,7 +1137,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                                 h.transferAmount > 0
                                   ? { color: theme.colors.error } // 應付：紅色
                                   : h.transferAmount < 0
-                                    ? { color: theme.colors.success } // 應收：綠色
+                                    ? { color: getPositiveColor() } // 應收：深色模式下為白色
                                     : {},
                               ]}
                             >
@@ -1205,7 +1208,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                               <Text
                                 style={[
                                   styles.settlementValue,
-                                  isReceive ? { color: theme.colors.success } : { color: theme.colors.error },
+                                  isReceive ? { color: getPositiveColor() } : { color: theme.colors.error },
                                 ]}
                               >
                                 {label}
@@ -1338,7 +1341,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                         <Text
                           style={[
                             styles.settlementValue,
-                            { color: totalPlayerProfit >= 0 ? theme.colors.success : theme.colors.error },
+                            { color: totalPlayerProfit >= 0 ? getPositiveColor() : theme.colors.error },
                           ]}
                         >
                           {totalPlayerProfit >= 0 ? '+' : ''}
@@ -1466,7 +1469,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                           <Text
                             style={[
                               styles.settlementValue,
-                              { color: partner.amount >= 0 ? theme.colors.success : theme.colors.error },
+                              { color: partner.amount >= 0 ? getPositiveColor() : theme.colors.error },
                             ]}
                           >
                             {partner.amount >= 0 ? '+' : ''}{formatCurrency(partner.amount)}
@@ -1511,7 +1514,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                               <Text
                                 style={[
                                   styles.settlementValue,
-                                  { color: amt >= 0 ? theme.colors.success : theme.colors.error },
+                                  { color: amt >= 0 ? getPositiveColor() : theme.colors.error },
                                 ]}
                               >
                                 {amt >= 0 ? '+' : ''}{formatCurrency(amt)}
@@ -1533,7 +1536,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
             onPress={handleExport}
             activeOpacity={1}
             style={{
-              backgroundColor: theme.colors.primary,
+              backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.primary,
               paddingVertical: theme.spacing.md,
               borderRadius: theme.borderRadius.md,
               alignItems: 'center',

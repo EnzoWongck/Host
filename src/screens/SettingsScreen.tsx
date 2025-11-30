@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,20 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Switch,
+  Linking,
+  Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCollaboration } from '../context/CollaborationContext';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Icon from '../components/Icon';
+import TopTabBar from '../components/TopTabBar';
 import { Language } from '../types/language';
 
 const SettingsScreen: React.FC = () => {
@@ -23,7 +29,45 @@ const SettingsScreen: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { state: collaborationState } = useCollaboration();
   const { user, isSignedIn, signInWithGoogle, signInWithEmail, signOut } = useAuth();
+  const navigation = useNavigation<any>();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(true);
+  const [allowAnalytics, setAllowAnalytics] = useState(false);
+
+  useEffect(() => {
+    const loadPrivacy = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('privacyPreferences');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (typeof parsed.rememberLogin === 'boolean') {
+            setRememberLogin(parsed.rememberLogin);
+          }
+          if (typeof parsed.allowAnalytics === 'boolean') {
+            setAllowAnalytics(parsed.allowAnalytics);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load privacy preferences', error);
+      }
+    };
+    loadPrivacy();
+  }, []);
+
+  const updatePrivacy = async (next: { rememberLogin?: boolean; allowAnalytics?: boolean }) => {
+    const updated = {
+      rememberLogin,
+      allowAnalytics,
+      ...next,
+    };
+    setRememberLogin(updated.rememberLogin);
+    setAllowAnalytics(updated.allowAnalytics);
+    try {
+      await AsyncStorage.setItem('privacyPreferences', JSON.stringify(updated));
+    } catch (error) {
+      console.warn('Failed to save privacy preferences', error);
+    }
+  };
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -98,19 +142,19 @@ const SettingsScreen: React.FC = () => {
     },
     lightModeButton: {
       backgroundColor: theme.colors.surface,
-      borderColor: colorMode === 'light' ? theme.colors.primary : '#E5E5EA',
+      borderColor: colorMode === 'light' ? '#4B5563' : 'transparent',
     },
     darkModeButton: {
-      backgroundColor: '#000000',
-      borderColor: colorMode === 'dark' ? theme.colors.primary : '#3A3A3C',
+      backgroundColor: theme.colors.surface,
+      borderColor: colorMode === 'dark' ? '#FFFFFF' : 'transparent',
     },
     lightModeText: {
-      color: colorMode === 'light' ? theme.colors.primary : '#FFFFFF',
+      color: theme.colors.text,
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
     },
     darkModeText: {
-      color: '#FFFFFF',
+      color: theme.colors.text,
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
     },
@@ -217,9 +261,25 @@ const SettingsScreen: React.FC = () => {
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.xs,
     },
-    languageButton: {
+    logoButton: {
       position: 'absolute',
       top: theme.spacing.md,
+      left: theme.spacing.md,
+      padding: theme.spacing.xs,
+      zIndex: 1000,
+      minWidth: 80,
+      minHeight: 80,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    logoIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 14,
+    },
+    languageButton: {
+      position: 'absolute',
+      top: theme.spacing.md + (100 - 40) / 2,
       right: theme.spacing.md,
       padding: theme.spacing.sm,
       zIndex: 1000,
@@ -232,44 +292,34 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.languageButton}
-        onPress={() => setLanguageModalVisible(true)}
-        activeOpacity={0.7}
+      <TopTabBar />
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 120 }}
       >
-        <Text style={{ fontSize: 24, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
-          🌐
-        </Text>
-      </TouchableOpacity>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('settings.title')}</Text>
-      </View>
-
-      {/* 登入區塊 */}
-      <View style={styles.authCard}>
-        <Text style={styles.authTitle}>{isSignedIn ? t('settings.loggedIn') : t('settings.login')}</Text>
-        {isSignedIn ? (
-          <>
-            <Text style={styles.authUserLine}>{user?.name}{user?.email ? ` ・ ${user.email}` : ''}</Text>
-            <View style={styles.authRow}>
-              <Button title={t('settings.logout')} size="sm" onPress={signOut} />
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={styles.authRow}>
-              <Button title={t('settings.loginWithGoogle')} size="sm" onPress={signInWithGoogle} />
-            </View>
-            <View style={styles.authEmailInputRow}>
-              <TextInput style={styles.authEmailInput} placeholder="name@example.com" placeholderTextColor={theme.colors.textSecondary} autoCapitalize="none" keyboardType="email-address" />
-              <Button title={t('settings.loginWithEmail')} size="sm" onPress={() => signInWithEmail('name@example.com')} />
-            </View>
-          </>
-        )}
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
+          {/* 登入區塊 */}
+          <View style={styles.authCard}>
+            <Text style={styles.authTitle}>{isSignedIn ? t('settings.loggedIn') : t('settings.login')}</Text>
+            {isSignedIn ? (
+              <>
+                <Text style={styles.authUserLine}>{user?.name}{user?.email ? ` ・ ${user.email}` : ''}</Text>
+                <View style={styles.authRow}>
+                  <Button title={t('settings.logout')} size="sm" onPress={signOut} />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.authRow}>
+                  <Button title={t('settings.loginWithGoogle')} size="sm" onPress={signInWithGoogle} />
+                </View>
+                <View style={styles.authEmailInputRow}>
+                  <TextInput style={styles.authEmailInput} placeholder="name@example.com" placeholderTextColor={theme.colors.textSecondary} autoCapitalize="none" keyboardType="email-address" />
+                  <Button title={t('settings.loginWithEmail')} size="sm" onPress={() => signInWithEmail('name@example.com')} />
+                </View>
+              </>
+            )}
+          </View>
           {/* General Settings */}
           <Text style={styles.sectionTitle}>{t('settings.general')}</Text>
           <Card>
@@ -284,7 +334,7 @@ const SettingsScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-
+          
             <View>
               <Text style={styles.settingLabel}>{t('settings.colorMode')}</Text>
               <View style={styles.colorModeContainer}>
@@ -371,6 +421,62 @@ const SettingsScreen: React.FC = () => {
             </TouchableOpacity>
           </Card>
 
+          {/* Privacy & Security */}
+          <Text style={styles.sectionTitle}>{t('settings.privacy')}</Text>
+          <Card padding="sm">
+            <View style={styles.dataManagementItem}>
+              <View style={styles.dataItemContent}>
+                <Text style={styles.dataItemTitle}>{t('settings.rememberLogin')}</Text>
+                <Text style={styles.dataItemSubtitle}>
+                  {t('settings.rememberLoginSubtitle')}
+                </Text>
+              </View>
+              <Switch
+                value={rememberLogin}
+                onValueChange={(value) => updatePrivacy({ rememberLogin: value })}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={rememberLogin ? '#FFFFFF' : '#FFFFFF'}
+              />
+            </View>
+
+            <View style={styles.dataManagementItem}>
+              <View style={styles.dataItemContent}>
+                <Text style={styles.dataItemTitle}>{t('settings.allowAnalytics')}</Text>
+                <Text style={styles.dataItemSubtitle}>
+                  {t('settings.allowAnalyticsSubtitle')}
+                </Text>
+              </View>
+              <Switch
+                value={allowAnalytics}
+                onValueChange={(value) => updatePrivacy({ allowAnalytics: value })}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={allowAnalytics ? '#FFFFFF' : '#FFFFFF'}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.dataManagementItem}
+              onPress={async () => {
+                try {
+                  await AsyncStorage.clear();
+                  console.log('Local data cleared by user');
+                } catch (error) {
+                  console.warn('Failed to clear local data', error);
+                }
+              }}
+            >
+              <View style={styles.dataItemContent}>
+                <Text style={[styles.dataItemTitle, { color: theme.colors.error }]}>
+                  {t('settings.clearLocalData')}
+                </Text>
+                <Text style={styles.dataItemSubtitle}>
+                  {t('settings.clearLocalDataSubtitle')}
+                </Text>
+              </View>
+              <Text style={[styles.arrow, { color: theme.colors.error }]}>↺</Text>
+            </TouchableOpacity>
+          </Card>
+
           {/* 通知設定已移除 */}
 
           {/* About */}
@@ -392,11 +498,15 @@ const SettingsScreen: React.FC = () => {
             </View>
 
             <View style={styles.linksContainer}>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://host27o.com/privacy').catch(() => {})}
+              >
                 <Text style={styles.link}>{t('settings.privacyPolicy')}</Text>
               </TouchableOpacity>
               <Text style={styles.linkSeparator}>|</Text>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://host27o.com/terms').catch(() => {})}
+              >
                 <Text style={styles.link}>{t('settings.termsOfService')}</Text>
               </TouchableOpacity>
             </View>

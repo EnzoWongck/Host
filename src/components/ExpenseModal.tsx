@@ -39,6 +39,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
   const [recordsExpanded, setRecordsExpanded] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 編輯彈窗狀態
   const [editVisible, setEditVisible] = useState(false);
@@ -60,9 +61,14 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const firstRow = expenseCategories.slice(0, 3);
   const secondRow = expenseCategories.slice(3);
 
+  const categoryBackground = colorMode === 'dark' ? '#202124' : theme.colors.background;
+
   const styles = StyleSheet.create({
     categoriesGrid: {
       marginBottom: 0,
+      alignSelf: 'center',
+      width: '100%', // 放大支出視窗時，讓類別按鈕可用寬度更大
+      paddingHorizontal: 0, // 確保與 categoryRow 的 padding 配合
     },
     categoryGroup: {
       marginBottom: theme.spacing.sm, // 縮短與下方元素的間距
@@ -71,38 +77,47 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginBottom: theme.spacing.sm, // 縮短行與行之間的間距
+      paddingHorizontal: theme.spacing.md, // 增加左右內邊距，確保按鈕陰影完整顯示
     },
     categoryButton: {
-      width: '30%',
-      aspectRatio: 1,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      width: '26%',          // 縮小按鈕寬度，icon 看起來更貼邊
+      aspectRatio: 0.9,      // 稍微壓扁，高度也縮小一點
+      borderWidth: 0, // 去除框線
+      borderColor: 'transparent',
       borderRadius: theme.borderRadius.md,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: theme.spacing.md,
-      backgroundColor: theme.colors.background,
+      marginBottom: theme.spacing.xs,
+      backgroundColor: categoryBackground,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
+      shadowRadius: 12,
+      elevation: 6,
     },
     categoryButtonSelected: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.primary + '10',
+      borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text,
+      backgroundColor: categoryBackground,
     },
     categoryIcon: {
-      fontSize: 40, // 放大圖案大小
-      marginBottom: theme.spacing.xs, // 縮短圖案與文字的間距
+      fontSize: 60, // 放大 icon 到 60，與按鈕比例一致
+      marginBottom: theme.spacing.xs / 4,
     },
     categoryLabel: {
-      fontSize: theme.fontSize.md,
+      fontSize: theme.fontSize.sm, // 縮小文字，避免撐大按鈕
       fontWeight: '600',
       color: theme.colors.text,
       textAlign: 'center',
     },
     categoryLabelSelected: {
-      color: theme.colors.primary,
+      color: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text,
     },
     categoryPlaceholder: {
-      width: '30%',
-      aspectRatio: 1,
+      width: '26%',   // 與 categoryButton 一致，保持對齊
+      aspectRatio: 0.9,
     },
     inputGroup: {
       marginBottom: theme.spacing.lg,
@@ -123,12 +138,17 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     },
     input: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+    },
+    inputFocused: {
+      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
+      borderWidth: 1,
     },
     textArea: {
       height: 80,
@@ -216,7 +236,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     expenseItemTime: { width: 160, textAlign: 'right', color: theme.colors.textSecondary },
     hostChips: { flexDirection: 'row' },
     chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: theme.colors.border, marginRight: theme.spacing.sm, backgroundColor: theme.colors.background },
-    chipActive: { borderColor: theme.colors.primary, backgroundColor: '#FFFFFF' },
+    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
     chipText: { color: theme.colors.text, fontWeight: '600' },
   });
 
@@ -335,8 +355,12 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       visible={visible}
       onClose={onClose}
       title={t('modals.expense')}
+      maxWidth={420} // 縮短支出視窗寬度
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 0 }}
+      >
         {/* 支出類別選擇（按鈕樣式） */}
         <View style={[styles.inputGroup, styles.categoryGroup]}>
           <Text style={styles.label}>{t('expense.category')}</Text>
@@ -353,15 +377,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
                   activeOpacity={1}
                 >
                   {category.icon === 'table' ? (
-                    <Icon name="table" size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name="table" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'misc711' ? (
-                    <Icon name="misc711" size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name="misc711" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'taxi' ? (
-                    <Icon name="taxi" size={44} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name="taxi" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'burger' ? (
-                    <Icon name={'burger' as any} size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name={'burger' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'other' ? (
-                    <Icon name={'other' as any} size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name={'other' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : (
                     <Text style={styles.categoryIcon}>{category.icon}</Text>
                   )}
@@ -388,15 +412,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
                   activeOpacity={1}
                 >
                   {category.icon === 'table' ? (
-                    <Icon name="table" size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name="table" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'misc711' ? (
-                    <Icon name="misc711" size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name="misc711" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'taxi' ? (
-                    <Icon name="taxi" size={44} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name="taxi" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'burger' ? (
-                    <Icon name={'burger' as any} size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name={'burger' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : category.icon === 'other' ? (
-                    <Icon name={'other' as any} size={40} style={{ marginBottom: theme.spacing.xs }} />
+                    <Icon name={'other' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
                   ) : (
                     <Text style={styles.categoryIcon}>{category.icon}</Text>
                   )}
@@ -422,13 +446,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
         <View style={[styles.inputGroup, styles.descriptionGroup]}>
           <Text style={styles.label}>{t('expense.description')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === 'description' && styles.inputFocused]}
             value={description}
             onChangeText={setDescription}
             placeholder={t('expense.descriptionPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             multiline={false}
             numberOfLines={1}
+            onFocus={() => setFocusedInput('description')}
+            onBlur={() => setFocusedInput(null)}
           />
         </View>
 
@@ -436,12 +462,14 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t('expense.amount')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === 'amount' && styles.inputFocused]}
             value={amount}
             onChangeText={setAmount}
             placeholder={t('expense.amountPlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="numeric"
+            onFocus={() => setFocusedInput('amount')}
+            onBlur={() => setFocusedInput(null)}
           />
         </View>
 
@@ -469,6 +497,19 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           title={editingExpenseId ? t('expense.updateExpense') : t('expense.addExpense')}
           onPress={handleAddExpense}
           size="lg"
+          style={colorMode === 'light' ? {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 6,
+          } : {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 6,
+          }}
         />
 
         {/* 支出記錄（可展開的卡片式設計） */}

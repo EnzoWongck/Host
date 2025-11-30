@@ -8,7 +8,7 @@ import Button from './Button';
 import TabBarIcon from './TabBarIcon';
 
 const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { state: gameState, setGameSummaryModalVisible } = useGame();
 
@@ -83,6 +83,7 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             size="md"
             style={{ flex: 1, marginRight: theme.spacing.xs }}
             leftIconName="number"
+            textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
           />
           <Button
             title={t('modals.endGame')}

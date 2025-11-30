@@ -1,10 +1,13 @@
+console.log('firebaseAuth.ts 已成功載入！！！');
+
 import { 
   signInWithPopup, 
   signOut, 
   User, 
   UserCredential,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, googleProvider, appleProvider } from '../config/firebase';
 
@@ -172,4 +175,16 @@ export const getUserProfile = (): AuthUser | null => {
 // 檢查是否有有效的 auth token
 export const hasValidToken = (): boolean => {
   return !!localStorage.getItem('authToken');
+};
+
+// 發送密碼重置郵件
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  console.log('sendPasswordReset 函數被呼叫', email);
+  try {
+    await sendPasswordResetEmail(auth, email);
+    console.log('密碼重置郵件已發送');
+  } catch (error) {
+    console.error('發送密碼重置郵件失敗', error);
+    throw error;
+  }
 };

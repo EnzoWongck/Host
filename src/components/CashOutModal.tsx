@@ -33,6 +33,7 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
   const [chipAmount, setChipAmount] = useState('');
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
   const [entryFeeDeducted, setEntryFeeDeducted] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const currentGame = state.currentGame;
   const isNoRakeMode = currentGame?.gameMode === 'noRake';
@@ -67,12 +68,17 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
     },
     input: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+    },
+    inputFocused: {
+      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
+      borderWidth: 1,
     },
     playersList: {
       maxHeight: 280,
@@ -98,7 +104,7 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
     hostRow: { flexDirection: 'row', alignItems: 'center' },
     hostChips: { flexDirection: 'row' },
     chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: theme.colors.border, marginRight: theme.spacing.sm, backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.background },
-    chipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '10' },
+    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.background },
     chipText: { color: theme.colors.text, fontWeight: '600' },
     amountRow: {
       flexDirection: 'row',
@@ -245,12 +251,14 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>{t('cashOut.chipsAmount')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, focusedInput === 'chipAmount' && styles.inputFocused]}
                 value={chipAmount}
                 onChangeText={setChipAmount}
                 placeholder={t('cashOut.enterAmount')}
                 placeholderTextColor={theme.colors.textSecondary}
                 keyboardType="numeric"
+                onFocus={() => setFocusedInput('chipAmount')}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 

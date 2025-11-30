@@ -8,13 +8,20 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import Icon from '../components/Icon';
+import TopTabBar from '../components/TopTabBar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { signInWithGoogle as firebaseGoogleSignIn, signUpWithEmailAndPassword } from '../services/firebaseAuth';
+import { Language } from '../types/language';
 
 interface SignupScreenProps {
   onBack: () => void;
@@ -24,9 +31,9 @@ interface SignupScreenProps {
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSuccess }) => {
   const { theme, colorMode } = useTheme();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { signInWithGoogle } = useAuth();
-  const [name, setName] = useState('');
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -43,6 +50,29 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
+    },
+    logoButton: {
+      position: 'absolute',
+      top: theme.spacing.md,
+      left: theme.spacing.md,
+      padding: theme.spacing.xs,
+      zIndex: 1000,
+    },
+    logoIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 14,
+    },
+    languageButton: {
+      position: 'absolute',
+      top: theme.spacing.md + (100 - 40) / 2,
+      right: theme.spacing.md,
+      padding: theme.spacing.sm,
+      zIndex: 1000,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     header: {
       width: '100%',
@@ -78,6 +108,12 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       elevation: 12,
       borderWidth: colorMode === 'dark' ? 1 : 0,
       borderColor: colorMode === 'dark' ? '#2A2A2A' : 'transparent',
+      height: 650,
+      overflow: 'hidden',
+    },
+    cardContent: {
+      flex: 1,
+      justifyContent: 'flex-start',
     },
     title: {
       fontSize: theme.fontSize.xxl,
@@ -107,8 +143,19 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
     },
     input: {
       backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F8F9FA',
-      borderWidth: name ? 2 : 1,
-      borderColor: name ? '#007AFF' : (colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA'),
+      borderWidth: 1,
+      borderColor: colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA',
+      borderRadius: 12,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingRight: 50,
+      fontSize: theme.fontSize.md,
+      color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
+    },
+    emailInput: {
+      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F8F9FA',
+      borderWidth: email ? 2 : 1,
+      borderColor: email ? '#007AFF' : (colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA'),
       borderRadius: 12,
       paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.lg,
@@ -148,8 +195,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       height: 20,
       borderRadius: 4,
       borderWidth: 2,
-      borderColor: colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA',
-      backgroundColor: acceptTerms ? '#007AFF' : 'transparent',
+      borderColor: acceptTerms 
+        ? (colorMode === 'dark' ? '#FFFFFF' : '#007AFF')
+        : (colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA'),
+      backgroundColor: 'transparent',
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: theme.spacing.sm,
@@ -169,7 +218,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       paddingHorizontal: theme.spacing.lg,
       borderRadius: 12,
       alignItems: 'center',
-      marginBottom: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
       shadowColor: theme.colors.primary,
       shadowOffset: {
         width: 0,
@@ -178,6 +227,14 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 6,
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    signupButtonActive: {
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+      paddingVertical: theme.spacing.md + 2,
+      paddingHorizontal: theme.spacing.lg - 2,
     },
     signupButtonText: {
       color: '#FFFFFF',
@@ -190,7 +247,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
     dividerContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginVertical: theme.spacing.lg,
+      marginVertical: theme.spacing.sm,
     },
     dividerLine: {
       flex: 1,
@@ -203,7 +260,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       color: colorMode === 'dark' ? '#6B7280' : '#6B7280',
     },
     socialContainer: {
-      marginBottom: theme.spacing.xl,
+      marginBottom: theme.spacing.sm,
     },
     socialButton: {
       flexDirection: 'row',
@@ -229,6 +286,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
     },
     loginContainer: {
       alignItems: 'center',
+      marginTop: theme.spacing.sm,
     },
     loginText: {
       fontSize: theme.fontSize.sm,
@@ -252,11 +310,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
   });
 
   const handleNameSignup = async () => {
-    if (!name.trim()) {
-      Alert.alert(t('common.error') || '錯誤', t('auth.errorNameRequired'));
-      return;
-    }
-
     if (!email.trim()) {
       Alert.alert(t('common.error') || '錯誤', t('auth.errorEmailRequired'));
       return;
@@ -299,46 +352,34 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
     setAcceptTerms(!acceptTerms);
   };
 
+  const handleLanguageSelect = (lang: Language) => {
+    setLanguage(lang);
+    setLanguageModalVisible(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <TopTabBar transparent />
+      <View style={{ marginTop: 180 }}>
+        <KeyboardAvoidingView 
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.hostTitle}>Host</Text>
           </View>
         </View>
 
         <View style={stylesCard.card}>
-          <Text style={stylesCard.title}>{t('auth.signup')}</Text>
-          <Text style={stylesCard.subtitle}>{t('welcome.subtitle')}</Text>
-
-          <View style={stylesCard.fieldContainer}>
-            <Text style={stylesCard.label}>{t('auth.name')}</Text>
-            <View style={stylesCard.inputContainer}>
-              <TextInput
-                style={stylesCard.input}
-                value={name}
-                onChangeText={setName}
-                placeholder={t('auth.enterName')}
-                placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
-                autoCapitalize="words"
-                autoCorrect={false}
-              />
-              <View style={stylesCard.inputIcon}>
-                <Icon 
-                  name="user" 
-                  size={20} 
-                  color={theme.colors.primary}
-                />
-              </View>
-            </View>
-          </View>
+          <View style={stylesCard.cardContent}>
+            <Text style={stylesCard.title}>{t('auth.signup')}</Text>
 
           <View style={stylesCard.fieldContainer}>
             <Text style={stylesCard.label}>{t('auth.email')}</Text>
             <View style={stylesCard.inputContainer}>
               <TextInput
-                style={stylesCard.input}
+                style={stylesCard.emailInput}
                 value={email}
                 onChangeText={setEmail}
                 placeholder={t('auth.enterEmail')}
@@ -347,13 +388,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <View style={stylesCard.inputIcon}>
-                <Icon 
-                  name="mail" 
-                  size={20} 
-                  color={theme.colors.primary}
-                />
-              </View>
             </View>
           </View>
 
@@ -375,9 +409,8 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
                 style={stylesCard.inputIcon}
               >
                 <Icon 
-                  name={showPassword ? "eye" : "eye-off"} 
-                  size={20} 
-                  color={theme.colors.primary}
+                  name={colorMode === 'dark' ? 'eye-off' : 'eye'}
+                  size={20}
                 />
               </TouchableOpacity>
             </View>
@@ -387,12 +420,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
             <TouchableOpacity style={stylesCard.checkboxContainer} onPress={toggleAcceptTerms}>
               <View style={stylesCard.checkbox}>
                 {acceptTerms && (
-                  <View style={{
-                    width: 10,
-                    height: 10,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 2,
-                  }} />
+                  <MaterialCommunityIcons 
+                    name="check" 
+                    size={16} 
+                    color={colorMode === 'dark' ? '#FFFFFF' : '#007AFF'} 
+                  />
                 )}
               </View>
               <Text style={stylesCard.termsText}>
@@ -407,10 +439,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
           <TouchableOpacity 
             style={[
               stylesCard.signupButton,
-              (!name.trim() || !email.trim() || !password.trim() || !acceptTerms) && stylesCard.disabledButton
+              (email.trim() && password.trim() && acceptTerms && !isLoading) && stylesCard.signupButtonActive,
+              (isLoading || !email.trim() || !password.trim() || !acceptTerms) && stylesCard.disabledButton
             ]}
             onPress={handleNameSignup}
-            disabled={isLoading || !name.trim() || !email.trim() || !password.trim() || !acceptTerms}
+            disabled={isLoading || !email.trim() || !password.trim() || !acceptTerms}
             activeOpacity={0.8}
           >
             <Text style={stylesCard.signupButtonText}>{t('auth.signup')}</Text>
@@ -450,7 +483,89 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
               <Text style={stylesCard.loginButtonText}>{t('auth.loginHere')}</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </View>
+      </KeyboardAvoidingView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <View
+            style={{
+              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              borderRadius: 20,
+              padding: theme.spacing.xl,
+              width: '80%',
+              maxWidth: 300,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: theme.fontSize.lg,
+                fontWeight: '700',
+                color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
+                marginBottom: theme.spacing.lg,
+                textAlign: 'center',
+              }}
+            >
+              {t('common.selectLanguage') || '選擇語言'}
+            </Text>
+            <TouchableOpacity
+              style={{
+                paddingVertical: theme.spacing.md,
+                paddingHorizontal: theme.spacing.lg,
+                borderRadius: 12,
+                backgroundColor: language === 'zh-TW' ? theme.colors.primary : 'transparent',
+                marginBottom: theme.spacing.sm,
+              }}
+              onPress={() => handleLanguageSelect('zh-TW')}
+            >
+              <Text
+                style={{
+                  fontSize: theme.fontSize.md,
+                  color: language === 'zh-TW' ? '#FFFFFF' : (colorMode === 'dark' ? '#FFFFFF' : '#000000'),
+                  textAlign: 'center',
+                }}
+              >
+                繁體中文
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                paddingVertical: theme.spacing.md,
+                paddingHorizontal: theme.spacing.lg,
+                borderRadius: 12,
+                backgroundColor: language === 'zh-CN' ? theme.colors.primary : 'transparent',
+              }}
+              onPress={() => handleLanguageSelect('zh-CN')}
+            >
+              <Text
+                style={{
+                  fontSize: theme.fontSize.md,
+                  color: language === 'zh-CN' ? '#FFFFFF' : (colorMode === 'dark' ? '#FFFFFF' : '#000000'),
+                  textAlign: 'center',
+                }}
+              >
+                简体中文
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+        </Modal>
       </View>
     </SafeAreaView>
   );

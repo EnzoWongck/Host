@@ -7,15 +7,18 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNavigationContext } from '../context/NavigationContext';
 import Card from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import NewGameModal from '../components/NewGameModal';
+import TopTabBar from '../components/TopTabBar';
 import { Language } from '../types/language';
 
 const HomeScreen: React.FC = () => {
@@ -23,6 +26,7 @@ const HomeScreen: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
   const { state, selectCurrentGame, deleteGame } = useGame();
   const navigation = useNavigation<any>();
+  const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
@@ -66,6 +70,12 @@ const HomeScreen: React.FC = () => {
       color: theme.colors.text,
       marginBottom: theme.spacing.md,
     },
+    sectionTitleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: theme.spacing.md,
+    },
     gameCard: {
       marginBottom: theme.spacing.md,
     },
@@ -74,6 +84,24 @@ const HomeScreen: React.FC = () => {
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: theme.spacing.sm,
+    },
+    gameHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    addGameButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'transparent',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    addGameButtonText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colorMode === 'light' ? '#64748B' : '#FFFFFF',
     },
     gameName: {
       fontSize: theme.fontSize.md,
@@ -88,13 +116,19 @@ const HomeScreen: React.FC = () => {
       fontSize: theme.fontSize.xs,
       fontWeight: '600',
       letterSpacing: 0.2,
-      color: '#FFFFFF',
+      color: colorMode === 'dark' ? '#FFFFFF' : '#6B7280',
     },
     activeStatus: {
-      backgroundColor: theme.colors.success,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colorMode === 'dark' ? theme.colors.border : '#10B981',
+      color: colorMode === 'dark' ? '#FFFFFF' : '#6B7280',
     },
     completedStatus: {
-      backgroundColor: theme.colors.textSecondary,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colorMode === 'dark' ? theme.colors.border : '#EF4444',
+      color: colorMode === 'dark' ? '#FFFFFF' : '#6B7280',
     },
     gameInfo: {
       fontSize: theme.fontSize.sm,
@@ -122,7 +156,7 @@ const HomeScreen: React.FC = () => {
     },
     languageButton: {
       position: 'absolute',
-      top: theme.spacing.md,
+      top: theme.spacing.md + (100 - 40) / 2,
       right: theme.spacing.md,
       padding: theme.spacing.sm,
       zIndex: 1000,
@@ -130,6 +164,22 @@ const HomeScreen: React.FC = () => {
       minHeight: 44,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    logoButton: {
+      position: 'absolute',
+      top: theme.spacing.md,
+      left: theme.spacing.md,
+      padding: theme.spacing.xs,
+      zIndex: 1000,
+      minWidth: 80,
+      minHeight: 80,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    logoIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 14,
     },
     gameActionsRow: {
       flexDirection: 'row',
@@ -184,25 +234,27 @@ const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.languageButton}
-        onPress={() => setLanguageModalVisible(true)}
-        activeOpacity={0.7}
+      <TopTabBar />
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 120 }}
       >
-        <Text style={{ fontSize: 24, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
-          🌐
-        </Text>
-      </TouchableOpacity>
-      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Host</Text>
-            <Text style={styles.subtitle}>{t('welcome.subtitle')}</Text>
           </View>
 
           {/* Games List */}
-          <Text style={styles.sectionTitle}>{t('home.gameList')}</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>{t('home.gameList')}</Text>
+            <TouchableOpacity
+              style={styles.addGameButton}
+              onPress={() => setNewGameModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addGameButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
           
           {state.games.length === 0 ? (
             <Card style={styles.gameCard}>
@@ -218,14 +270,16 @@ const HomeScreen: React.FC = () => {
                 <Card style={styles.gameCard}>
                   <View style={styles.gameHeader}>
                     <Text style={styles.gameName}>{game.name}</Text>
-                    <Text
-                      style={[
-                        styles.gameStatus,
-                        game.status === 'active' ? styles.activeStatus : styles.completedStatus,
-                      ]}
-                    >
-                      {game.status === 'active' ? t('home.active') : t('home.completed')}
-                    </Text>
+                    <View style={styles.gameHeaderRight}>
+                      <Text
+                        style={[
+                          styles.gameStatus,
+                          game.status === 'active' ? styles.activeStatus : styles.completedStatus,
+                        ]}
+                      >
+                        {game.status === 'active' ? t('home.active') : t('home.completed')}
+                      </Text>
+                    </View>
                   </View>
                   
                   <Text style={styles.gameInfo}>

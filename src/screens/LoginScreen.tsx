@@ -7,28 +7,37 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import Icon from '../components/Icon';
+import TopTabBar from '../components/TopTabBar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { signInWithGoogle as firebaseGoogleSignIn, signInWithEmailAndPasswordFirebase } from '../services/firebaseAuth';
+import { signInWithGoogle as firebaseGoogleSignIn, signInWithEmailAndPasswordFirebase, sendPasswordReset } from '../services/firebaseAuth';
+import { Language } from '../types/language';
 
 interface LoginScreenProps {
   onBack: () => void;
   onLoginSuccess: () => void;
   onSignup: () => void;
+  onForgotPassword: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSignup }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSignup, onForgotPassword }) => {
   const { theme, colorMode } = useTheme();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { signInWithGoogle, signInWithEmail, isSignedIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
   const styles = StyleSheet.create({
     container: {
@@ -40,6 +49,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
+    },
+    header: {
+      width: '100%',
+      marginBottom: theme.spacing.xl,
+      alignItems: 'center',
     },
     card: {
       backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
@@ -57,6 +71,35 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       elevation: 12,
       borderWidth: colorMode === 'dark' ? 1 : 0,
       borderColor: colorMode === 'dark' ? '#2A2A2A' : 'transparent',
+      height: 650,
+      overflow: 'hidden',
+    },
+    cardContent: {
+      flex: 1,
+      justifyContent: 'flex-start',
+    },
+    logoButton: {
+      position: 'absolute',
+      top: theme.spacing.md,
+      left: theme.spacing.md,
+      padding: theme.spacing.xs,
+      zIndex: 1000,
+    },
+    logoIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 14,
+    },
+    languageButton: {
+      position: 'absolute',
+      top: theme.spacing.md + (100 - 40) / 2,
+      right: theme.spacing.md,
+      padding: theme.spacing.sm,
+      zIndex: 1000,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     logoContainer: {
       alignItems: 'center',
@@ -69,6 +112,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       letterSpacing: -1.5,
       marginBottom: theme.spacing.sm,
     },
+    title: {
+      fontSize: theme.fontSize.xxl,
+      fontWeight: '700',
+      color: colorMode === 'dark' ? '#FFFFFF' : '#1E293B',
+      marginBottom: theme.spacing.sm,
+      textAlign: 'center',
+      letterSpacing: -0.5,
+    },
     subtitle: {
       fontSize: theme.fontSize.sm,
       color: colorMode === 'dark' ? '#9CA3AF' : '#64748B',
@@ -76,7 +127,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       marginBottom: theme.spacing.xl,
     },
     socialContainer: {
-      marginBottom: theme.spacing.xl,
+      marginBottom: theme.spacing.md,
     },
     socialButton: {
       flexDirection: 'row',
@@ -103,7 +154,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     dividerContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginVertical: theme.spacing.lg,
+      marginVertical: theme.spacing.sm,
     },
     dividerLine: {
       flex: 1,
@@ -116,7 +167,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       color: colorMode === 'dark' ? '#6B7280' : '#6B7280',
     },
     formContainer: {
-      marginTop: theme.spacing.lg,
+      marginTop: theme.spacing.sm,
     },
     fieldContainer: {
       marginBottom: theme.spacing.lg,
@@ -147,11 +198,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       top: theme.spacing.md + 2,
     },
     forgotPassword: {
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.xs,
       fontSize: theme.fontSize.sm,
-      color: '#007AFF',
+      color: theme.colors.primary,
       fontWeight: '500',
-      textAlign: 'right',
-      marginTop: theme.spacing.sm,
     },
     loginButton: {
       backgroundColor: theme.colors.primary,
@@ -168,6 +219,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 6,
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    loginButtonActive: {
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+      paddingVertical: theme.spacing.md + 2,
+      paddingHorizontal: theme.spacing.lg - 2,
     },
     loginButtonText: {
       color: '#FFFFFF',
@@ -226,16 +285,32 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     }
   };
 
+  const handleLanguageSelect = (lang: Language) => {
+    setLanguage(lang);
+    setLanguageModalVisible(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.card}>
+      <TopTabBar transparent />
+      <View style={{ marginTop: 180 }}>
+        <KeyboardAvoidingView 
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.hostTitle}>Host</Text>
-            <Text style={styles.subtitle}>{t('auth.login')}</Text>
           </View>
+        </View>
 
-          <View style={styles.socialContainer}>
+        <View style={styles.card}>
+          <View style={styles.cardContent}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.title}>{t('auth.login')}</Text>
+            </View>
+
+            <View style={styles.socialContainer}>
             <TouchableOpacity 
               style={[styles.socialButton, styles.googleButton]} 
               onPress={handleGoogleLogin}
@@ -276,10 +351,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
             </View>
 
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>{t('auth.password')}</Text>
-              <TouchableOpacity style={styles.forgotPassword}>
-                <Text style={{ color: theme.colors.primary }}>{t('auth.forgotPassword')}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                <Text style={styles.label}>{t('auth.password')}</Text>
+                <TouchableOpacity 
+                  style={styles.forgotPassword}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    onForgotPassword();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: theme.colors.primary }}>{t('auth.forgotPassword')}</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
@@ -291,12 +375,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.inputIcon}
+                >
+                  <Icon 
+                    name={colorMode === 'dark' ? 'eye-off' : 'eye'}
+                    size={20}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
             <TouchableOpacity 
               style={[
                 styles.loginButton,
+                (email.trim() && password.trim() && !isLoading) && styles.loginButtonActive,
                 (isLoading || !email.trim() || !password.trim()) && styles.disabledButton
               ]}
               onPress={handleEmailLogin}
@@ -315,7 +409,89 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
               </TouchableOpacity>
             </Text>
           </View>
+          </View>
         </View>
+      </KeyboardAvoidingView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <View
+            style={{
+              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              borderRadius: 20,
+              padding: theme.spacing.xl,
+              width: '80%',
+              maxWidth: 300,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: theme.fontSize.lg,
+                fontWeight: '700',
+                color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
+                marginBottom: theme.spacing.lg,
+                textAlign: 'center',
+              }}
+            >
+              {t('common.selectLanguage') || '選擇語言'}
+            </Text>
+            <TouchableOpacity
+              style={{
+                paddingVertical: theme.spacing.md,
+                paddingHorizontal: theme.spacing.lg,
+                borderRadius: 12,
+                backgroundColor: language === 'zh-TW' ? theme.colors.primary : 'transparent',
+                marginBottom: theme.spacing.sm,
+              }}
+              onPress={() => handleLanguageSelect('zh-TW')}
+            >
+              <Text
+                style={{
+                  fontSize: theme.fontSize.md,
+                  color: language === 'zh-TW' ? '#FFFFFF' : (colorMode === 'dark' ? '#FFFFFF' : '#000000'),
+                  textAlign: 'center',
+                }}
+              >
+                繁體中文
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                paddingVertical: theme.spacing.md,
+                paddingHorizontal: theme.spacing.lg,
+                borderRadius: 12,
+                backgroundColor: language === 'zh-CN' ? theme.colors.primary : 'transparent',
+              }}
+              onPress={() => handleLanguageSelect('zh-CN')}
+            >
+              <Text
+                style={{
+                  fontSize: theme.fontSize.md,
+                  color: language === 'zh-CN' ? '#FFFFFF' : (colorMode === 'dark' ? '#FFFFFF' : '#000000'),
+                  textAlign: 'center',
+                }}
+              >
+                简体中文
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+        </Modal>
       </View>
     </SafeAreaView>
   );

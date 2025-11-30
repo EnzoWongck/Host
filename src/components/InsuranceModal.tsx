@@ -39,6 +39,10 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
 
   const currentGame = state.currentGame;
 
+  const grayButtonBackground = '#303134';
+  const selectionBorderColor = colorMode === 'dark' ? '#FFFFFF' : theme.colors.text;
+  const selectionCardBackground = colorMode === 'dark' ? theme.colors.surface : '#FFFFFF';
+
   const styles = StyleSheet.create({
     section: {
       marginBottom: theme.spacing.xl,
@@ -62,10 +66,11 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
     },
     partnerForm: {
       flexDirection: 'row',
@@ -81,7 +86,7 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
       marginRight: theme.spacing.sm,
     },
     addPartnerButton: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: grayButtonBackground,
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.md,
       borderRadius: theme.borderRadius.sm,
@@ -97,20 +102,20 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
     partnerInlineText: { color: theme.colors.text },
     partnerInlinePct: { color: theme.colors.textSecondary },
     partnerActions: { flexDirection: 'row' },
-    actionBtn: { marginLeft: theme.spacing.sm, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs, borderRadius: theme.borderRadius.sm, borderWidth: 1, borderColor: theme.colors.border },
-    actionText: { color: theme.colors.text },
+    actionBtn: { marginLeft: theme.spacing.sm, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs, borderRadius: theme.borderRadius.sm, backgroundColor: grayButtonBackground, borderWidth: 0 },
+    actionText: { color: '#FFFFFF' },
     totalPercentage: {
       padding: theme.spacing.md,
-      backgroundColor: theme.colors.primary + '10',
+      backgroundColor: selectionCardBackground,
       borderRadius: theme.borderRadius.sm,
       borderWidth: 1,
-      borderColor: theme.colors.primary,
+      borderColor: selectionBorderColor,
       marginBottom: theme.spacing.lg,
     },
     totalPercentageText: {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
-      color: theme.colors.primary,
+      color: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text,
       textAlign: 'center',
     },
     totalPercentageWarning: {
@@ -333,8 +338,13 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
                 setSelectedMethod('default');
               }}
               size="sm"
-              variant="outline"
-              style={{ backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: selectedMethod === 'default' ? theme.colors.primary : theme.colors.border }}
+              variant="primary"
+              textStyle={{ color: theme.colors.textSecondary }}
+              style={{
+                backgroundColor: selectionCardBackground,
+                borderWidth: 2,
+                borderColor: selectedMethod === 'default' ? selectionBorderColor : theme.colors.border,
+              }}
             />
             <View style={{ width: theme.spacing.sm }} />
             <Button
@@ -345,8 +355,13 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
                 setSelectedMethod(next ? 'custom' : null);
               }}
               size="sm"
-              variant="outline"
-              style={{ backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: selectedMethod === 'custom' ? theme.colors.primary : theme.colors.border }}
+              variant="primary"
+              textStyle={{ color: theme.colors.textSecondary }}
+              style={{
+                backgroundColor: selectionCardBackground,
+                borderWidth: 2,
+                borderColor: selectedMethod === 'custom' ? selectionBorderColor : theme.colors.border,
+              }}
             />
           </View>
         </View>

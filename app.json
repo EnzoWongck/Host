@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Host",
-    "slug": "poker-host",
+    "name": "Host27o",
+    "slug": "host27o",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icons/pokercard.png",
+    "icon": "./assets/icons/host27o.icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "pokerhost",
+    "scheme": "host27o",
     "sdkVersion": "54.0.0",
     "splash": {
       "image": "./assets/splash.png",
@@ -31,16 +31,16 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/pokercard.png",
-        "backgroundColor": "#007AFF"
+        "foregroundImage": "./assets/icons/host27o.icon.png",
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.pokerhost.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "./assets/icons/host27o.icon.png",
       "bundler": "metro",
-      "name": "Poker Host",
-      "shortName": "Poker Host",
+      "name": "Host27o",
+      "shortName": "Host27o",
       "lang": "zh-TW",
       "dir": "ltr",
       "scope": "/",
@@ -56,7 +56,8 @@
     "extra": {
       "eas": {
         "projectId": "0a3c34f2-33cc-4893-abdc-5c2159d3059b"
-      }
+      },
+      "apiUrl": "https://host27o.com/api"
     }
   }
 }

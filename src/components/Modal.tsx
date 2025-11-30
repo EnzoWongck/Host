@@ -19,6 +19,7 @@ interface ModalProps {
   closeOnBackdropPress?: boolean;
   leftIconName?: string;
   fullScreen?: boolean;
+  maxWidth?: number | string;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -29,6 +30,7 @@ const Modal: React.FC<ModalProps> = ({
   closeOnBackdropPress = true,
   leftIconName,
   fullScreen = false,
+  maxWidth,
 }) => {
   const { theme } = useTheme();
 
@@ -46,10 +48,10 @@ const Modal: React.FC<ModalProps> = ({
       zIndex: 1000,
     },
     modalContainer: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colorMode === 'light' ? '#FFFFFF' : theme.colors.surface,
       borderRadius: fullScreen ? 0 : theme.borderRadius.lg,
       width: '100%',
-      maxWidth: fullScreen ? '100%' : 700,
+      maxWidth: fullScreen ? '100%' : (maxWidth ?? 700),
       height: fullScreen ? '100%' : undefined,
       maxHeight: fullScreen ? '100%' : '90%',
       overflow: 'hidden',

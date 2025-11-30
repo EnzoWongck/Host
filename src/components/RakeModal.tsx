@@ -48,10 +48,11 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
     },
     textArea: {
       height: 80,

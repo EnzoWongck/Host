@@ -32,6 +32,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
   const [playerName, setPlayerName] = useState('');
   const [buyInAmount, setBuyInAmount] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const currentGame = state.currentGame;
 
@@ -39,7 +40,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
     typeSelection: {
       flexDirection: 'row',
       marginBottom: theme.spacing.lg,
-      backgroundColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.sm,
       padding: theme.spacing.xs,
     },
@@ -51,17 +52,17 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       alignItems: 'center',
     },
     typeButtonActive: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
     },
     typeButtonInactive: {
-      backgroundColor: 'transparent',
+      backgroundColor: theme.colors.surface,
     },
     typeButtonText: {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
     },
     typeButtonTextActive: {
-      color: '#FFFFFF',
+      color: colorMode === 'light' ? '#64748B' : '#FFFFFF',
     },
     typeButtonTextInactive: {
       color: theme.colors.textSecondary,
@@ -77,12 +78,17 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
     },
     input: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+    },
+    inputFocused: {
+      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
+      borderWidth: 1,
     },
     playersList: {
       maxHeight: 200,
@@ -121,14 +127,17 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: 2,
       borderRadius: 10,
-      color: '#FFFFFF',
       overflow: 'hidden',
+      backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.background,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     activeStatus: {
-      backgroundColor: theme.colors.success,
+      color: '#FFFFFF',
     },
     inactiveStatus: {
-      backgroundColor: theme.colors.textSecondary,
+      color: '#FFFFFF',
+      opacity: 0.7,
     },
     emptyState: {
       alignItems: 'center',
@@ -276,11 +285,13 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('buyIn.playerName')}</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, focusedInput === 'playerName' && styles.inputFocused]}
               value={playerName}
               onChangeText={setPlayerName}
               placeholder={t('buyIn.playerNamePlaceholder')}
               placeholderTextColor={theme.colors.textSecondary}
+              onFocus={() => setFocusedInput('playerName')}
+              onBlur={() => setFocusedInput(null)}
             />
           </View>
         )}
@@ -309,10 +320,12 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t('buyIn.amount')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === 'buyInAmount' && styles.inputFocused]}
             value={buyInAmount}
             onChangeText={setBuyInAmount}
             placeholder={t('buyIn.amountPlaceholder')}
+            onFocus={() => setFocusedInput('buyInAmount')}
+            onBlur={() => setFocusedInput(null)}
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="numeric"
           />
@@ -323,6 +336,21 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
           title={t('buyIn.confirmBuyIn')}
           onPress={handleBuyIn}
           size="lg"
+          style={colorMode === 'light' ? { 
+            backgroundColor: '#E2E8F0',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 6,
+          } : {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 6,
+          }}
+          textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
         />
       </ScrollView>
     </Modal>

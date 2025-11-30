@@ -15,6 +15,7 @@ export interface Translations {
     next: string;
     done: string;
     total: string;
+    ok: string;
   };
   
   // Navigation
@@ -60,6 +61,8 @@ export interface Translations {
     dealer: string;
     functions: {
       buyInCashOut: string;
+      buyIn: string;
+      cashOut: string;
       rake: string;
       expense: string;
       insurance: string;
@@ -87,6 +90,10 @@ export interface Translations {
     enterPassword: string;
     enterName: string;
     forgotPassword: string;
+    passwordResetSent: string;
+    passwordResetSentMessage: string;
+    passwordResetFailed: string;
+    sendResetEmail: string;
     login: string;
     signup: string;
     loginWithApple: string;

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  Image,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
@@ -31,9 +32,9 @@ import PlayerDetailsModal from '../components/PlayerDetailsModal';
 import NewGameModal from '../components/NewGameModal';
 import CollaborationButton from '../components/CollaborationButton';
 import GameCollaborationModal from '../components/GameCollaborationModal';
-import InOutModal from '../components/InOutModal';
 import EntryFeeModal from '../components/EntryFeeModal';
 import GameProfitShareSettingModal from './GameProfitShareSettingScreen';
+import TopTabBar from '../components/TopTabBar';
 
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
@@ -63,7 +64,6 @@ const GameScreen: React.FC = () => {
   const [detailsPlayer, setDetailsPlayer] = useState<any>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [collaborationModalVisible, setCollaborationModalVisible] = useState(false);
-  const [inOutModalVisible, setInOutModalVisible] = useState(false);
   const [entryFeeModalVisible, setEntryFeeModalVisible] = useState(false);
   const [profitShareVisible, setProfitShareVisible] = useState(false);
 
@@ -128,15 +128,19 @@ const GameScreen: React.FC = () => {
       paddingVertical: theme.spacing.xl,
     },
     headerLeft: {
-      width: 80, // 左側放設定按鈕，同時保持中間文字置中
+      width: 80, // 左側放 Host27o icon + 設定按鈕，同時保持中間文字置中
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-start',
+      gap: theme.spacing.xs,
     },
     headerTitleContainer: {
-      flex: 1,
+      position: 'absolute',
+      left: 0,
+      right: 0,
       alignItems: 'center',
       justifyContent: 'center',
+      zIndex: 1,
     },
     hostTitle: {
       fontSize: 22,
@@ -155,7 +159,7 @@ const GameScreen: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      width: 80,
+      width: 120,
       gap: theme.spacing.sm,
     },
     languageButton: {
@@ -164,12 +168,37 @@ const GameScreen: React.FC = () => {
       minHeight: 44,
       justifyContent: 'center',
       alignItems: 'center',
+      alignSelf: 'flex-end',
+    },
+    logoButton: {
+      position: 'absolute',
+      top: theme.spacing.md,
+      left: theme.spacing.md,
+      padding: theme.spacing.xs,
+      zIndex: 1000,
+      minWidth: 80,
+      minHeight: 80,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    logoIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 14,
     },
     settingsButton: {
       padding: theme.spacing.sm,
     },
     playersCard: {
       marginBottom: theme.spacing.md,
+      shadowColor: theme.colorMode === 'light' ? '#000' : '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: theme.colorMode === 'light' ? 0.08 : 0.15,
+      shadowRadius: 12,
+      elevation: 6,
     },
     playersHeader: {
       flexDirection: 'row',
@@ -179,11 +208,20 @@ const GameScreen: React.FC = () => {
     },
     playersInfo: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start', // 改為 flex-start 以便調整 icon 位置
     },
     playersIcon: {
       fontSize: theme.fontSize.xl,
       marginRight: theme.spacing.sm,
+    },
+    playersIconContainer: {
+      justifyContent: 'flex-start',
+      alignItems: 'flex-start',
+      marginRight: theme.spacing.sm,
+    },
+    playersIconStyle: {
+      marginRight: theme.spacing.sm,
+      marginTop: theme.spacing.xs / 2, // 向下移動一點
     },
     playersTitle: {
       fontSize: theme.fontSize.lg,
@@ -280,7 +318,6 @@ const GameScreen: React.FC = () => {
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: 2,
       borderRadius: 12,
-      color: '#FFFFFF',
       marginTop: 4,
     },
     functionsGrid: {
@@ -297,6 +334,16 @@ const GameScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: 85,
+    },
+    functionButtonLarge: {
+      width: '48%',
+      marginBottom: theme.spacing.md,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 110,
+      flexDirection: 'column',
     },
     functionCard: {
       backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.surface,
@@ -315,12 +362,28 @@ const GameScreen: React.FC = () => {
     functionIcon: {
       marginBottom: theme.spacing.xs,
     },
+    dealerIcon: {
+      marginBottom: theme.spacing.xs, // 頂部對齊：與保險 icon 使用相同的 marginBottom
+      marginTop: theme.spacing.xs / 2, // 向下移動一點點
+    },
     functionText: {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
       color: theme.colors.text,
       textAlign: 'center',
       marginTop: 6,
+      height: 20,
+      lineHeight: 20,
+    },
+    dealerText: {
+      fontSize: theme.fontSize.md,
+      fontWeight: '600',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginTop: 6,
+      height: 20,
+      lineHeight: 20,
+      transform: [{ translateY: -9 }], // 向上移動更多，icon 位置不變
     },
     functionTextLarge: {
       fontSize: theme.fontSize.lg,
@@ -328,34 +391,6 @@ const GameScreen: React.FC = () => {
       color: theme.colors.text,
       textAlign: 'center',
       letterSpacing: 0.5,
-    },
-    dealerCard: {
-      marginBottom: theme.spacing.md,
-    },
-    dealerHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    dealerInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    dealerIcon: {
-      marginRight: theme.spacing.sm,
-    },
-    dealerTitle: {
-      fontSize: theme.fontSize.md,
-      fontWeight: '600',
-      color: theme.colors.text,
-    },
-    dealerSubtitle: {
-      fontSize: theme.fontSize.sm,
-      color: theme.colors.textSecondary,
-    },
-    arrow: {
-      fontSize: theme.fontSize.md,
-      color: theme.colors.textSecondary,
     },
     fixedButtons: {
       position: 'absolute',
@@ -384,8 +419,21 @@ const GameScreen: React.FC = () => {
     return theme.colors.textSecondary;
   };
 
-  const getStatusColor = (status: string) => {
-    return status === 'active' ? theme.colors.success : theme.colors.textSecondary;
+  const getStatusStyle = (status: string) => {
+    if (status === 'active') {
+      return {
+        backgroundColor: '#202124',
+        borderWidth: 0,
+        borderColor: 'transparent',
+        color: '#FFFFFF',
+      };
+    }
+    return {
+      backgroundColor: colorMode === 'light' ? theme.colors.textSecondary : '#3F3F46',
+      borderWidth: 0,
+      borderColor: 'transparent',
+      color: '#FFFFFF',
+    };
   };
 
   if (!currentGame) {
@@ -411,49 +459,9 @@ const GameScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        {/* 左側：牌局設定按鈕 */}
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => {
-              setProfitShareVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 20, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
-              ⚙️
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 中間：兩行置中：Host（可點擊）＋ 牌局 - {name} */}
-        <View style={styles.headerTitleContainer}>
-          <TouchableOpacity
-            onPress={() => {
-              // 返回 Host 主頁（Home Tab），接近 Welcome 體驗
-              navigation.navigate('Home' as never);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.hostTitle}>Host</Text>
-          </TouchableOpacity>
-          <Text style={styles.gameTitle}>
-            {currentGame ? `牌局 - ${currentGame.name}` : t('game.currentGame')}
-          </Text>
-        </View>
-
-        {/* 右側：語言切換與協作按鈕 */}
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.languageButton}
-            onPress={() => setLanguageModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 20, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
-              🌐
-            </Text>
-          </TouchableOpacity>
+      <TopTabBar 
+        title={currentGame ? `牌局 - ${currentGame.name}` : t('game.currentGame')}
+        rightComponent={
           <CollaborationButton
             onPress={() => {
               console.log('GameScreen: 協作按鈕被點擊，設置模態框可見');
@@ -461,8 +469,8 @@ const GameScreen: React.FC = () => {
             }}
             gameId={currentGame?.id || "default-game"}
           />
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
@@ -470,8 +478,23 @@ const GameScreen: React.FC = () => {
         bounces={true}
         decelerationRate="fast"
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: 120 }}
       >
         <View style={styles.content}>
+          {/* Settings Button - Moved down to be closer to player list */}
+          <View style={{ marginBottom: theme.spacing.md, paddingHorizontal: theme.spacing.lg }}>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => {
+                setProfitShareVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 20, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
+                ⚙️
+              </Text>
+            </TouchableOpacity>
+          </View>
           {/* Players Card */}
           <Card style={styles.playersCard}>
             <TouchableOpacity 
@@ -482,7 +505,7 @@ const GameScreen: React.FC = () => {
               activeOpacity={1}
             >
               <View style={styles.playersInfo}>
-                <Icon name="player2" size={34} style={{ marginRight: theme.spacing.sm }} />
+                <Icon name="player2" size={42} style={styles.playersIconStyle} />
                 <View>
                   <Text style={styles.playersTitle}>{t('game.players')}</Text>
                   <Text style={styles.playersSubtitle}>
@@ -553,7 +576,7 @@ const GameScreen: React.FC = () => {
                         )}
                             <Text style={[
                               styles.playerStatus,
-                              { backgroundColor: getStatusColor(player.status) }
+                              getStatusStyle(player.status)
                             ]}>
                               {player.status === 'active' ? t('game.inProgress') : t('game.cashedOut')}
                             </Text>
@@ -580,73 +603,71 @@ const GameScreen: React.FC = () => {
           {/* All Function Buttons in Grid Layout */}
           {!playersExpanded && (
             <View style={styles.functionsGrid}>
-            <TouchableOpacity 
-              style={[styles.functionButton, styles.functionCard]}
-              onPress={() => setInOutModalVisible(true)}
-              activeOpacity={1}
-            >
-              <Icon name="inout2" size={40} style={styles.functionIcon} />
-              <Text style={styles.functionText}>{t('game.functions.buyInCashOut')}</Text>
-            </TouchableOpacity>
-
-            {currentGame.gameMode === 'noRake' ? (
               <TouchableOpacity 
-                style={[styles.functionButton, styles.functionCard]}
-                onPress={() => setEntryFeeModalVisible(true)}
+                style={[styles.functionButtonLarge, styles.functionCard]}
+                onPress={() => setBuyInModalVisible(true)}
                 activeOpacity={1}
               >
-                <Icon name="rake" size={36} style={styles.functionIcon} />
-                <Text style={styles.functionText}>{t('game.functions.entryFee')}</Text>
+                <Icon name="buy-in" size={40} style={styles.functionIcon} />
+                <Text style={styles.functionText}>{t('game.functions.buyIn') || t('game.functions.buyInCashOut')}</Text>
               </TouchableOpacity>
-            ) : (
+
               <TouchableOpacity 
-                style={[styles.functionButton, styles.functionCard]}
-                onPress={() => setRakeModalVisible(true)}
+                style={[styles.functionButtonLarge, styles.functionCard]}
+                onPress={() => setCashOutModalVisible(true)}
                 activeOpacity={1}
               >
-                <Icon name="rake" size={36} style={styles.functionIcon} />
-                <Text style={styles.functionText}>{t('game.functions.rake')}</Text>
+                <Icon name="cashout" size={40} style={styles.functionIcon} />
+                <Text style={styles.functionText}>{t('game.functions.cashOut') || t('cashOut.title') || '兌現'}</Text>
               </TouchableOpacity>
-            )}
-            
-            <TouchableOpacity 
-              style={[styles.functionButton, styles.functionCard]}
-              onPress={() => setExpenseModalVisible(true)}
-              activeOpacity={1}
-            >
-              <Icon name="cost" size={36} style={styles.functionIcon} />
-              <Text style={styles.functionText}>{t('game.functions.expense')}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.functionButton, styles.functionCard]}
-              onPress={() => setInsuranceRecordsVisible(true)}
-              activeOpacity={1}
-            >
-              <Icon name="insurance" size={36} style={styles.functionIcon} />
-              <Text style={styles.functionText}>{t('game.functions.insurance')}</Text>
-            </TouchableOpacity>
 
-          </View>
-          )}
+              {currentGame.gameMode === 'noRake' ? (
+                <TouchableOpacity 
+                  style={[styles.functionButtonLarge, styles.functionCard]}
+                  onPress={() => setEntryFeeModalVisible(true)}
+                  activeOpacity={1}
+                >
+                  <Icon name="rake" size={40} style={styles.functionIcon} />
+                  <Text style={styles.functionText}>{t('game.functions.entryFee')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={[styles.functionButtonLarge, styles.functionCard]}
+                  onPress={() => setRakeModalVisible(true)}
+                  activeOpacity={1}
+                >
+                  <Icon name="rake" size={40} style={styles.functionIcon} />
+                  <Text style={styles.functionText}>{t('game.functions.rake')}</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity 
+                style={[styles.functionButtonLarge, styles.functionCard]}
+                onPress={() => setExpenseModalVisible(true)}
+                activeOpacity={1}
+              >
+                <Icon name="cost" size={40} style={styles.functionIcon} />
+                <Text style={styles.functionText}>{t('game.functions.expense')}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.functionButtonLarge, styles.functionCard]}
+                onPress={() => setInsuranceRecordsVisible(true)}
+                activeOpacity={1}
+              >
+                <Icon name="insurance" size={40} style={styles.functionIcon} />
+                <Text style={styles.functionText}>{t('game.functions.insurance')}</Text>
+              </TouchableOpacity>
 
-          {/* Dealer Card */}
-          {!playersExpanded && (
-            <Card style={styles.dealerCard}>
-            <TouchableOpacity 
-              style={styles.dealerHeader}
-              onPress={() => setDealerModalVisible(true)}
-              activeOpacity={1}
-            >
-              <View style={styles.dealerInfo}>
-                <Icon name="dealer" size={44} style={styles.dealerIcon} />
-                <View>
-                  <Text style={styles.dealerTitle}>{t('game.dealer')}</Text>
-                </View>
-              </View>
-              <Text style={styles.arrow}>→</Text>
-            </TouchableOpacity>
-          </Card>
+              <TouchableOpacity 
+                style={[styles.functionButtonLarge, styles.functionCard]}
+                onPress={() => setDealerModalVisible(true)}
+                activeOpacity={1}
+              >
+                <Icon name="dealer" size={60} style={styles.dealerIcon} />
+                <Text style={styles.dealerText}>{t('game.functions.dealer')}</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -713,12 +734,6 @@ const GameScreen: React.FC = () => {
           setCollaborationModalVisible(false);
         }}
         gameId={currentGame?.id || ''}
-      />
-      <InOutModal
-        visible={inOutModalVisible}
-        onClose={() => setInOutModalVisible(false)}
-        onBuyIn={() => setBuyInModalVisible(true)}
-        onCashOut={() => setCashOutModalVisible(true)}
       />
       <EntryFeeModal
         visible={entryFeeModalVisible}

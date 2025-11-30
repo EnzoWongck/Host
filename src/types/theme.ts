@@ -46,7 +46,7 @@ export interface Theme {
 
 export const lightTheme: Theme = {
   colors: {
-    primary: '#10B981',      // 綠色按鈕
+    primary: '#E2E8F0',      // 深灰按鈕
     secondary: '#8B5CF6',
     background: '#FFFFFF',
     surface: '#F8FAFC',
@@ -81,8 +81,8 @@ export const lightTheme: Theme = {
     xl: 20,
   },
   fontFamily: {
-    default: undefined,
-    zhTW: undefined,
+    default: 'SF Pro Display',
+    zhTW: 'PingFang TC',
     zhCN: 'Microsoft YaHei',
   },
   colorMode: 'light',
@@ -90,17 +90,17 @@ export const lightTheme: Theme = {
 
 export const darkTheme: Theme = {
   colors: {
-    primary: '#10B981',      // 綠色按鈕
-    secondary: '#8B5CF6',    // 更鮮豔的紫色
-    background: '#1A1A1A',   // 深灰色背景（RGB: 26, 26, 26，亮度約 10%）
-    surface: '#2A2A2A',      // 卡片背景（比背景稍亮，保持層次感）
-    text: '#F9FAFB',         // 更亮的白色文字
+    primary: '#303134',      // 深灰按鈕
+    secondary: '#303134',    // 深灰
+    background: '#1A1A1A',   // 深灰色背景
+    surface: '#202124',      // 卡片背景（比背景稍亮，保持層次感）
+    text: '#FFFFFF',         // 白色文字
     textSecondary: '#D1D5DB', // 更亮的次要文字
     border: '#3A3A3A',       // 邊框顏色（比surface稍亮）
-    success: '#10B981',      // 更鮮豔的綠色
-    error: '#EF4444',        // 更鮮豔的紅色
-    warning: '#F59E0B',      // 更鮮豔的橙色
-    info: '#06B6D4',         // 更鮮豔的青色
+    success: '#FFFFFF',      // 白色（深色模式下替代綠色文字）
+    error: '#EF4444',        // 紅色
+    warning: '#F59E0B',      // 橙色（保留用於警告）
+    info: '#6B7280',         // 灰色
   },
   spacing: {
     xs: 4,
@@ -125,8 +125,8 @@ export const darkTheme: Theme = {
     xl: 20,
   },
   fontFamily: {
-    default: undefined,
-    zhTW: undefined,
+    default: 'SF Pro Display',
+    zhTW: 'PingFang TC',
     zhCN: 'Microsoft YaHei',
   },
   colorMode: 'dark',

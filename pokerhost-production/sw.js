@@ -272,3 +272,4 @@ self.addEventListener('error', (event) => {
 self.addEventListener('unhandledrejection', (event) => {
   console.error('Service Worker 未處理的 Promise 拒絕:', event.reason);
 });
+

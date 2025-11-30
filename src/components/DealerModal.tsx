@@ -140,16 +140,24 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       fontSize: theme.fontSize.sm,
     },
     addDealerButton: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
       paddingVertical: theme.spacing.sm,
       borderRadius: theme.borderRadius.md,
       alignItems: 'center',
       marginBottom: theme.spacing.lg,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
+      shadowRadius: 12,
+      elevation: 6,
     },
     addDealerText: {
-      color: '#FFFFFF',
-      fontWeight: '700',
-      fontSize: theme.fontSize.lg,
+      color: colorMode === 'light' ? '#64748B' : '#FFFFFF',
+      fontWeight: '600',
+      fontSize: theme.fontSize.md,
     },
     addForm: {
       backgroundColor: theme.colorMode === 'dark' ? theme.colors.surface : '#FFFFFF',
@@ -177,10 +185,11 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
     },
     tipShareButtons: {
       flexDirection: 'row',
@@ -196,8 +205,8 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       borderColor: theme.colors.border,
     },
     tipShareButtonSelected: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.primary + '10',
+      borderColor: colorMode === 'dark' ? '#FFFFFF' : '#6B7280',
+      backgroundColor: theme.colors.background,
     },
     tipShareButtonText: {
       fontSize: theme.fontSize.md,
@@ -205,7 +214,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       color: theme.colors.textSecondary,
     },
     tipShareButtonTextSelected: {
-      color: theme.colors.primary,
+      color: theme.colors.text,
     },
     timeInputRow: {
       flexDirection: 'row',
@@ -238,7 +247,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
     emptyState: {
       alignItems: 'center',
       padding: theme.spacing.xl,
-      backgroundColor: theme.colors.border,
+      backgroundColor: 'transparent',
       borderRadius: theme.borderRadius.md,
       marginBottom: theme.spacing.lg,
     },
@@ -260,8 +269,8 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       backgroundColor: theme.colors.background,
     },
     chipActive: {
-      borderColor: theme.colors.primary,
-      backgroundColor: '#FFFFFF',
+      borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text,
+      backgroundColor: theme.colors.background,
     },
     chipText: {
       color: theme.colors.text,

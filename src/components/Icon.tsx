@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, StyleSheet } from 'react-native';
 
 interface IconProps {
@@ -34,12 +34,17 @@ interface IconProps {
     | 'chrome'
     | 'mail'
     | 'eye'
-    | 'eye-off';
+    | 'eye-off'
+    | 'earth'
+    | 'earth-white'
+    | 'earth2';
   size?: number;
   style?: any;
 }
 
 const Icon: React.FC<IconProps> = ({ name, size = 24, style }) => {
+  const [imageError, setImageError] = useState(false);
+  
   const getIconSource = () => {
     switch (name) {
       case 'buy-in':
@@ -104,9 +109,17 @@ const Icon: React.FC<IconProps> = ({ name, size = 24, style }) => {
       case 'mail':
         return require('../../assets/icons/copy.png'); // 使用 copy 圖標代替 mail
       case 'eye':
-        return require('../../assets/icons/user.png'); // 使用 user 圖標代替 eye
+        // 淺色模式使用深色眼睛圖示
+        return require('../../assets/icons/eyes.png');
       case 'eye-off':
-        return require('../../assets/icons/user.png'); // 使用 user 圖標代替 eye-off
+        // 深色模式使用白色眼睛圖示
+        return require('../../assets/icons/eyes.white.png');
+      case 'earth':
+        return require('../../assets/icons/earth.png');
+      case 'earth-white':
+        return require('../../assets/icons/earth.white.png');
+      case 'earth2':
+        return require('../../assets/icons/earth2.png');
       default:
         return require('../../assets/icons/home.png');
     }
@@ -116,14 +129,20 @@ const Icon: React.FC<IconProps> = ({ name, size = 24, style }) => {
     icon: {
       width: size,
       height: size,
-      resizeMode: 'contain',
     },
   });
 
+  const iconSource = imageError ? require('../../assets/icons/home.png') : getIconSource();
+  
   return (
     <Image
-      source={getIconSource()}
+      source={iconSource}
       style={[styles.icon, style]}
+      resizeMode="contain"
+      onError={() => {
+        console.warn(`Failed to load icon: ${name}`);
+        setImageError(true);
+      }}
     />
   );
 };

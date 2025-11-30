@@ -19,7 +19,7 @@ interface EndGameModalProps {
 }
 
 const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t, language } = useLanguage();
   const { state, endGame } = useGame();
   
@@ -238,6 +238,13 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
           size="lg" 
           variant="danger"
           leftIconName="close"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
+            shadowRadius: 12,
+            elevation: 6,
+          }}
         />
       </View>
     </Modal>

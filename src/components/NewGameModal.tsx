@@ -33,6 +33,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const [smallBlindInput, setSmallBlindInput] = useState('5');
   const [bigBlindInput, setBigBlindInput] = useState('10');
   const [gameMode, setGameMode] = useState<'rake' | 'noRake'>('rake'); // 預設抽水
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const styles = StyleSheet.create({
     scrollContainer: {
@@ -53,12 +54,17 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
     },
     input: {
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+    },
+    inputFocused: {
+      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
+      borderWidth: 1,
     },
     hostContainer: {
       marginBottom: theme.spacing.sm,
@@ -90,7 +96,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       marginTop: theme.spacing.sm,
     },
     addHostText: {
-      color: '#FFFFFF',
+      color: '#64748B',
       fontWeight: '600',
       fontSize: theme.fontSize.md,
     },
@@ -135,11 +141,15 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       minWidth: 60,
       textAlign: 'center',
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
+    },
+    blindInputFocused: {
+      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
+      borderWidth: 1,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.xs,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
     },
     createButtonContainer: {
       marginTop: theme.spacing.xl,
@@ -159,18 +169,26 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       borderColor: theme.colors.border,
       alignItems: 'center',
       marginHorizontal: theme.spacing.xs,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
+      shadowRadius: 12,
+      elevation: 6,
     },
     activeMode: {
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primary + '10',
     },
     activeText: {
-      color: theme.colors.primary,
+      color: colorMode === 'light' ? '#64748B' : theme.colors.textSecondary,
       fontWeight: '600',
       fontSize: theme.fontSize.md,
     },
     inactiveText: {
-      color: theme.colors.textSecondary,
+      color: colorMode === 'light' ? theme.colors.primary : theme.colors.text,
       fontWeight: '500',
       fontSize: theme.fontSize.md,
     },
@@ -351,11 +369,13 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t('newGame.gameName')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === 'gameName' && styles.inputFocused]}
             value={gameName}
             onChangeText={setGameName}
             placeholder={t('newGame.gameNamePlaceholder')}
             placeholderTextColor={theme.colors.textSecondary}
+            onFocus={() => setFocusedInput('gameName')}
+            onBlur={() => setFocusedInput(null)}
           />
         </View>
 
@@ -366,11 +386,13 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
             <View key={index} style={styles.hostContainer}>
               <View style={styles.hostRow}>
                 <TextInput
-                  style={[styles.input, styles.hostInput]}
+                  style={[styles.input, styles.hostInput, focusedInput === `host-${index}` && styles.inputFocused]}
                   value={host}
                   onChangeText={(value) => updateHost(index, value)}
                   placeholder={t('newGame.hostNamePlaceholder').replace('{index}', String(index + 1))}
                   placeholderTextColor={theme.colors.textSecondary}
+                  onFocus={() => setFocusedInput(`host-${index}`)}
+                  onBlur={() => setFocusedInput(null)}
                 />
                 {hosts.length > 1 && (
                   <TouchableOpacity
@@ -404,10 +426,14 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
                   <Text style={styles.blindButtonText}>-</Text>
                 </TouchableOpacity>
                 <TextInput
-                  style={styles.blindInput}
+                  style={[styles.blindInput, focusedInput === 'smallBlind' && styles.blindInputFocused]}
                   value={smallBlindInput}
                   onChangeText={(value) => handleBlindInputChange('small', value)}
-                  onBlur={() => handleBlindInputBlur('small')}
+                  onBlur={() => {
+                    handleBlindInputBlur('small');
+                    setFocusedInput(null);
+                  }}
+                  onFocus={() => setFocusedInput('smallBlind')}
                   keyboardType="numeric"
                   selectTextOnFocus
                 />
@@ -432,10 +458,14 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
                   <Text style={styles.blindButtonText}>-</Text>
                 </TouchableOpacity>
                 <TextInput
-                  style={styles.blindInput}
+                  style={[styles.blindInput, focusedInput === 'bigBlind' && styles.blindInputFocused]}
                   value={bigBlindInput}
                   onChangeText={(value) => handleBlindInputChange('big', value)}
-                  onBlur={() => handleBlindInputBlur('big')}
+                  onBlur={() => {
+                    handleBlindInputBlur('big');
+                    setFocusedInput(null);
+                  }}
+                  onFocus={() => setFocusedInput('bigBlind')}
                   keyboardType="numeric"
                   selectTextOnFocus
                 />
@@ -483,7 +513,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
           </View>
         )}
 
-        {/* 不抽水模式說明 */}
+        {/* 入場費模式說明 */}
         {gameMode === 'noRake' && (
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('newGame.noRakeMode')}</Text>

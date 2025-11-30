@@ -16,6 +16,7 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { CollaborationProvider } from './src/context/CollaborationContext';
+import { NavigationProvider, useNavigationContext } from './src/context/NavigationContext';
 
 // Utils
 import { getFontFamily, getFontWeight } from './src/utils/fonts';
@@ -27,6 +28,7 @@ import { SKIP_AUTH_ON_WEB } from './src/config/dev';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
+import ForgetPasswordScreen from './src/screens/ForgetPasswordScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -46,10 +48,11 @@ const AppNavigator: React.FC = () => {
   // 根據配置決定是否跳過登入
   const shouldSkipAuth = isWeb && SKIP_AUTH_ON_WEB;
   
-  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'login' | 'signup' | 'main'>(
+  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'login' | 'signup' | 'forgotPassword' | 'main'>(
     shouldSkipAuth ? 'main' : 'welcome'
   );
   const { isSignedIn, signInWithEmail } = useAuth();
+  const { setNavigateToWelcomeCallback } = useNavigationContext();
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
   useEffect(() => {
@@ -94,16 +97,34 @@ const AppNavigator: React.FC = () => {
     setCurrentScreen('main');
   };
 
+  const handleForgotPassword = () => {
+    setCurrentScreen('forgotPassword');
+  };
+
+  const handleForgotPasswordBack = () => {
+    setCurrentScreen('login');
+  };
+
+  useEffect(() => {
+    setNavigateToWelcomeCallback(() => {
+      setCurrentScreen('welcome');
+    });
+  }, [setNavigateToWelcomeCallback]);
+
   if (currentScreen === 'welcome') {
     return <WelcomeScreen onGetStarted={handleWelcomeGetStarted} />;
   }
 
   if (currentScreen === 'login') {
-    return <LoginScreen onBack={handleLoginBack} onLoginSuccess={handleLoginSuccess} onSignup={handleSignup} />;
+    return <LoginScreen onBack={handleLoginBack} onLoginSuccess={handleLoginSuccess} onSignup={handleSignup} onForgotPassword={handleForgotPassword} />;
   }
 
   if (currentScreen === 'signup') {
-    return <SignupScreen onBack={handleSignupBack} onLogin={handleLoginBack} onSignupSuccess={handleSignupSuccess} />;
+    return <SignupScreen onBack={handleSignupBack} onLogin={() => setCurrentScreen('login')} onSignupSuccess={handleSignupSuccess} />;
+  }
+
+  if (currentScreen === 'forgotPassword') {
+    return <ForgetPasswordScreen onBack={handleForgotPasswordBack} />;
   }
 
   return <MainTabNavigator />;
@@ -127,6 +148,8 @@ const MainTabNavigator: React.FC = () => {
       require('./assets/icons/rake.png'),
       require('./assets/icons/cost.png'),
       require('./assets/icons/dealer.png'),
+      require('./assets/icons/earth.png'),
+      require('./assets/icons/earth.white.png'),
     ]).catch(() => {});
   }, []);
 
@@ -265,8 +288,10 @@ export default function App() {
               >
                 <ToastProvider>
                   <AuthProvider>
-                    <AppWithFont />
-                    <StatusBar style="dark" />
+                    <NavigationProvider>
+                      <AppWithFont />
+                      <StatusBar style="dark" />
+                    </NavigationProvider>
                   </AuthProvider>
                 </ToastProvider>
               </CollaborationProvider>

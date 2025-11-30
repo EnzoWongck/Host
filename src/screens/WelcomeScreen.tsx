@@ -11,6 +11,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import Button from '../components/Button';
+import Icon from '../components/Icon';
 import { Language } from '../types/language';
 
 interface WelcomeScreenProps {
@@ -38,15 +39,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       marginBottom: theme.spacing.xl,
     },
     logoImage: {
-      width: 180,
-      height: 180,
-      marginBottom: theme.spacing.lg,
+      width: 300,
+      height: 300,
+      marginBottom: theme.spacing.md, // 縮短與文字的距離
+      marginTop: theme.spacing.lg, // 向下移動
     },
     hostTitle: {
       fontSize: 48,
       fontWeight: '700',
       color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
       letterSpacing: -1,
+      transform: [{ translateY: -25 }], // 向上移動更多
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
@@ -63,6 +66,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       maxWidth: 400,
       marginBottom: theme.spacing.xl,
       paddingHorizontal: theme.spacing.lg,
+      transform: [{ translateY: -15 }], // 向上移動 15px
     },
     featureItem: {
       flexDirection: 'row',
@@ -89,24 +93,24 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       paddingHorizontal: theme.spacing.md,
     },
     getStartedButton: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: '#fef8e8',
       paddingVertical: theme.spacing.md + 4,
       paddingHorizontal: theme.spacing.xl + 8,
       borderRadius: 12,
       alignItems: 'center',
       marginBottom: theme.spacing.md,
       minWidth: 200,
-      shadowColor: theme.colors.primary,
+      shadowColor: '#000',
       shadowOffset: {
         width: 0,
-        height: 4,
+        height: 2,
       },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 6,
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
     getStartedText: {
-      color: '#FFFFFF',
+      color: '#000000', // 黑色文字
       fontSize: theme.fontSize.lg,
       fontWeight: '600',
     },
@@ -143,21 +147,19 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Text style={{ fontSize: 24, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
-          🌐
-        </Text>
+        <Icon 
+          name="earth2"
+          size={40}
+        />
       </TouchableOpacity>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/icons/pokercard.png')} 
+            source={require('../../assets/icons/host27o.icon.png')} 
             style={styles.logoImage}
             resizeMode="contain"
           />
-          <Text style={styles.hostTitle}>Host</Text>
-          <Text style={styles.subtitle}>
-            {t('welcome.subtitle')}
-          </Text>
+          <Text style={styles.hostTitle}>Host27o</Text>
         </View>
 
         <View style={styles.featureList}>
