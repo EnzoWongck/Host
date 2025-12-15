@@ -35,7 +35,7 @@ https://*.vercel.app/*
 
 ### 2. 編輯 API Key
 - 點擊「API 和服務」>「憑證」
-- 找到 API Key：`AIzaSyBuAQUU2xrp8pk418EkKkiQVlIHvkd5-TE`
+- 找到 **Firebase Web API Key**（在 Firebase 專案設定「一般」頁面顯示的那一串）
 - 點擊該 API Key 進行編輯
 
 ### 3. 設定應用程式限制

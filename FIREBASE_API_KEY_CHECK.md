@@ -11,8 +11,8 @@
 1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
 2. 選擇專案：`lunchips-8c124`
 3. 左側選單 → **APIs & Services** → **Credentials**
-4. 找到您的 API Key：`AIzaSyBuAQUU2xrp8pk418EkKkiQVlIHvkd5-TE`
-5. 點擊 API Key 查看詳細資訊
+4. 找到您的 **Firebase Web API Key**（在 Firebase 專案設定「一般」頁面顯示的那一串）
+5. 點擊 API Key 查看詳細資訊（本文件不再顯示實際鍵值）
 
 ### 步驟 2: 檢查 API Key 限制
 

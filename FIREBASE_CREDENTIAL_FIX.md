@@ -37,7 +37,7 @@
 
 2. **進入 API 和服務 > 憑證**
    - 點擊左側選單「API 和服務」>「憑證」
-   - 找到 API Key：`AIzaSyBuAQUU2xrp8pk418EkKkiQVlIHvkd5-TE`
+   - 找到 **Firebase Web API Key**（在 Firebase 專案設定「一般」頁面顯示的那一串）
    - 點擊該 API Key 進行編輯
 
 3. **檢查「應用程式限制」**
