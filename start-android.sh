@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# 進入專案目錄
-cd /Users/kwokheitung/Desktop/Host.2/PokerHost
+# 獲取腳本所在目錄（專案根目錄）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # 檢查 node_modules 是否存在
 if [ ! -d "node_modules" ]; then

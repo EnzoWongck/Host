@@ -98,6 +98,7 @@ export interface Translations {
     signup: string;
     loginWithApple: string;
     loginWithGoogle: string;
+    loginWithPhone: string;
     signupWithApple: string;
     signupWithGoogle: string;
     or: string;
@@ -212,6 +213,7 @@ export interface Translations {
     exportSummary: string;
     entryFeeDetails: string;
     free: string;
+    showFormula: string;
   };
   
   // Player Details

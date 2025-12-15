@@ -56,11 +56,34 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   const styles = StyleSheet.create({
     group: { marginBottom: theme.spacing.lg },
     label: { fontSize: theme.fontSize.md, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing.sm },
-    input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.sm, padding: theme.spacing.md, color: theme.colors.text, backgroundColor: theme.colors.background },
+    input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.sm, padding: theme.spacing.md, color: theme.colors.text, backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface },
     row: { flexDirection: 'row', justifyContent: 'space-between' },
-    chip: { width: '30%', aspectRatio: 1, borderWidth: 2, borderColor: theme.colors.border, borderRadius: theme.borderRadius.md, justifyContent: 'center', alignItems: 'center', marginBottom: theme.spacing.md, backgroundColor: theme.colors.background },
-    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
-    chipText: { marginTop: theme.spacing.sm, color: theme.colors.text, fontWeight: '600' },
+    chip: { 
+      width: '30%', 
+      aspectRatio: 1, 
+      borderWidth: 2, 
+      borderColor: theme.colors.border, 
+      borderRadius: theme.borderRadius.md, 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      marginBottom: theme.spacing.md, 
+      backgroundColor: theme.colors.background,
+      padding: 6,
+      paddingTop: 6,
+      paddingBottom: 6,
+    },
+    chipContent: {
+      flex: 1,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      width: '100%',
+      paddingBottom: 4, // 減少文字與下邊框的間距
+    },
+    chipActive: { 
+      borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, 
+      backgroundColor: theme.colors.background,
+    },
+    chipText: { color: theme.colors.text, fontWeight: '600' },
     hostChips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     hostChip: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.borderRadius.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background },
     hostChipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
@@ -86,16 +109,34 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
           <View style={styles.row}>
             {categories.slice(0,3).map(c => (
               <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive]} onPress={() => setCategory(c.id)} activeOpacity={1}>
-                <Icon name={c.icon} size={28} />
-                <Text style={styles.chipText}>{c.label}</Text>
+                <View style={styles.chipContent}>
+                  <View style={{ 
+                    flex: 1, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    marginBottom: c.icon === 'taxi' ? theme.spacing.xs : 0 
+                  }}>
+                    <Icon name={c.icon} size={c.icon === 'taxi' ? 28 : 24} />
+                  </View>
+                  <Text style={[styles.chipText, { marginTop: 'auto', marginBottom: -theme.spacing.xs }]}>{c.label}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
           <View style={styles.row}>
             {categories.slice(3).map(c => (
               <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive]} onPress={() => setCategory(c.id)} activeOpacity={1}>
-                <Icon name={c.icon} size={28} />
-                <Text style={styles.chipText}>{c.label}</Text>
+                <View style={styles.chipContent}>
+                  <View style={{ 
+                    flex: 1, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    marginBottom: c.icon === 'taxi' ? theme.spacing.xs : 0 
+                  }}>
+                    <Icon name={c.icon} size={c.icon === 'taxi' ? 28 : 24} />
+                  </View>
+                  <Text style={[styles.chipText, { marginTop: 'auto', marginBottom: -theme.spacing.xs }]}>{c.label}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -103,7 +144,7 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
 
         <View style={styles.group}>
           <Text style={styles.label}>{t('modals.expenseAmount')}</Text>
-          <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder={t('modals.enterExpenseAmount')} keyboardType="numeric" placeholderTextColor={theme.colors.textSecondary} />
+          <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="$" keyboardType="numeric" placeholderTextColor={theme.colors.textSecondary} />
         </View>
 
         <View style={styles.group}>
@@ -133,7 +174,13 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
           </View>
         )}
 
-        <Button title={t('common.save')} onPress={handleSave} size="lg" />
+        <Button 
+          title={t('common.save')} 
+          onPress={handleSave} 
+          size="lg" 
+          variant="primary"
+          style={{ marginBottom: theme.spacing.md }} // 增加底部間距確保陰影顯示
+        />
       </ScrollView>
     </Modal>
   );

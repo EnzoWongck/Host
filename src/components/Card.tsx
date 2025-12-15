@@ -14,7 +14,7 @@ const Card: React.FC<CardProps> = ({ children, style, padding = 'md' }) => {
   const cardStyles = StyleSheet.create({
     card: {
       backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
+      borderRadius: theme.borderRadius.lg, // 已更新為 24pt
       borderWidth: 0,
       shadowColor: theme.colorMode === 'light' ? '#000' : '#000',
       shadowOffset: {
@@ -24,6 +24,7 @@ const Card: React.FC<CardProps> = ({ children, style, padding = 'md' }) => {
       shadowOpacity: theme.colorMode === 'light' ? 0.08 : 0.15,
       shadowRadius: 12,
       elevation: 6,
+      marginBottom: theme.spacing.md + 4, // 增加垂直間距 4pt
     },
   });
 

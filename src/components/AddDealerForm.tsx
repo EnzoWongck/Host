@@ -1,0 +1,665 @@
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  Platform,
+} from 'react-native';
+// 使用 TextInput 模擬時間選擇器（因為項目中沒有安裝 Picker）
+import { useGame } from '../context/GameContext';
+import { useTheme } from '../context/ThemeContext';
+import Button from './Button';
+import { Dealer } from '../types/game';
+
+interface AddDealerFormProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
+  const { state, addDealer } = useGame();
+  const { theme, colorMode } = useTheme();
+  const currentGame = state.currentGame;
+
+  // 表單狀態
+  const [dealerName, setDealerName] = useState('');
+  const [tipShare, setTipShare] = useState<number>(50);
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [workHours, setWorkHours] = useState(''); // 工時為可選欄位
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
+  // 佔成比例選項
+  const tipShareOptions: number[] = [0, 25, 50, 75, 100];
+  const tipShareLabels = ['0%', '25%', '50%', '75%', '100%'];
+
+  // 用於存儲進度條寬度的 ref
+  const trackWidthRef = useRef(300);
+
+  // 處理確認
+  const handleConfirm = () => {
+    if (!dealerName.trim() || !currentGame) return;
+
+    const dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'> = {
+      name: dealerName.trim(),
+      tipShare: (tipShare === 50 || tipShare === 100 ? tipShare : 50) as 50 | 100,
+      // 時薪與工時皆為可選（預設 0），允許只計算小費佔成
+      hourlyRate: hourlyRate.trim() ? parseFloat(hourlyRate) || 0 : 0,
+      workHours: workHours.trim() ? parseFloat(workHours) || 0 : 0,
+      // 新增發牌員預設為「發牌中」
+      status: 'working',
+    };
+
+    addDealer(currentGame.id, dealerData);
+    
+    // 重置表單
+    setDealerName('');
+    setTipShare(50);
+    setHourlyRate('');
+    setWorkHours('');
+    
+    onClose();
+  };
+
+  // 滑塊組件（模擬 iOS 滑塊）
+  const renderTipShareSlider = () => {
+    const currentIndex = tipShareOptions.findIndex(opt => opt === tipShare);
+    const percentage = currentIndex >= 0 ? (currentIndex / (tipShareOptions.length - 1)) * 100 : 0;
+
+    // 根據深色模式動態創建滑塊樣式
+    const sliderStyles = StyleSheet.create({
+      sliderTrack: {
+        height: 6,
+        backgroundColor: colorMode === 'dark' ? theme.colors.border : '#E5E5E5',
+        borderRadius: 3,
+        marginBottom: 16,
+        overflow: 'hidden',
+      },
+      sliderLabelText: {
+        fontSize: 14,
+        color: colorMode === 'dark' ? theme.colors.textSecondary : '#999999',
+        fontFamily: Platform.select({
+          ios: '-apple-system',
+          android: 'Roboto',
+          web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        }),
+      },
+      sliderValueText: {
+        fontSize: 32,
+        fontWeight: '700',
+        color: '#0066FF',
+        fontFamily: Platform.select({
+          ios: '-apple-system',
+          android: 'Roboto',
+          web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        }),
+      },
+    });
+
+    const handleSliderPress = (e: any) => {
+      const nativeEvent = e.nativeEvent;
+      // 優先使用 locationX（React Native），否則使用 pageX（Web）
+      let locationX = 0;
+      if (nativeEvent.locationX !== undefined) {
+        locationX = nativeEvent.locationX;
+      } else if (nativeEvent.pageX !== undefined && e.currentTarget) {
+        const rect = (e.currentTarget as any).getBoundingClientRect?.();
+        if (rect) {
+          locationX = nativeEvent.pageX - rect.left;
+        }
+      }
+      
+      const width = trackWidthRef.current;
+      if (width > 0 && locationX >= 0) {
+        const clickPercentage = (locationX / width) * 100;
+        const normalizedPercentage = Math.max(0, Math.min(100, clickPercentage));
+        const segmentSize = 100 / (tipShareOptions.length - 1);
+        const segmentIndex = Math.round(normalizedPercentage / segmentSize);
+        const closestValue = tipShareOptions[Math.max(0, Math.min(tipShareOptions.length - 1, segmentIndex))];
+        setTipShare(closestValue);
+      }
+    };
+
+    return (
+      <View style={styles.sliderContainer}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={handleSliderPress}
+          onLayout={(event) => {
+            const { width } = event.nativeEvent.layout;
+            if (width > 0) {
+              trackWidthRef.current = width;
+            }
+          }}
+        >
+          <View style={sliderStyles.sliderTrack}>
+            <View style={[styles.sliderFill, { width: `${percentage}%` }]} />
+          </View>
+        </TouchableOpacity>
+        <View style={styles.sliderLabels}>
+          {tipShareLabels.map((label, index) => {
+            const optionValue = tipShareOptions[index];
+            return (
+              <TouchableOpacity
+                key={label}
+                style={styles.sliderLabel}
+                onPress={() => setTipShare(optionValue)}
+              >
+                <Text
+                  style={[
+                    sliderStyles.sliderLabelText,
+                    optionValue === tipShare && styles.sliderLabelTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  // 根據深色模式動態創建樣式
+  const dynamicStyles = StyleSheet.create({
+    modalContent: {
+      width: '90%',
+      maxWidth: 520,
+      maxHeight: '90%',
+      backgroundColor: colorMode === 'dark' ? theme.colors.background : '#FFFFFF',
+      borderRadius: 20,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 10,
+      },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+      elevation: 10,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colorMode === 'dark' ? theme.colors.text : '#111111',
+      marginBottom: 48,
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    label: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colorMode === 'dark' ? theme.colors.text : '#111111',
+      marginBottom: 12,
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    labelValue: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colorMode === 'dark' ? theme.colors.text : '#111111',
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    input: {
+      backgroundColor: colorMode === 'dark' ? theme.colors.surface : '#F4F4F5',
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: colorMode === 'dark' ? theme.colors.text : '#000000',
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    inputFocused: {
+      borderWidth: 0,
+      borderColor: 'transparent',
+      backgroundColor: colorMode === 'dark' ? theme.colors.surface : '#F4F4F5',
+    },
+    inputWithSuffix: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorMode === 'dark' ? theme.colors.surface : '#F4F4F5',
+      borderRadius: 12,
+      paddingLeft: 16,
+      paddingRight: 16,
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    inputSuffix: {
+      fontSize: 16,
+      color: colorMode === 'dark' ? theme.colors.textSecondary : '#666666',
+      marginRight: 8,
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    buttonCancelText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colorMode === 'dark' ? theme.colors.textSecondary : '#666666',
+      textAlign: 'center',
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    sliderTrack: {
+      height: 6,
+      backgroundColor: colorMode === 'dark' ? theme.colors.border : '#E5E5E5',
+      borderRadius: 3,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
+    sliderLabelText: {
+      fontSize: 14,
+      color: colorMode === 'dark' ? theme.colors.textSecondary : '#999999',
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    sliderValueText: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: '#0066FF',
+      fontFamily: Platform.select({
+        ios: '-apple-system',
+        android: 'Roboto',
+        web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }),
+    },
+    confirmButtonDark: {
+      backgroundColor: '#303134',
+    },
+    confirmButtonLight: {
+      backgroundColor: '#E2E8F0',
+    },
+  });
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      // 移除開啟時的動畫，讓點擊「新增發牌員」後立即顯示表單，避免延遲感
+      animationType="none"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <View style={dynamicStyles.modalContent}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* 標題 */}
+            <Text style={dynamicStyles.title}>新增發牌員</Text>
+
+            {/* 名稱 */}
+            <View style={styles.formGroup}>
+              <Text style={dynamicStyles.label}>名稱</Text>
+              <TextInput
+                style={[
+                  dynamicStyles.input,
+                  focusedInput === 'name' && dynamicStyles.inputFocused,
+                ]}
+                value={dealerName}
+                onChangeText={setDealerName}
+                placeholder="輸入名稱"
+                placeholderTextColor={
+                  focusedInput === 'name'
+                    ? 'transparent'
+                    : colorMode === 'dark'
+                      ? theme.colors.textSecondary
+                      : '#6B7280'
+                }
+                onFocus={() => setFocusedInput('name')}
+                onBlur={() => setFocusedInput(null)}
+                returnKeyType="next"
+              />
+            </View>
+
+            {/* 小費佔成比例 */}
+            <View style={styles.formGroup}>
+              <View style={styles.labelRow}>
+                <Text style={dynamicStyles.label}>小費佔成比例</Text>
+                <TextInput
+                  style={[
+                    dynamicStyles.labelValue,
+                    {
+                      textAlign: 'right',
+                      minWidth: 60,
+                      paddingHorizontal: theme.spacing.xs,
+                      borderWidth: focusedInput === 'tipShare' ? 1 : 0,
+                      borderColor: colorMode === 'dark' ? theme.colors.border : '#E2E8F0',
+                      borderRadius: theme.borderRadius.xs,
+                      backgroundColor: focusedInput === 'tipShare' 
+                        ? (colorMode === 'dark' ? theme.colors.surface : '#FFFFFF')
+                        : 'transparent',
+                    },
+                  ]}
+                  value={tipShare.toString()}
+                  onChangeText={(text) => {
+                    const numericText = text.replace(/[^0-9]/g, '');
+                    if (numericText === '') {
+                      setTipShare(0);
+                    } else {
+                      const value = parseInt(numericText, 10);
+                      if (!isNaN(value) && value >= 0 && value <= 100) {
+                        setTipShare(value);
+                      }
+                    }
+                  }}
+                  onFocus={() => setFocusedInput('tipShare')}
+                  onBlur={() => {
+                    setFocusedInput(null);
+                    // 允許任意數字，不需要自動調整到選項
+                  }}
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                  placeholder="50"
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
+                <Text style={[dynamicStyles.labelValue, { marginLeft: 4 }]}>%</Text>
+              </View>
+              {renderTipShareSlider()}
+            </View>
+
+            {/* 時薪（可選） */}
+            <View style={styles.formGroup}>
+              <Text style={dynamicStyles.label}>時薪（可選）</Text>
+              <View style={dynamicStyles.inputWithSuffix}>
+                <Text style={dynamicStyles.inputSuffix}>$</Text>
+                <TextInput
+                  style={[
+                    dynamicStyles.input,
+                    styles.inputWithSuffixInput,
+                    focusedInput === 'hourlyRate' && dynamicStyles.inputFocused,
+                  ]}
+                  value={hourlyRate}
+                  onChangeText={setHourlyRate}
+                  placeholder="0"
+                  placeholderTextColor={
+                    focusedInput === 'hourlyRate'
+                      ? 'transparent'
+                      : colorMode === 'dark'
+                        ? theme.colors.textSecondary
+                        : '#6B7280'
+                  }
+                  keyboardType="numeric"
+                  inputMode="decimal"
+                  {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                  onFocus={() => setFocusedInput('hourlyRate')}
+                  onBlur={() => setFocusedInput(null)}
+                />
+              </View>
+            </View>
+
+            {/* 工時（可選） */}
+            <View style={styles.formGroup}>
+              <Text style={dynamicStyles.label}>工時（可選）</Text>
+              <TextInput
+                style={[
+                  dynamicStyles.input,
+                  focusedInput === 'workHours' && dynamicStyles.inputFocused,
+                ]}
+                value={workHours}
+                onChangeText={setWorkHours}
+                placeholder="輸入工時（小時）"
+                placeholderTextColor={
+                  focusedInput === 'workHours'
+                    ? 'transparent'
+                    : colorMode === 'dark'
+                      ? theme.colors.textSecondary
+                      : '#6B7280'
+                }
+                keyboardType="numeric"
+                inputMode="decimal"
+                {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                onFocus={() => setFocusedInput('workHours')}
+                onBlur={() => setFocusedInput(null)}
+                returnKeyType="done"
+                onSubmitEditing={handleConfirm}
+              />
+            </View>
+
+            {/* 按鈕 */}
+            <View style={[styles.buttonGroup, { paddingHorizontal: theme.spacing.xs, marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }]}>
+              <Button
+                title="取消"
+                onPress={onClose}
+                variant="outline"
+                style={styles.cancelButton}
+                textStyle={dynamicStyles.buttonCancelText}
+              />
+              <Button
+                title="確認"
+                onPress={handleConfirm}
+                disabled={!dealerName.trim()}
+                style={[
+                  styles.confirmButton,
+                  colorMode === 'dark' ? dynamicStyles.confirmButtonDark : dynamicStyles.confirmButtonLight,
+                ].filter(Boolean) as any}
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 520,
+    maxHeight: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  scrollContent: {
+    padding: 32,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111111',
+    marginBottom: 32,
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+  },
+  formGroup: {
+    marginBottom: 32,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#111111',
+    marginBottom: 12,
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  labelValue: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#0066FF',
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+  },
+  input: {
+    backgroundColor: '#F4F4F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#000000',
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+    // 完全移除邊框，避免按下時出現框線特效
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  inputFocused: {
+    // 聚焦時也不顯示邊框，並保持與未聚焦時相同的淺灰背景
+    borderWidth: 0,
+    borderColor: 'transparent',
+    backgroundColor: '#F4F4F5',
+  },
+  inputWithSuffix: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F4F5',
+    borderRadius: 12,
+    paddingRight: 16,
+    // 淺色極簡風：移除外層容器邊框，避免出現黑色框線
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  inputWithSuffixInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingRight: 8,
+  },
+  inputSuffix: {
+    fontSize: 16,
+    color: '#666666',
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+  },
+  inputWithMarginTop: {
+    marginTop: 12,
+  },
+  // 滑塊樣式
+  sliderContainer: {
+    marginTop: 8,
+  },
+  sliderTrack: {
+    height: 6,
+    backgroundColor: '#E5E5E5',
+    borderRadius: 3,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: '100%',
+    backgroundColor: '#0066FF',
+    borderRadius: 3,
+  },
+  sliderLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sliderLabel: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  sliderLabelText: {
+    fontSize: 14,
+    color: '#999999',
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+  },
+  sliderLabelTextActive: {
+    color: '#0066FF',
+    fontWeight: '600',
+  },
+  sliderValue: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  sliderValueText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#0066FF',
+    fontFamily: Platform.select({
+      ios: '-apple-system',
+      android: 'Roboto',
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }),
+  },
+  // 按鈕樣式
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 40,
+  },
+  confirmButton: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    marginRight: 8,
+  },
+});
+
+export default AddDealerForm;
+

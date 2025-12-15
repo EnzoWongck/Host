@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   FlatList,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -34,6 +36,11 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
+  // 獲取螢幕尺寸
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const isMobile = screenWidth < 768; // 判斷是否為手機
+
   const currentGame = state.currentGame;
 
   const styles = StyleSheet.create({
@@ -52,7 +59,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       alignItems: 'center',
     },
     typeButtonActive: {
-      backgroundColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
+      backgroundColor: colorMode === 'light' ? '#E2E8F0' : '#303134',
     },
     typeButtonInactive: {
       backgroundColor: theme.colors.surface,
@@ -77,66 +84,52 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       marginBottom: theme.spacing.sm,
     },
     input: {
-      borderWidth: 1,
-      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
+      // 淺色模式下移除輸入框邊框，僅保留淡背景；深色模式維持原有邊框
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     inputFocused: {
-      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
-      borderWidth: 1,
+      // 淺色模式選取時也不顯示邊框；深色模式保留原有聚焦邊框
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.primary,
+      borderWidth: colorMode === 'light' ? 0 : 1,
     },
     playersList: {
-      maxHeight: 200,
-      marginBottom: theme.spacing.lg,
+      maxHeight: 280,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      overflow: 'hidden',
     },
     playerItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: theme.borderRadius.sm,
-      marginBottom: theme.spacing.sm,
-      backgroundColor: theme.colors.background,
+      borderBottomWidth: 0,
+      borderRadius: 0,
     },
     selectedPlayerItem: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.primary + '10',
-    },
-    playerInfo: {
-      flex: 1,
+      backgroundColor: colorMode === 'dark' ? '#202124' : '#E2E8F0',
     },
     playerName: {
       fontSize: theme.fontSize.md,
-      fontWeight: '500',
       color: theme.colors.text,
     },
     playerStats: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
-      marginTop: 2,
-    },
-    playerStatus: {
-      fontSize: theme.fontSize.xs,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 2,
-      borderRadius: 10,
-      overflow: 'hidden',
-      backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.background,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
     },
     activeStatus: {
-      color: '#FFFFFF',
+      color: colorMode === 'light' ? '#4B5563' : '#FFFFFF',
     },
     inactiveStatus: {
-      color: '#FFFFFF',
+      color: colorMode === 'light' ? '#4B5563' : '#FFFFFF',
       opacity: 0.7,
     },
     emptyState: {
@@ -215,19 +208,9 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       onPress={() => setSelectedPlayer(item)}
       activeOpacity={1}
     >
-      <View style={styles.playerInfo}>
-        <Text style={styles.playerName}>{item.name}</Text>
-        <Text style={styles.playerStats}>
-          {t('game.buyIn')}: {formatCurrency(item.buyIn)} | {t('game.profit')}: {formatCurrency(item.profit)}
-        </Text>
-      </View>
-      <Text
-        style={[
-          styles.playerStatus,
-          item.status === 'active' ? styles.activeStatus : styles.inactiveStatus,
-        ]}
-      >
-        {item.status === 'active' ? t('game.inProgress') : t('game.cashedOut')}
+      <Text style={styles.playerName}>{item.name}</Text>
+      <Text style={styles.playerStats}>
+        {t('game.buyIn')} ${item.buyIn.toLocaleString()}
       </Text>
     </TouchableOpacity>
   );
@@ -240,8 +223,11 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
         onClose();
       }}
       title={t('modals.buyIn')}
+      maxWidth={isMobile ? screenWidth - 32 : 400}
+      maxHeight={isMobile ? screenHeight * 0.9 : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 400, minWidth: 400, maxWidth: 'none' }}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: 400, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}>
         {/* 買入類型選擇 */}
         <View style={styles.typeSelection}>
           <TouchableOpacity
@@ -289,7 +275,12 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
               value={playerName}
               onChangeText={setPlayerName}
               placeholder={t('buyIn.playerNamePlaceholder')}
-              placeholderTextColor={theme.colors.textSecondary}
+              // 淺色模式下選取時隱藏提示文字，等待輸入
+              placeholderTextColor={
+                focusedInput === 'playerName'
+                  ? 'transparent'
+                  : theme.colors.textSecondary
+              }
               onFocus={() => setFocusedInput('playerName')}
               onBlur={() => setFocusedInput(null)}
             />
@@ -302,8 +293,20 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
             <Text style={styles.label}>{t('buyIn.selectPlayer')}</Text>
             {currentGame?.players && currentGame.players.length > 0 ? (
               <View style={[styles.playersList, { maxHeight: 280 }]}> 
-                <ScrollView nestedScrollEnabled>
-                  {currentGame.players.map(p => (
+                <ScrollView 
+                  nestedScrollEnabled 
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingTop: 0 }}
+                >
+                  {currentGame.players
+                    .slice()
+                    .sort((a, b) => {
+                      // 進行中玩家在前，已兌現玩家在後
+                      if (a.status === 'active' && b.status !== 'active') return -1;
+                      if (a.status !== 'active' && b.status === 'active') return 1;
+                      return 0;
+                    })
+                    .map(p => (
                     renderPlayerItem({ item: p } as any)
                   ))}
                 </ScrollView>
@@ -319,39 +322,38 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
         {/* 買入金額 */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t('buyIn.amount')}</Text>
-          <TextInput
-            style={[styles.input, focusedInput === 'buyInAmount' && styles.inputFocused]}
-            value={buyInAmount}
-            onChangeText={setBuyInAmount}
-            placeholder={t('buyIn.amountPlaceholder')}
-            onFocus={() => setFocusedInput('buyInAmount')}
-            onBlur={() => setFocusedInput(null)}
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="numeric"
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <TextInput
+                style={[styles.input, focusedInput === 'buyInAmount' && styles.inputFocused]}
+                value={buyInAmount}
+                onChangeText={setBuyInAmount}
+                returnKeyType="done"
+                onSubmitEditing={handleBuyIn}
+                placeholder="$"
+                onFocus={() => setFocusedInput('buyInAmount')}
+                onBlur={() => setFocusedInput(null)}
+                placeholderTextColor={
+                  focusedInput === 'buyInAmount'
+                    ? 'transparent'
+                    : theme.colors.textSecondary
+                }
+                keyboardType="numeric"
+                inputMode="decimal"
+                {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+              />
+            </View>
+            {/* 確認按鈕 - 與輸入欄對齊 */}
+            <Button
+              title={t('buyIn.confirmBuyIn')}
+              onPress={handleBuyIn}
+              size="sm"
+              variant="primary"
+              style={{ marginBottom: 0, minWidth: 100 }} // 移除底部間距，添加最小寬度
+              textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
+            />
+          </View>
         </View>
-
-        {/* 確認按鈕 */}
-        <Button
-          title={t('buyIn.confirmBuyIn')}
-          onPress={handleBuyIn}
-          size="lg"
-          style={colorMode === 'light' ? { 
-            backgroundColor: '#E2E8F0',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            elevation: 6,
-          } : {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 6,
-          }}
-          textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
-        />
       </ScrollView>
     </Modal>
   );

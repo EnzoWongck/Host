@@ -281,10 +281,13 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   input: {
     borderWidth: 1,
+    borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.sm,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
+    color: theme.colors.text,
+    backgroundColor: theme.colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
   },
   addButton: {
     alignSelf: 'flex-start',

@@ -21,7 +21,7 @@ const PlayerEntryFeeEditModal: React.FC<PlayerEntryFeeEditModalProps> = ({
   onSave,
   calculatedFee,
 }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const [customFee, setCustomFee] = useState('');
 
@@ -84,7 +84,7 @@ const PlayerEntryFeeEditModal: React.FC<PlayerEntryFeeEditModalProps> = ({
       padding: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
       marginBottom: theme.spacing.md,
     },
     calculatedFee: {

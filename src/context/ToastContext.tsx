@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import Toast from '../components/Toast';
 
 interface ToastContextType {
@@ -25,24 +25,29 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     duration: 3000,
   });
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', duration: number = 3000) => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', duration: number = 3000) => {
     setToast({
       visible: true,
       message,
       type,
       duration,
     });
-  };
+  }, []);
 
-  const hideToast = () => {
+  const hideToast = useCallback(() => {
     setToast(prev => ({
       ...prev,
       visible: false,
     }));
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    showToast,
+    hideToast,
+  }), [showToast, hideToast]);
 
   return (
-    <ToastContext.Provider value={{ showToast, hideToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <Toast
         visible={toast.visible}

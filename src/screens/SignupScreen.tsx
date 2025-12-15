@@ -19,9 +19,10 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import GoogleButton from '../components/GoogleButton';
 import { signInWithGoogle as firebaseGoogleSignIn, signUpWithEmailAndPassword } from '../services/firebaseAuth';
 import { Language } from '../types/language';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface SignupScreenProps {
   onBack: () => void;
@@ -93,7 +94,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
 
   const stylesCard = StyleSheet.create({
     card: {
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#FFFFFF',
       borderRadius: 20,
       padding: theme.spacing.xl + 8,
       width: '100%',
@@ -108,8 +109,8 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       elevation: 12,
       borderWidth: colorMode === 'dark' ? 1 : 0,
       borderColor: colorMode === 'dark' ? '#2A2A2A' : 'transparent',
-      height: 650,
-      overflow: 'hidden',
+      maxHeight: Platform.OS === 'web' ? 650 : '90%',
+      minHeight: 500,
     },
     cardContent: {
       flex: 1,
@@ -142,7 +143,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       position: 'relative',
     },
     input: {
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F8F9FA',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#F8F9FA',
       borderWidth: 1,
       borderColor: colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA',
       borderRadius: 12,
@@ -153,7 +154,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
     },
     emailInput: {
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F8F9FA',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#F8F9FA',
       borderWidth: email ? 2 : 1,
       borderColor: email ? '#007AFF' : (colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA'),
       borderRadius: 12,
@@ -164,7 +165,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
     },
     passwordInput: {
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F8F9FA',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#F8F9FA',
       borderWidth: 1,
       borderColor: colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA',
       borderRadius: 12,
@@ -181,8 +182,9 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
     },
     termsContainer: {
       flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: theme.spacing.xl,
+      alignItems: 'flex-start',
+      marginBottom: theme.spacing.md,
+      marginTop: theme.spacing.sm,
       paddingHorizontal: theme.spacing.sm,
     },
     checkboxContainer: {
@@ -191,17 +193,21 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       marginRight: theme.spacing.sm,
     },
     checkbox: {
-      width: 20,
-      height: 20,
+      width: 22,
+      height: 22,
       borderRadius: 4,
       borderWidth: 2,
       borderColor: acceptTerms 
         ? (colorMode === 'dark' ? '#FFFFFF' : '#007AFF')
         : (colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA'),
-      backgroundColor: 'transparent',
+      backgroundColor: acceptTerms 
+        ? (colorMode === 'dark' ? '#FFFFFF' : '#007AFF')
+        : 'transparent',
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: theme.spacing.sm,
+      minWidth: 22,
+      minHeight: 22,
     },
     termsText: {
       fontSize: theme.fontSize.sm,
@@ -211,6 +217,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
     },
     termsLink: {
       color: '#007AFF',
+      textDecorationLine: 'underline',
     },
     signupButton: {
       backgroundColor: theme.colors.primary,
@@ -218,6 +225,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
       paddingHorizontal: theme.spacing.lg,
       borderRadius: 12,
       alignItems: 'center',
+      marginTop: theme.spacing.sm,
       marginBottom: theme.spacing.md,
       shadowColor: theme.colors.primary,
       shadowOffset: {
@@ -360,19 +368,32 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
   return (
     <SafeAreaView style={styles.container}>
       <TopTabBar transparent />
-      <View style={{ marginTop: 180 }}>
-        <KeyboardAvoidingView 
+      <KeyboardAvoidingView 
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === 'web' ? 0 : 20}
       >
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'center',
+            paddingVertical: Platform.OS === 'web' ? 0 : theme.spacing.xl,
+            minHeight: Platform.OS === 'web' ? '100%' : undefined,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+            </View>
           </View>
-        </View>
 
-        <View style={stylesCard.card}>
-          <View style={stylesCard.cardContent}>
+          <View style={stylesCard.card}>
+            <ScrollView
+              contentContainerStyle={stylesCard.cardContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             <Text style={stylesCard.title}>{t('auth.signup')}</Text>
 
           <View style={stylesCard.fieldContainer}>
@@ -417,23 +438,64 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
           </View>
 
           <View style={stylesCard.termsContainer}>
-            <TouchableOpacity style={stylesCard.checkboxContainer} onPress={toggleAcceptTerms}>
-              <View style={stylesCard.checkbox}>
-                {acceptTerms && (
-                  <MaterialCommunityIcons 
-                    name="check" 
-                    size={16} 
-                    color={colorMode === 'dark' ? '#FFFFFF' : '#007AFF'} 
-                  />
-                )}
-              </View>
-              <Text style={stylesCard.termsText}>
-                {t('auth.acceptTerms')}{' '}
-                <Text style={stylesCard.termsLink}>{t('auth.termsOfService')}</Text>
-                {' '}{t('auth.or')}{' '}
-                <Text style={stylesCard.termsLink}>{t('auth.privacyPolicy')}</Text>
-              </Text>
-            </TouchableOpacity>
+            <View style={stylesCard.checkboxContainer}>
+              <TouchableOpacity 
+                onPress={toggleAcceptTerms} 
+                style={{ flexDirection: 'row', alignItems: 'center', marginRight: theme.spacing.sm }}
+                activeOpacity={0.7}
+              >
+                <View style={stylesCard.checkbox}>
+                  {acceptTerms && (
+                    <Text style={{
+                      color: colorMode === 'dark' ? '#000000' : '#FFFFFF',
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      lineHeight: 16,
+                    }}>
+                      ✓
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={toggleAcceptTerms}
+                style={{ flex: 1 }}
+                activeOpacity={0.7}
+              >
+                <Text style={stylesCard.termsText}>
+                  {t('auth.acceptTerms')}{' '}
+                  <Text 
+                    style={stylesCard.termsLink}
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      // 打開服務條款（可以在新窗口打開或顯示模態框）
+                      if (Platform.OS === 'web') {
+                        window.open('https://lunchips.com/terms', '_blank');
+                      } else {
+                        Alert.alert(t('auth.termsOfService') || '服務條款', '請訪問 https://lunchips.com/terms 查看服務條款');
+                      }
+                    }}
+                  >
+                    {t('auth.termsOfService')}
+                  </Text>
+                  {' '}{t('auth.or')}{' '}
+                  <Text 
+                    style={stylesCard.termsLink}
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      // 打開隱私政策
+                      if (Platform.OS === 'web') {
+                        window.open('https://lunchips.com/privacy', '_blank');
+                      } else {
+                        Alert.alert(t('auth.privacyPolicy') || '隱私政策', '請訪問 https://lunchips.com/privacy 查看隱私政策');
+                      }
+                    }}
+                  >
+                    {t('auth.privacyPolicy')}
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity 
@@ -456,20 +518,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
           </View>
 
           <View style={stylesCard.socialContainer}>
-            <TouchableOpacity 
-              style={[stylesCard.socialButton, stylesCard.googleButton]} 
+            <GoogleButton
               onPress={handleGoogleSignup}
               disabled={isLoading}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons 
-                name="google" 
-                size={20} 
-                color="#FFFFFF" 
-                style={stylesCard.socialIcon}
-              />
-              <Text style={stylesCard.socialText}>{t('auth.signupWithGoogle')}</Text>
-            </TouchableOpacity>
+              title={t('auth.signupWithGoogle')}
+            />
           </View>
 
           <View style={stylesCard.loginContainer}>
@@ -483,8 +536,9 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
               <Text style={stylesCard.loginButtonText}>{t('auth.loginHere')}</Text>
             </TouchableOpacity>
           </View>
+            </ScrollView>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Language Selection Modal */}
@@ -506,7 +560,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
         >
           <View
             style={{
-              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              backgroundColor: colorMode === 'dark' ? '#121212' : '#FFFFFF',
               borderRadius: 20,
               padding: theme.spacing.xl,
               width: '80%',
@@ -565,8 +619,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-        </Modal>
-      </View>
+      </Modal>
     </SafeAreaView>
   );
 };

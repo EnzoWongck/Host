@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,28 +16,41 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { signInWithGoogle as firebaseGoogleSignIn, signInWithEmailAndPasswordFirebase, sendPasswordReset } from '../services/firebaseAuth';
+import GoogleButton from '../components/GoogleButton';
+import { signInWithGoogle as firebaseGoogleSignIn, handleGoogleRedirect, signInWithEmailAndPasswordFirebase, sendPasswordReset } from '../services/firebaseAuth';
 import { Language } from '../types/language';
+// 靜態導入圖片
+import Phone2LowerImage from '../../assets/icons/phone2-lower.png';
 
 interface LoginScreenProps {
   onBack: () => void;
   onLoginSuccess: () => void;
   onSignup: () => void;
   onForgotPassword: () => void;
+  onPhoneLogin?: () => void; // 電話號碼登入回調
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSignup, onForgotPassword }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSignup, onForgotPassword, onPhoneLogin }) => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { signInWithGoogle, signInWithEmail, isSignedIn } = useAuth();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+
+  // 監聽認證狀態變化，當登入成功時觸發回調
+  useEffect(() => {
+    if (isSignedIn) {
+      onLoginSuccess();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
 
   const styles = StyleSheet.create({
     container: {
@@ -56,7 +69,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       alignItems: 'center',
     },
     card: {
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#FFFFFF',
       borderRadius: 20,
       padding: theme.spacing.xl + 8,
       width: '100%',
@@ -71,8 +84,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       elevation: 12,
       borderWidth: colorMode === 'dark' ? 1 : 0,
       borderColor: colorMode === 'dark' ? '#2A2A2A' : 'transparent',
-      height: 650,
-      overflow: 'hidden',
+      maxHeight: Platform.OS === 'web' ? 650 : '90%',
+      minHeight: 500,
     },
     cardContent: {
       flex: 1,
@@ -206,11 +219,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     },
     loginButton: {
       backgroundColor: theme.colors.primary,
-      paddingVertical: theme.spacing.md + 4,
-      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm + 2,
+      paddingHorizontal: theme.spacing.md,
       borderRadius: 12,
       alignItems: 'center',
-      marginTop: theme.spacing.lg,
+      marginTop: theme.spacing.md,
       shadowColor: theme.colors.primary,
       shadowOffset: {
         width: 0,
@@ -225,8 +238,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     loginButtonActive: {
       borderWidth: 2,
       borderColor: '#FFFFFF',
-      paddingVertical: theme.spacing.md + 2,
-      paddingHorizontal: theme.spacing.lg - 2,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md - 2,
     },
     loginButtonText: {
       color: '#FFFFFF',
@@ -238,7 +251,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
     },
     signupContainer: {
       alignItems: 'center',
-      marginTop: theme.spacing.xl,
+      marginTop: theme.spacing.md,
     },
     signupText: {
       fontSize: theme.fontSize.sm,
@@ -248,38 +261,153 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       color: '#007AFF',
       fontWeight: '500',
     },
+    phoneButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#DADCE0',
+      borderRadius: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      minHeight: 40,
+      width: '100%',
+      marginTop: theme.spacing.sm,
+      marginBottom: theme.spacing.sm,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    phoneButtonDisabled: {
+      opacity: 0.6,
+    },
+    phoneIconContainer: {
+      marginRight: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    phoneIcon: {
+      width: 18,
+      height: 18,
+    },
+    phoneButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#3C4043',
+      letterSpacing: 0.25,
+    },
   });
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      // 先透過 Firebase 完成實際登入（取得 token 等）
-      await firebaseGoogleSignIn();
-      // 再更新全域 AuthContext，讓設定畫面等地方知道「已登入」
+      // 直接使用 AuthContext 的 signInWithGoogle
+      // 它會處理重定向，登入成功後 onAuthStateChanged 會自動更新狀態
       await signInWithGoogle();
-      onLoginSuccess();
-    } catch (error) {
-      Alert.alert(t('auth.loginFailed'), t('auth.loginFailed') + ' - Google');
-    } finally {
+      // 不需要手動調用 onLoginSuccess，因為 useEffect 會監聽 isSignedIn 變化
+    } catch (error: any) {
+      Alert.alert(t('auth.loginFailed') || '登入失敗', error?.message || t('auth.loginFailed') + ' - Google');
       setIsLoading(false);
     }
   };
 
   const handleEmailLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    // 清理 email 和 password（移除前後空格）
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !trimmedPassword) {
       Alert.alert(t('common.error') || '錯誤', t('auth.errorEmailRequired'));
+      return;
+    }
+
+    // 驗證 email 格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      const errorTitle = t('auth.loginFailed') || '登入失敗';
+      const errorMessage = 'Email 格式不正確，請檢查後重試。';
+      showToast(errorMessage, 'error', 5000);
+      if (Platform.OS === 'web') {
+        window.alert(`${errorTitle}\n\n${errorMessage}`);
+      } else {
+        Alert.alert(errorTitle, errorMessage);
+      }
       return;
     }
 
     setIsLoading(true);
     try {
-      // 先透過 Firebase 完成實際登入驗證
-      await signInWithEmailAndPasswordFirebase(email, password);
-      // 再更新全域 AuthContext 狀態（簡化為用 email 當顯示名稱）
-      await signInWithEmail(email);
+      // 使用 AuthContext 的 signInWithEmail，傳遞清理後的 email 和 password
+      await signInWithEmail(trimmedEmail, trimmedPassword);
       onLoginSuccess();
-    } catch (error) {
-      Alert.alert(t('auth.loginFailed'), t('auth.loginFailed') + ' - ' + t('auth.email'));
+    } catch (error: any) {
+      console.error('登入錯誤詳情:', error);
+      console.error('錯誤代碼:', error?.code);
+      console.error('錯誤訊息:', error?.message);
+      console.error('完整錯誤對象:', JSON.stringify(error, null, 2));
+      
+      // 根據 Firebase 錯誤代碼提供友好的錯誤訊息
+      const errorCode = error?.code || (error?.message?.match(/\(([^)]+)\)/)?.[1]);
+      let errorMessage = '登入失敗，請檢查 Email 和密碼後重試。';
+      
+      // 根據錯誤代碼設置友好的錯誤訊息
+      if (errorCode === 'auth/invalid-credential' || 
+          errorCode === 'auth/wrong-password' || 
+          errorCode === 'auth/user-not-found') {
+        errorMessage = 'Email 或密碼錯誤，請檢查後重試。\n\n如果忘記密碼，請點擊「忘記密碼」重設。';
+      } else if (errorCode === 'auth/user-disabled') {
+        errorMessage = '此帳號已被停用，請聯繫客服。';
+      } else if (errorCode === 'auth/too-many-requests') {
+        errorMessage = '登入嘗試次數過多，請稍後再試。';
+      } else if (errorCode === 'auth/network-request-failed') {
+        errorMessage = '網路連線失敗，請檢查網路連線後重試。';
+      } else if (errorCode === 'auth/invalid-email') {
+        errorMessage = 'Email 格式不正確，請檢查後重試。';
+      } else if (error?.message) {
+        // 檢查錯誤訊息中是否包含已知的錯誤關鍵字
+        const errorMsg = error.message.toLowerCase();
+        if (errorMsg.includes('invalid-credential') || 
+            errorMsg.includes('wrong-password') ||
+            errorMsg.includes('user-not-found')) {
+          errorMessage = 'Email 或密碼錯誤，請檢查後重試。\n\n如果忘記密碼，請點擊「忘記密碼」重設。';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      const errorTitle = t('auth.loginFailed') || '登入失敗';
+      
+      console.log('準備顯示錯誤訊息:', { errorTitle, errorMessage, errorCode });
+      
+      // 在 Web 平台上，立即使用 window.alert 顯示錯誤（最可靠的方式）
+      if (Platform.OS === 'web') {
+        // 使用 setTimeout 確保在當前執行棧完成後執行，避免被阻塞
+        setTimeout(() => {
+          window.alert(`${errorTitle}\n\n${errorMessage}`);
+        }, 0);
+      }
+      
+      // 同時使用 Toast 顯示錯誤（視覺效果更好）
+      try {
+        showToast(errorMessage, 'error', 5000);
+      } catch (toastError) {
+        console.error('Toast 調用失敗:', toastError);
+      }
+      
+      // 在原生平台上使用 Alert.alert
+      if (Platform.OS !== 'web') {
+        try {
+          Alert.alert(errorTitle, errorMessage);
+        } catch (alertError) {
+          console.error('Alert.alert 調用失敗:', alertError);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -293,39 +421,76 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
   return (
     <SafeAreaView style={styles.container}>
       <TopTabBar transparent />
-      <View style={{ marginTop: 180 }}>
-        <KeyboardAvoidingView 
+      <KeyboardAvoidingView 
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === 'web' ? 0 : 20}
       >
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'center',
+            paddingVertical: Platform.OS === 'web' ? 0 : theme.spacing.xl,
+            minHeight: Platform.OS === 'web' ? '100%' : undefined,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardContent}>
+          <View style={styles.card}>
+            <ScrollView
+              contentContainerStyle={styles.cardContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             <View style={styles.logoContainer}>
               <Text style={styles.title}>{t('auth.login')}</Text>
             </View>
 
             <View style={styles.socialContainer}>
-            <TouchableOpacity 
-              style={[styles.socialButton, styles.googleButton]} 
-              onPress={handleGoogleLogin}
-              disabled={isLoading || isSignedIn}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons 
-                name="google" 
-                size={20} 
-                color="#FFFFFF" 
-                style={styles.socialIcon}
+              <GoogleButton
+                onPress={handleGoogleLogin}
+                // 允許已登入後仍可點擊（方便測試與重新授權），只在載入中時禁用按鈕
+                disabled={isLoading}
+                title={t('auth.loginWithGoogle')}
               />
-              <Text style={styles.socialText}>{t('auth.loginWithGoogle')}</Text>
-            </TouchableOpacity>
-          </View>
+              
+              {/* 電話號碼登入選項 */}
+              {onPhoneLogin && (
+                <TouchableOpacity
+                  style={[
+                    styles.phoneButton,
+                    isLoading && styles.phoneButtonDisabled,
+                  ]}
+                  onPress={onPhoneLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.phoneIconContainer}>
+                    {Platform.OS === 'web' ? (
+                      <Image
+                        source={{ uri: '/icons/phone2.PNG' }}
+                        style={styles.phoneIcon}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Image
+                        source={Phone2LowerImage}
+                        style={styles.phoneIcon}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.phoneButtonText}>
+                    {t('auth.loginWithPhone') || '使用電話號碼登入'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
@@ -391,7 +556,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
               style={[
                 styles.loginButton,
                 (email.trim() && password.trim() && !isLoading) && styles.loginButtonActive,
-                (isLoading || !email.trim() || !password.trim()) && styles.disabledButton
+                (isLoading || !email.trim() || !password.trim()) && styles.disabledButton,
+                (email.trim() && password.trim() && !isLoading && colorMode === 'light') && {
+                  backgroundColor: '#0066FF',
+                },
               ]}
               onPress={handleEmailLogin}
               disabled={isLoading || !email.trim() || !password.trim()}
@@ -401,7 +569,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
             </TouchableOpacity>
           </View>
 
-          <View style={styles.signupContainer}>
+          <View style={[styles.signupContainer, { marginTop: theme.spacing.md }]}>
             <Text style={styles.signupText}>
               {t('auth.noAccount')}
               <TouchableOpacity onPress={onSignup}>
@@ -409,8 +577,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
               </TouchableOpacity>
             </Text>
           </View>
+            </ScrollView>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Language Selection Modal */}
@@ -432,7 +601,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
         >
           <View
             style={{
-              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              backgroundColor: colorMode === 'dark' ? '#121212' : '#FFFFFF',
               borderRadius: 20,
               padding: theme.spacing.xl,
               width: '80%',
@@ -491,8 +660,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-        </Modal>
-      </View>
+      </Modal>
     </SafeAreaView>
   );
 };

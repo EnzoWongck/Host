@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -21,9 +22,10 @@ interface CashOutModalProps {
   onClose: () => void;
   defaultPlayer?: Player | null;
   onCashOutSuccess?: () => void;
+  isEditMode?: boolean;
 }
 
-const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPlayer, onCashOutSuccess }) => {
+const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPlayer, onCashOutSuccess, isEditMode = false }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { state, updatePlayer } = useGame();
@@ -35,6 +37,11 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
   const [entryFeeDeducted, setEntryFeeDeducted] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
+  // 獲取螢幕尺寸
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const isMobile = screenWidth < 768; // 判斷是否為手機
+
   const currentGame = state.currentGame;
   const isNoRakeMode = currentGame?.gameMode === 'noRake';
 
@@ -42,13 +49,30 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
   React.useEffect(() => {
     if (visible && defaultPlayer) {
       setSelectedPlayer(defaultPlayer);
+      // 編輯模式時，預填現有的兌現金額和 Host
+      if (isEditMode && (defaultPlayer as any)?.cashOutAmount) {
+        setChipAmount(String((defaultPlayer as any).cashOutAmount));
+        if ((defaultPlayer as any)?.cashOutHost) {
+          setSelectedHost((defaultPlayer as any).cashOutHost);
+        }
+      }
     } else if (!visible) {
       setSelectedPlayer(null);
       setChipAmount('');
       setSelectedHost(null);
       setEntryFeeDeducted(false);
     }
-  }, [visible, defaultPlayer]);
+  }, [visible, defaultPlayer, isEditMode]);
+
+  // 當 host 更新時，如果選擇的 host 不存在了，清除選擇
+  React.useEffect(() => {
+    if (visible && currentGame && selectedHost) {
+      const hostNames = (currentGame.hosts || []).map((h) => typeof h === 'string' ? h : h.name);
+      if (!hostNames.includes(selectedHost)) {
+        setSelectedHost(null);
+      }
+    }
+  }, [visible, currentGame, currentGame?.hosts, selectedHost]);
 
   React.useEffect(() => {
     if (selectedPlayer) {
@@ -67,35 +91,40 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
       marginBottom: theme.spacing.sm,
     },
     input: {
-      borderWidth: 1,
-      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
+      // 淺色模式下移除輸入框邊框，僅保留淡背景；深色模式維持原有邊框
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     inputFocused: {
-      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
-      borderWidth: 1,
+      // 淺色模式選取時也不顯示邊框；深色模式保留原有聚焦邊框
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.primary,
+      borderWidth: colorMode === 'light' ? 0 : 1,
     },
     playersList: {
-      maxHeight: 280,
+      maxHeight: 300, // 顯示5個玩家（約每個玩家60px高度）
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.sm,
+      overflow: 'hidden',
     },
     playerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: theme.spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      borderBottomWidth: 0,
+      borderRadius: 0,
     },
     playerName: { fontSize: theme.fontSize.md, color: theme.colors.text },
-    selected: { backgroundColor: theme.colors.primary + '10' },
+    selected: { 
+      backgroundColor: colorMode === 'dark' ? '#202124' : '#E2E8F0',
+    },
     hint: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
@@ -103,9 +132,9 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
     },
     hostRow: { flexDirection: 'row', alignItems: 'center' },
     hostChips: { flexDirection: 'row' },
-    chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: theme.colors.border, marginRight: theme.spacing.sm, backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.background },
-    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.background },
-    chipText: { color: theme.colors.text, fontWeight: '600' },
+    chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: colorMode === 'dark' ? theme.colors.border : '#F4F4F5', marginRight: theme.spacing.sm, backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.background },
+    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : '#E2E8F0', backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.background },
+    chipText: { color: colorMode === 'light' ? '#4B5563' : theme.colors.text, fontWeight: '600' },
     amountRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -180,7 +209,11 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
 
     updatePlayer(currentGame.id, updated);
 
-    showToast(`${selectedPlayer.name} ${t('cashOut.successCashOut') || '已兌現'} $${chips.toLocaleString()}，${t('game.profit')} ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}`, 'success');
+    if (isEditMode) {
+      showToast(`${selectedPlayer.name} 兌現紀錄已更新：$${chips.toLocaleString()}，${t('game.profit')} ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}`, 'success');
+    } else {
+      showToast(`${selectedPlayer.name} ${t('cashOut.successCashOut') || '已兌現'} $${chips.toLocaleString()}，${t('game.profit')} ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}`, 'success');
+    }
     setSelectedPlayer(null);
     setChipAmount('');
     setSelectedHost(null);
@@ -204,15 +237,21 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
         setSelectedHost(null);
         onClose();
       }}
-      title={t('modals.cashOut')}
+      title={isEditMode ? '編輯兌現紀錄' : t('modals.cashOut')}
+      maxWidth={isMobile ? screenWidth - 64 : 600}
+      maxHeight={isMobile ? screenHeight * 0.9 : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 64, maxWidth: screenWidth - 64 } : { width: 600, minWidth: 600, maxWidth: 'none' }}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: '100%', alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}>
         {/* 選擇玩家（如果有預設玩家則隱藏） */}
         {!defaultPlayer && (
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('cashOut.selectPlayer')}</Text>
-            <View style={[styles.playersList, { maxHeight: 360 }]}> 
-              <ScrollView>
+            <View style={[styles.playersList, { maxHeight: 300 }]}> 
+              <ScrollView 
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingTop: 0 }}
+              >
                 {activePlayers.length === 0 ? (
                   <View style={{ padding: theme.spacing.md }}>
                     <Text style={styles.hint}>{t('cashOut.noActivePlayers')}</Text>
@@ -238,7 +277,13 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
         {defaultPlayer && selectedPlayer && (
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('cashOut.player')}</Text>
-            <View style={[styles.playerRow, { backgroundColor: theme.colors.primary + '10' }]}>
+            <View style={[
+              styles.playerRow, 
+              { 
+                backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.primary + '10',
+                borderRadius: theme.borderRadius.md,
+              }
+            ]}>
               <Text style={styles.playerName}>{selectedPlayer.name}</Text>
               <Text style={styles.hint}>{t('game.buyIn')} ${selectedPlayer.buyIn.toLocaleString()}</Text>
             </View>
@@ -254,8 +299,12 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
                 style={[styles.input, focusedInput === 'chipAmount' && styles.inputFocused]}
                 value={chipAmount}
                 onChangeText={setChipAmount}
-                placeholder={t('cashOut.enterAmount')}
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholder="$"
+                placeholderTextColor={
+                  focusedInput === 'chipAmount'
+                    ? 'transparent'
+                    : theme.colors.textSecondary
+                }
                 keyboardType="numeric"
                 onFocus={() => setFocusedInput('chipAmount')}
                 onBlur={() => setFocusedInput(null)}
@@ -303,7 +352,14 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
           </View>
         )}
 
-        <Button title={t('common.confirm') + t('modals.cashOut')} onPress={handleCashOut} size="lg" leftIconName="cashout" />
+        <Button 
+          title={t('common.confirm') + t('modals.cashOut')} 
+          onPress={handleCashOut} 
+          size="lg" 
+          variant="primary"
+          leftIconName="cashout"
+          style={{ marginBottom: theme.spacing.md }}
+        />
       </ScrollView>
     </Modal>
   );

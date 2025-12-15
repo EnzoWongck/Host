@@ -1,29 +1,118 @@
+// === 終極 polyfill：強制在所有東西之前補上 resolveAssetSource ===
+// 必須放在 App.tsx 最上面，甚至在 import 之前！（是的，違反常規，但這是唯一 100% 有效的）
+
+if (typeof window !== 'undefined') {
+  // 強制在全局最優先執行（比任何 library 都早）
+  (window as any).resolveAssetSourcePolyfill = () => {
+    try {
+      const RNImage = require('react-native/Libraries/Image/Image');
+      if (RNImage) {
+        // 核心：補上 resolveAssetSource
+        RNImage.resolveAssetSource = (source: any) => source;
+        // 關鍵：處理 u.default（很多 library 會用 u.default.resolveAssetSource）
+        if (!RNImage.default) {
+          RNImage.default = RNImage;
+        } else {
+          // 如果已經有 default，也要補上
+          RNImage.default.resolveAssetSource = (source: any) => source;
+        }
+      }
+    } catch (e) {
+      console.warn('RNImage polyfill failed:', e);
+    }
+
+    try {
+      if (typeof Image !== 'undefined') {
+        // @ts-ignore
+        Image.resolveAssetSource = (source: any) => source;
+        // @ts-ignore
+        if (!Image.default) {
+          // @ts-ignore
+          Image.default = Image;
+        } else {
+          // @ts-ignore
+          Image.default.resolveAssetSource = (source: any) => source;
+        }
+      }
+    } catch (e) {
+      console.warn('Image polyfill failed:', e);
+    }
+
+    // 額外保護：直接補全局對象（處理編譯後的 u.default）
+    try {
+      const ReactNative = require('react-native');
+      if (ReactNative && ReactNative.Image) {
+        ReactNative.Image.resolveAssetSource = (source: any) => source;
+        if (ReactNative.Image.default) {
+          ReactNative.Image.default.resolveAssetSource = (source: any) => source;
+        }
+      }
+    } catch (e) {}
+
+    console.log('resolveAssetSource polyfill 已強制載入（全局優先）');
+  };
+
+  // 強制立即執行（同步執行，不等待）
+  (window as any).resolveAssetSourcePolyfill();
+  
+  // 額外保護：在 DOMContentLoaded 時再次執行（確保所有模塊都已載入）
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        (window as any).resolveAssetSourcePolyfill();
+      });
+    } else {
+      // 如果已經載入完成，立即執行
+      setTimeout(() => {
+        (window as any).resolveAssetSourcePolyfill();
+      }, 0);
+    }
+  }
+}
+
+// 現在才開始 import（所有 import 都要在這下面！）
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Asset } from 'expo-asset';
-import { Platform } from 'react-native';
+import { Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
+// 靜態導入圖標
+import HomeIconAsset from './assets/icons/home.png';
+import PokercardIconAsset from './assets/icons/pokercard.png';
+import SettingsIconAsset from './assets/icons/settings.png';
+import Player2IconAsset from './assets/icons/player2.png';
+import Connect2IconAsset from './assets/icons/connect2.png';
+import CopyIconAsset from './assets/icons/copy.png';
+import Inout2IconAsset from './assets/icons/inout2.png';
+import RakeIconAsset from './assets/icons/rake.png';
+import CostIconAsset from './assets/icons/cost.png';
+import DealerIconAsset from './assets/icons/dealer.png';
+import EarthIconAsset from './assets/icons/earth.png';
+import EarthWhiteIconAsset from './assets/icons/earth.white.png';
+import IconFrontAsset from './assets/icons/icon.front.png';
 // Context
-import { GameProvider } from './src/context/GameContext';
+import { GameProvider, useGame } from './src/context/GameContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { CollaborationProvider } from './src/context/CollaborationContext';
 import { NavigationProvider, useNavigationContext } from './src/context/NavigationContext';
-
+import { SubscriptionProvider, useSubscription } from './src/context/SubscriptionContext';
 // Utils
 import { getFontFamily, getFontWeight } from './src/utils/fonts';
-
 // Config
-import { SKIP_AUTH_ON_WEB } from './src/config/dev';
-
+import { SKIP_AUTH_ON_WEB, SHOW_GROK_PREVIEW } from './src/config/dev';
+import { auth } from './src/config/firebase';
+// Preview
+import GrokStylePreview from './src/preview/GrokStylePreview';
 // Screens
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -32,11 +121,13 @@ import ForgetPasswordScreen from './src/screens/ForgetPasswordScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-
+import PhoneVerifyScreen from './src/screens/PhoneVerifyScreen';
 // Components
 import TabBarIcon from './src/components/TabBarIcon';
 import DoubleTabBar from './src/components/DoubleTabBar';
-
+import TrialEndedPaywall from './src/components/TrialEndedPaywall';
+import NewUserWelcomeModal from './src/components/NewUserWelcomeModal';
+import { SignupSuccessHandler } from './src/components/SignupSuccessHandler';
 // Types
 import { RootTabParamList } from './src/types/navigation';
 
@@ -48,10 +139,47 @@ const AppNavigator: React.FC = () => {
   // 根據配置決定是否跳過登入
   const shouldSkipAuth = isWeb && SKIP_AUTH_ON_WEB;
   
-  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'login' | 'signup' | 'forgotPassword' | 'main'>(
+  // 檢查 URL 參數是否要顯示預覽（僅 Web）
+  const [showPreview, setShowPreview] = useState(false);
+  
+  useEffect(() => {
+    if (isWeb && typeof window !== 'undefined') {
+      const checkPreview = () => {
+        const params = new URLSearchParams(window.location.search);
+        const shouldShow = params.get('preview') === 'true';
+        setShowPreview(shouldShow);
+        if (shouldShow) {
+          console.log('顯示 Grok 風格預覽');
+        }
+      };
+      
+      // 初始檢查
+      checkPreview();
+      
+      // 監聽 URL 變化（用於瀏覽器前進/後退）
+      window.addEventListener('popstate', checkPreview);
+      
+      return () => {
+        window.removeEventListener('popstate', checkPreview);
+      };
+    }
+  }, [isWeb]);
+  
+  // 如果顯示預覽，直接返回預覽組件
+  // 方式1: URL 參數 ?preview=true
+  // 方式2: 開發配置 SHOW_GROK_PREVIEW = true
+  // 方式3: 路徑 /preview
+  if (showPreview || (isWeb && SHOW_GROK_PREVIEW) || (isWeb && typeof window !== 'undefined' && window.location.pathname === '/preview')) {
+    return <GrokStylePreview />;
+  }
+  
+  // 強制跳過登入：如果配置為 true，直接返回主頁面（在渲染前檢查）
+  
+  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'login' | 'signup' | 'forgotPassword' | 'phoneVerify' | 'main'>(
     shouldSkipAuth ? 'main' : 'welcome'
   );
-  const { isSignedIn, signInWithEmail } = useAuth();
+  const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
+  const { isSignedIn, signInWithEmail, loading, signOut } = useAuth();
   const { setNavigateToWelcomeCallback } = useNavigationContext();
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
@@ -65,58 +193,159 @@ const AppNavigator: React.FC = () => {
     }
   }, [shouldSkipAuth, isSignedIn, signInWithEmail]);
 
+  // 檢查初始狀態：如果已登入但沒有電話號碼，重新載入時登出並回到歡迎頁面
   useEffect(() => {
-    // 在非 Web 平台上，或當需要測試登入時，只有登入成功才能進入主應用
-    if (isSignedIn && !shouldSkipAuth) {
-      setCurrentScreen('main');
+    // 等待認證狀態載入完成
+    if (loading) return;
+    
+    // 如果跳過登入，不執行此邏輯
+    if (shouldSkipAuth) return;
+    
+    // 只在初始載入時（currentScreen 為 'welcome'）檢查用戶狀態
+    if (currentScreen === 'welcome') {
+      if (isSignedIn) {
+        const user = auth.currentUser;
+        // 如果已登入但沒有電話號碼，登出並保持在歡迎頁面
+        if (user && !user.phoneNumber) {
+          console.log('已登入但沒有電話號碼，登出並回到歡迎頁面');
+          signOut().catch((error) => {
+            console.error('登出失敗', error);
+          });
+          // 保持在歡迎頁面，不需要設置 currentScreen，因為已經是 'welcome'
+        } else if (user && user.phoneNumber) {
+          // 已登入且有電話號碼，直接進入主畫面
+          console.log('已登入且有電話號碼，進入主畫面');
+          setCurrentScreen('main');
+        }
+      } else {
+        // 未登入，保持在歡迎頁面
+        console.log('未登入，保持在歡迎頁面');
+      }
     }
-    // 在 Web 平台上且配置為跳過登入時，始終保持在主應用（已通過初始狀態設置）
-  }, [isSignedIn, shouldSkipAuth]);
+  }, [loading, isSignedIn, shouldSkipAuth, currentScreen, signOut]);
 
   const handleWelcomeGetStarted = () => {
-    setCurrentScreen('login');
+    if (!shouldSkipAuth) {
+      // 檢查用戶是否已登入
+      if (isSignedIn) {
+        // 如果已登入，檢查是否已綁定電話號碼
+        const user = auth.currentUser;
+        if (user && user.phoneNumber) {
+          // 已登入且有電話號碼，直接進入主畫面
+          setCurrentScreen('main');
+        } else {
+          // 已登入但沒有電話號碼，導向電話驗證
+          setCurrentScreen('phoneVerify');
+        }
+      } else {
+        // 未登入，導向登入頁面
+        setCurrentScreen('login');
+      }
+    }
   };
 
   const handleLoginBack = () => {
-    setCurrentScreen('welcome');
+    if (!shouldSkipAuth) {
+      setCurrentScreen('welcome');
+    }
   };
 
   const handleLoginSuccess = () => {
-    setCurrentScreen('main');
+    // 登入成功後，先檢查 Firebase 使用者是否已綁定電話
+    const user = auth.currentUser;
+    if (user && user.phoneNumber) {
+      // 已綁定電話，直接進入主畫面
+      setCurrentScreen('main');
+    } else {
+      // 尚未綁定電話，先進入電話驗證畫面
+      setCurrentScreen('phoneVerify');
+    }
   };
 
   const handleSignup = () => {
-    setCurrentScreen('signup');
+    if (!shouldSkipAuth) {
+      setCurrentScreen('signup');
+    }
   };
 
   const handleSignupBack = () => {
-    setCurrentScreen('login');
+    if (!shouldSkipAuth) {
+      setCurrentScreen('login');
+    }
   };
 
-  const handleSignupSuccess = () => {
-    setCurrentScreen('main');
+  const [shouldClearGames, setShouldClearGames] = useState(false);
+  
+  const handleSignupSuccess = async () => {
+    // 標記需要清除遊戲數據（通過 AsyncStorage 傳遞給 GameProvider 內部的組件）
+    try {
+      await AsyncStorage.setItem('shouldClearGamesOnSignup', 'true');
+    } catch (e) {
+      console.error('Failed to set clear games flag:', e);
+    }
+    
+    // 顯示新用戶歡迎模態框
+    setShowNewUserWelcome(true);
+    
+    // 註冊成功後同樣檢查是否已有電話（理論上新帳號沒有，但保留檢查以防特殊情況）
+    const user = auth.currentUser;
+    if (user && user.phoneNumber) {
+      setCurrentScreen('main');
+    } else {
+      setCurrentScreen('phoneVerify');
+    }
   };
 
   const handleForgotPassword = () => {
-    setCurrentScreen('forgotPassword');
+    if (!shouldSkipAuth) {
+      setCurrentScreen('forgotPassword');
+    }
   };
 
   const handleForgotPasswordBack = () => {
-    setCurrentScreen('login');
+    if (!shouldSkipAuth) {
+      setCurrentScreen('login');
+    }
   };
 
   useEffect(() => {
-    setNavigateToWelcomeCallback(() => {
-      setCurrentScreen('welcome');
-    });
-  }, [setNavigateToWelcomeCallback]);
+    // 如果跳過登入，不設置導航回調，避免被導向登入頁
+    if (!shouldSkipAuth) {
+      // 左上角 Logo 行為：
+      // - 若尚未登入：回到 Welcome 頁
+      // - 若已登入：回到主畫面（保持登入，不做登出）
+      setNavigateToWelcomeCallback(() => {
+        if (isSignedIn) {
+          setCurrentScreen('main');
+        } else {
+          setCurrentScreen('welcome');
+        }
+      });
+    }
+  }, [setNavigateToWelcomeCallback, shouldSkipAuth, isSignedIn]);
+
+  // 如果跳過登入，直接顯示主頁面，忽略所有其他狀態
+  if (shouldSkipAuth) {
+    return <MainTabNavigator />;
+  }
 
   if (currentScreen === 'welcome') {
     return <WelcomeScreen onGetStarted={handleWelcomeGetStarted} />;
   }
 
   if (currentScreen === 'login') {
-    return <LoginScreen onBack={handleLoginBack} onLoginSuccess={handleLoginSuccess} onSignup={handleSignup} onForgotPassword={handleForgotPassword} />;
+    return (
+      <LoginScreen
+        onBack={handleLoginBack}
+        onLoginSuccess={handleLoginSuccess}
+        onSignup={handleSignup}
+        onForgotPassword={handleForgotPassword}
+        onPhoneLogin={() => {
+          // 切換到電話驗證畫面（登入模式）
+          setCurrentScreen('phoneVerify');
+        }}
+      />
+    );
   }
 
   if (currentScreen === 'signup') {
@@ -127,7 +356,29 @@ const AppNavigator: React.FC = () => {
     return <ForgetPasswordScreen onBack={handleForgotPasswordBack} />;
   }
 
-  return <MainTabNavigator />;
+  if (currentScreen === 'phoneVerify') {
+    // 檢查是否為電話登入模式（用戶從登入頁選擇電話登入）
+    const isPhoneLoginMode = !auth.currentUser || !auth.currentUser.email;
+    return (
+      <PhoneVerifyScreen
+        isLoginMode={isPhoneLoginMode}
+        onVerified={() => {
+          // 電話驗證通過後才進入主畫面
+          setCurrentScreen('main');
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <MainTabNavigator />
+      <NewUserWelcomeModal
+        visible={showNewUserWelcome}
+        onClose={() => setShowNewUserWelcome(false)}
+      />
+    </>
+  );
 };
 
 // 主應用 Tab 導航
@@ -137,20 +388,23 @@ const MainTabNavigator: React.FC = () => {
   
   useEffect(() => {
     // 預先載入常用 icon，避免 Expo Go 上延遲顯示
-    Asset.loadAsync([
-      require('./assets/icons/home.png'),
-      require('./assets/icons/pokercard.png'),
-      require('./assets/icons/settings.png'),
-      require('./assets/icons/player2.png'),
-      require('./assets/icons/connect2.png'),
-      require('./assets/icons/copy.png'),
-      require('./assets/icons/inout2.png'),
-      require('./assets/icons/rake.png'),
-      require('./assets/icons/cost.png'),
-      require('./assets/icons/dealer.png'),
-      require('./assets/icons/earth.png'),
-      require('./assets/icons/earth.white.png'),
-    ]).catch(() => {});
+    // 在 Web 平台上跳過 Asset.loadAsync，因為它可能會使用 resolveAssetSource
+    if (Platform.OS !== 'web') {
+      Asset.loadAsync([
+        HomeIconAsset,
+        PokercardIconAsset,
+        SettingsIconAsset,
+        Player2IconAsset,
+        Connect2IconAsset,
+        CopyIconAsset,
+        Inout2IconAsset,
+        RakeIconAsset,
+        CostIconAsset,
+        DealerIconAsset,
+        EarthIconAsset,
+        EarthWhiteIconAsset,
+      ]).catch(() => {});
+    }
   }, []);
 
   return (
@@ -210,9 +464,10 @@ const MainTabNavigator: React.FC = () => {
   );
 };
 
-// 內部組件：應用字體設置
+// 內部組件：應用字體設置和狀態欄
 const AppWithFont: React.FC = () => {
   const { language } = useLanguage();
+  const { colorMode } = useTheme();
   const fontFamily = getFontFamily(language);
   const fontWeight = getFontWeight(language);
 
@@ -221,6 +476,40 @@ const AppWithFont: React.FC = () => {
     if (Platform.OS === 'web') {
       // 使用 TypeScript 類型斷言來訪問 Web 平台的 DOM API
       if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+        // 設置瀏覽器標籤頁 favicon 為 icon.front.png（適用 localhost 與正式站）
+        try {
+          // Web 平台上不使用 resolveAssetSource，直接從模塊中提取 URI
+          let iconHref: string | undefined;
+          if (typeof IconFrontAsset === 'string') {
+            iconHref = IconFrontAsset;
+          } else if (IconFrontAsset?.uri) {
+            iconHref = IconFrontAsset.uri;
+          } else if (IconFrontAsset?.default) {
+            iconHref = typeof IconFrontAsset.default === 'string' ? IconFrontAsset.default : IconFrontAsset.default?.uri;
+          }
+          
+          if (iconHref) {
+            let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+            if (!favicon) {
+              favicon = document.createElement('link');
+              favicon.rel = 'icon';
+              document.head.appendChild(favicon);
+            }
+            favicon.href = iconHref;
+          }
+        } catch {
+          // ignore favicon errors in dev
+        }
+
+        // 加載 Gilroy Black 字體
+        const link = document.createElement('link');
+        link.href = 'https://fonts.googleapis.com/css2?family=Gilroy:wght@900&display=swap';
+        link.rel = 'stylesheet';
+        link.id = 'gilroy-font-link';
+        if (!document.getElementById('gilroy-font-link')) {
+          document.head.appendChild(link);
+        }
+
         const style = document.createElement('style');
         style.id = 'app-font-style';
         if (fontFamily) {
@@ -238,6 +527,21 @@ const AppWithFont: React.FC = () => {
               font-family: "MaterialCommunityIcons" !important;
               font-weight: 400 !important;
             }
+            /* 全域移除瀏覽器對 input/textarea 的預設邊框與 focus 外框（特別是 iOS Safari 黑框） */
+            input, textarea {
+              outline: none !important;
+              border-width: 0 !important;
+              border-style: none !important;
+              box-shadow: none !important;
+              -webkit-appearance: none !important;
+            }
+            input:focus, textarea:focus {
+              outline: none !important;
+              border-width: 0 !important;
+              border-style: none !important;
+              box-shadow: none !important;
+              -webkit-appearance: none !important;
+            }
           `;
         } else {
           style.textContent = `
@@ -251,6 +555,21 @@ const AppWithFont: React.FC = () => {
             [data-icon],
             [role="img"] {
               font-weight: 400 !important;
+            }
+            /* 全域移除瀏覽器對 input/textarea 的預設邊框與 focus 外框（特別是 iOS Safari 黑框） */
+            input, textarea {
+              outline: none !important;
+              border-width: 0 !important;
+              border-style: none !important;
+              box-shadow: none !important;
+              -webkit-appearance: none !important;
+            }
+            input:focus, textarea:focus {
+              outline: none !important;
+              border-width: 0 !important;
+              border-style: none !important;
+              box-shadow: none !important;
+              -webkit-appearance: none !important;
             }
           `;
         }
@@ -273,6 +592,81 @@ const AppWithFont: React.FC = () => {
   return <AppNavigator />;
 };
 
+// 試用到期 Paywall 檢查組件
+const PaywallGuard: React.FC = () => {
+  const { trialEnded, isSubscribed, setSubscriptionStatus } = useSubscription();
+  const [paywallVisible, setPaywallVisible] = React.useState(false);
+
+  useEffect(() => {
+    // 如果試用到期且未訂閱，顯示 paywall
+    if (trialEnded && !isSubscribed) {
+      // 檢查是否在 1 小時內關閉過
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const closedAt = localStorage.getItem('paywall_closed_at');
+        if (closedAt) {
+          const timeDiff = Date.now() - parseInt(closedAt, 10);
+          if (timeDiff < 60 * 60 * 1000) {
+            return; // 1 小時內不顯示
+          }
+        }
+      }
+      setPaywallVisible(true);
+    } else {
+      setPaywallVisible(false);
+    }
+  }, [trialEnded, isSubscribed]);
+
+  const handleSubscribeSuccess = () => {
+    setSubscriptionStatus(true);
+    setPaywallVisible(false);
+  };
+
+  return (
+    <TrialEndedPaywall
+      visible={paywallVisible}
+      onClose={() => setPaywallVisible(false)}
+      onSubscribeSuccess={handleSubscribeSuccess}
+    />
+  );
+};
+
+// StatusBar 組件：根據主題動態設置
+const AppStatusBar: React.FC = () => {
+  const { colorMode } = useTheme();
+  return <StatusBar style={colorMode === 'dark' ? 'light' : 'dark'} />;
+};
+
+// SignupSuccessHandler 包裝組件：在 GameProvider 內部使用
+const SignupSuccessHandlerWrapper: React.FC = () => {
+  const [shouldClear, setShouldClear] = React.useState(false);
+  
+  // 監聽 AsyncStorage 中的標記
+  React.useEffect(() => {
+    const checkShouldClear = async () => {
+      try {
+        const value = await AsyncStorage.getItem('shouldClearGamesOnSignup');
+        if (value === 'true') {
+          setShouldClear(true);
+          await AsyncStorage.removeItem('shouldClearGamesOnSignup');
+        }
+      } catch (e) {
+        // 忽略錯誤
+      }
+    };
+    
+    checkShouldClear();
+    const interval = setInterval(checkShouldClear, 500);
+    return () => clearInterval(interval);
+  }, []);
+  
+  return (
+    <SignupSuccessHandler
+      shouldClear={shouldClear}
+      onCleared={() => setShouldClear(false)}
+    />
+  );
+};
+
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -288,10 +682,14 @@ export default function App() {
               >
                 <ToastProvider>
                   <AuthProvider>
-                    <NavigationProvider>
-                      <AppWithFont />
-                      <StatusBar style="dark" />
-                    </NavigationProvider>
+                    <SubscriptionProvider>
+                      <NavigationProvider>
+                        <AppWithFont />
+                        <SignupSuccessHandlerWrapper />
+                        <PaywallGuard />
+                        <AppStatusBar />
+                      </NavigationProvider>
+                    </SubscriptionProvider>
                   </AuthProvider>
                 </ToastProvider>
               </CollaborationProvider>

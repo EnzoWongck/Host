@@ -23,7 +23,7 @@ interface EntryFeeModalProps {
 }
 
 const EntryFeeModal: React.FC<EntryFeeModalProps> = ({ visible, onClose }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { state, updateGame, updatePlayer } = useGame();
   
@@ -32,6 +32,7 @@ const EntryFeeModal: React.FC<EntryFeeModalProps> = ({ visible, onClose }) => {
   const [entryFeeMode, setEntryFeeMode] = useState<'fixed' | 'custom'>('fixed');
   const [fixedEntryFee, setFixedEntryFee] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   
   // 編輯入場費狀態
   const [editEntryFeeVisible, setEditEntryFeeVisible] = useState(false);
@@ -179,7 +180,11 @@ const EntryFeeModal: React.FC<EntryFeeModalProps> = ({ visible, onClose }) => {
       padding: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+    },
+    inputFocused: {
+      borderColor: theme.colors.primary,
+      borderWidth: 1,
     },
     modeContainer: {
       flexDirection: 'row',
@@ -368,12 +373,18 @@ const EntryFeeModal: React.FC<EntryFeeModalProps> = ({ visible, onClose }) => {
               </Text>
             </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, focusedInput === 'fixedEntryFee' && styles.inputFocused]}
               placeholder={t('entryFee.fixedEntryFeePlaceholder')}
               value={fixedEntryFee}
               onChangeText={setFixedEntryFee}
               keyboardType="numeric"
-              placeholderTextColor={theme.colors.textSecondary}
+              placeholderTextColor={
+                focusedInput === 'fixedEntryFee'
+                  ? 'transparent'
+                  : theme.colors.textSecondary
+              }
+              onFocus={() => setFocusedInput('fixedEntryFee')}
+              onBlur={() => setFocusedInput(null)}
             />
             <Text style={styles.description}>
               {t('entryFee.fixedEntryFeeDescription')}
@@ -391,12 +402,18 @@ const EntryFeeModal: React.FC<EntryFeeModalProps> = ({ visible, onClose }) => {
               </Text>
             </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, focusedInput === 'hourlyRate' && styles.inputFocused]}
               placeholder={t('entryFee.hourlyRatePlaceholder')}
               value={hourlyRate}
               onChangeText={setHourlyRate}
               keyboardType="numeric"
-              placeholderTextColor={theme.colors.textSecondary}
+              placeholderTextColor={
+                focusedInput === 'hourlyRate'
+                  ? 'transparent'
+                  : theme.colors.textSecondary
+              }
+              onFocus={() => setFocusedInput('hourlyRate')}
+              onBlur={() => setFocusedInput(null)}
             />
             <Text style={styles.description}>
               {t('entryFee.hourlyRateDescription')}

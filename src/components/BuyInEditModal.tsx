@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
 import Modal from './Modal';
 import Button from './Button';
@@ -20,8 +20,9 @@ const BuyInEditModal: React.FC<BuyInEditModalProps> = ({
   setAmount,
   onSave,
 }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const styles = StyleSheet.create({
     inputGroup: {
@@ -40,7 +41,11 @@ const BuyInEditModal: React.FC<BuyInEditModalProps> = ({
       padding: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+    },
+    inputFocused: {
+      borderColor: theme.colors.primary,
+      borderWidth: 1,
     },
   });
 
@@ -59,16 +64,31 @@ const BuyInEditModal: React.FC<BuyInEditModalProps> = ({
       <View style={styles.inputGroup}>
         <Text style={styles.label}>{t('modals.buyInAmount')}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, focusedInput === 'amount' && styles.inputFocused]}
           value={amount}
           onChangeText={setAmount}
-          placeholder={t('modals.enterAmount')}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholder="$"
+          placeholderTextColor={
+            focusedInput === 'amount'
+              ? 'transparent'
+              : theme.colors.textSecondary
+          }
+          onFocus={() => setFocusedInput('amount')}
+          onBlur={() => setFocusedInput(null)}
           keyboardType="numeric"
+          textContentType="none"
+          autoComplete="off"
+          autoCorrect={false}
           autoFocus
         />
       </View>
-      <Button title={t('common.confirm')} onPress={handleSave} size="lg" />
+      <Button 
+        title={t('common.confirm')} 
+        onPress={handleSave} 
+        size="lg" 
+        variant="primary"
+        style={{ marginBottom: theme.spacing.md }}
+      />
     </Modal>
   );
 };

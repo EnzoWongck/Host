@@ -65,7 +65,7 @@ const FirebaseTest: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#F5F5F7',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#F5F5F7',
       padding: theme.spacing.lg,
     },
     title: {

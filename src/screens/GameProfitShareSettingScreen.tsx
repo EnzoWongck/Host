@@ -23,6 +23,15 @@ const GameProfitShareSettingModal: React.FC<GameProfitShareSettingModalProps> = 
 
   const rawHosts = (currentGame?.hosts || []) as (Host | string)[];
 
+  // 格式化百分比：整數時不顯示小數點
+  const formatPercentage = (ratio: number): string => {
+    const percent = ratio * 100;
+    if (percent % 1 === 0) {
+      return percent.toString(); // 整數時直接返回整數字符串
+    }
+    return percent.toFixed(1); // 有小數時顯示一位小數
+  };
+
   const initialHosts: { name: string; shareRatio: number }[] = useMemo(() => {
     if (!rawHosts.length) return [];
     const equalShare = 1 / rawHosts.length;
@@ -36,16 +45,22 @@ const GameProfitShareSettingModal: React.FC<GameProfitShareSettingModalProps> = 
   }, [rawHosts]);
 
   const [hostShares, setHostShares] = useState(initialHosts);
+  // 當值為 0 時顯示空字串，讓用戶可以直接輸入數字
   const [hostInputs, setHostInputs] = useState<string[]>(
-    initialHosts.map((h) => (h.shareRatio * 100).toFixed(1))
+    initialHosts.map((h) => {
+      return h.shareRatio === 0 ? '' : formatPercentage(h.shareRatio);
+    })
   );
 
   useEffect(() => {
     if (visible) {
       setHostShares(initialHosts);
-      setHostInputs(initialHosts.map((h) => (h.shareRatio * 100).toFixed(1)));
+      // 當值為 0 時顯示空字串，讓用戶可以直接輸入數字
+      setHostInputs(initialHosts.map((h) => {
+        return h.shareRatio === 0 ? '' : formatPercentage(h.shareRatio);
+      }));
     }
-  }, [visible, initialHosts]);
+  }, [visible, initialHosts, rawHosts]); // 添加 rawHosts 依賴，確保 host 更新時觸發
 
   if (!currentGame) {
     return null;
@@ -131,6 +146,17 @@ const GameProfitShareSettingModal: React.FC<GameProfitShareSettingModalProps> = 
   const isValidTotal = roundedTotal === 100 && hostShares.length > 0;
 
   const handleChangeShare = (index: number, text: string) => {
+    // 如果輸入為空，允許空字串（讓用戶可以刪除 0 並直接輸入）
+    if (text === '') {
+      setHostInputs((prev) =>
+        prev.map((v, i) => (i === index ? '' : v))
+      );
+      setHostShares((prev) =>
+        prev.map((h, i) => (i === index ? { ...h, shareRatio: 0 } : h))
+      );
+      return;
+    }
+
     // 允許整數與一個小數點（例如 33、33.3、40.5），其他字元自動過濾
     let numericText = text.replace(/[^0-9.]/g, '');
     const firstDot = numericText.indexOf('.');
@@ -186,7 +212,7 @@ const GameProfitShareSettingModal: React.FC<GameProfitShareSettingModalProps> = 
   };
 
   return (
-    <Modal visible={visible} onClose={onClose} title="牌局分成設定">
+    <Modal visible={visible} onClose={onClose} title="盈利分成設定">
       <ScrollView style={styles.content}>
         {hostShares.map((h, index) => (
           <View key={h.name} style={styles.hostRow}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import Modal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
@@ -26,11 +26,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText,
   confirmVariant = 'default',
 }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   
   const finalConfirmText = confirmText || t('common.confirm');
   const finalCancelText = cancelText || t('common.cancel');
+
+  // 獲取螢幕尺寸
+  const screenWidth = Dimensions.get('window').width;
+  const isMobile = screenWidth < 768; // 判斷是否為手機
 
   const styles = StyleSheet.create({
     message: {
@@ -60,7 +64,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} onClose={onClose} title={title}>
+    <Modal 
+      visible={visible} 
+      onClose={onClose} 
+      title={title} 
+      maxWidth={isMobile ? screenWidth - 32 : 500}
+      maxHeight={isMobile ? '90%' : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : undefined}
+    >
       <Text style={styles.message}>{message}</Text>
       <View style={styles.buttonRow}>
         <View style={styles.buttonContainer}>
@@ -68,7 +79,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             title={finalCancelText}
             onPress={onClose}
             variant="outline"
-            size="lg"
+            size="sm"
+            style={[
+              colorMode === 'light' && {
+                borderColor: theme.colors.primary,
+              },
+            ]}
+            textStyle={{
+              color: colorMode === 'light' ? '#64748B' : '#FFFFFF',
+            }}
           />
         </View>
         <View style={styles.buttonContainerLast}>
@@ -76,7 +95,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             title={finalConfirmText}
             onPress={handleConfirm}
             variant={confirmVariant === 'danger' ? 'danger' : 'primary'}
-            size="lg"
+            size="sm"
+            style={{
+              width: '100%',
+            }}
           />
         </View>
       </View>

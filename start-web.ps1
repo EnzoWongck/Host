@@ -13,7 +13,10 @@ if (-not (Test-Path "node_modules")) {
     npm install
 }
 
-# 啟動 Expo 開發伺服器，啟用熱重載
-Write-Host "🔄 啟動 Expo 開發伺服器..." -ForegroundColor Cyan
-npx expo start --web --clear
+# 啟動 Expo 開發伺服器，啟用熱重載和 LAN 模式（手機可訪問）
+Write-Host "🔄 啟動 Expo 開發伺服器 (LAN 模式)..." -ForegroundColor Cyan
+Write-Host "📱 手機訪問：確保手機和電腦在同一 Wi-Fi 網絡" -ForegroundColor Yellow
+Write-Host "🌐 終端會顯示本地 IP 地址，在手機瀏覽器中輸入該地址" -ForegroundColor Yellow
+Write-Host ""
+npx expo start --web --host lan --clear
 

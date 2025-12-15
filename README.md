@@ -86,6 +86,15 @@ PokerHost/
    - **Android**: `npm run android` 或在 Expo Go 中掃描 QR 碼
    - **Web**: `npm run web`
 
+### macOS 用戶
+
+如果您在 MacBook 上開發，請參考 [MAC_SETUP.md](./MAC_SETUP.md) 獲取詳細的設置指南。
+
+**快速開始（macOS）：**
+- 執行 `chmod +x *.sh` 給腳本添加執行權限
+- 執行 `./dev.sh` 選擇開發平台
+- 或直接執行 `npm run web` 啟動 Web 版本
+
 ### Windows 用戶
 
 如果您在 Windows 上開發，請參考 [WINDOWS_SETUP.md](./WINDOWS_SETUP.md) 獲取詳細的設置指南。

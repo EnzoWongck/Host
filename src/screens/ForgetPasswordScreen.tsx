@@ -50,7 +50,7 @@ const ForgetPasswordScreen: React.FC<ForgetPasswordScreenProps> = ({ onBack }) =
       paddingHorizontal: theme.spacing.xl,
     },
     card: {
-      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      backgroundColor: colorMode === 'dark' ? '#121212' : '#FFFFFF',
       borderRadius: 20,
       padding: theme.spacing.xl + 8,
       width: '100%',
@@ -247,7 +247,7 @@ const ForgetPasswordScreen: React.FC<ForgetPasswordScreenProps> = ({ onBack }) =
         >
           <View
             style={{
-              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              backgroundColor: colorMode === 'dark' ? '#121212' : '#FFFFFF',
               borderRadius: 20,
               padding: theme.spacing.xl,
               width: '80%',

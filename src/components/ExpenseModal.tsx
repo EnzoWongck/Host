@@ -7,6 +7,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
@@ -39,6 +41,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
   const [recordsExpanded, setRecordsExpanded] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 編輯彈窗狀態
@@ -47,6 +50,11 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const [editCategory, setEditCategory] = useState<ExpenseCategory | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
+
+  // 獲取螢幕尺寸
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const isMobile = screenWidth < 768; // 判斷是否為手機
 
   const currentGame = state.currentGame;
 
@@ -61,7 +69,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const firstRow = expenseCategories.slice(0, 3);
   const secondRow = expenseCategories.slice(3);
 
-  const categoryBackground = colorMode === 'dark' ? '#202124' : theme.colors.background;
+  const categoryBackground = colorMode === 'dark' ? '#121212' : theme.colors.background;
 
   const styles = StyleSheet.create({
     categoriesGrid: {
@@ -82,10 +90,10 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     categoryButton: {
       width: '26%',          // 縮小按鈕寬度，icon 看起來更貼邊
       aspectRatio: 0.9,      // 稍微壓扁，高度也縮小一點
-      borderWidth: 0, // 去除框線
-      borderColor: 'transparent',
+      borderWidth: 2,        // 預留邊框空間
+      borderColor: 'transparent', // 未選擇時透明邊框
       borderRadius: theme.borderRadius.md,
-      justifyContent: 'center',
+      justifyContent: 'space-between', // 改為 space-between 以控制布局
       alignItems: 'center',
       marginBottom: theme.spacing.xs,
       backgroundColor: categoryBackground,
@@ -97,17 +105,27 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
       shadowRadius: 12,
       elevation: 6,
+      padding: 6,
+      paddingTop: 6, // icon 頂部間距
+      paddingBottom: 6, // 統一內邊距
+    },
+    categoryButtonContent: {
+      flex: 1,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      width: '100%',
+      paddingBottom: 4, // 減少文字與下邊框的間距
     },
     categoryButtonSelected: {
-      borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text,
+      borderWidth: 2,
+      borderColor: colorMode === 'dark' ? '#FFFFFF' : '#94A3B8',
       backgroundColor: categoryBackground,
     },
     categoryIcon: {
-      fontSize: 60, // 放大 icon 到 60，與按鈕比例一致
-      marginBottom: theme.spacing.xs / 4,
+      fontSize: 60,
     },
     categoryLabel: {
-      fontSize: theme.fontSize.sm, // 縮小文字，避免撐大按鈕
+      fontSize: theme.fontSize.sm,
       fontWeight: '600',
       color: theme.colors.text,
       textAlign: 'center',
@@ -127,6 +145,12 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       marginTop: 0,
       marginBottom: theme.spacing.sm, // 縮短與下方元素的間距
     },
+    descriptionToggle: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: theme.spacing.sm,
+    },
     categoryButtonHalf: {
       width: '48%',
     },
@@ -137,18 +161,20 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       marginBottom: theme.spacing.sm,
     },
     input: {
-      borderWidth: 1,
-      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
+      // 淺色模式下移除輸入框邊框，僅保留淡背景；深色模式維持原有邊框
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     inputFocused: {
-      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
-      borderWidth: 1,
+      // 淺色模式選取時也不顯示邊框；深色模式保留原有聚焦邊框
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.primary,
+      borderWidth: colorMode === 'light' ? 0 : 1,
     },
     textArea: {
       height: 80,
@@ -235,9 +261,9 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     expenseItemAmount: { width: 100, textAlign: 'right', fontWeight: '600', color: theme.colors.error },
     expenseItemTime: { width: 160, textAlign: 'right', color: theme.colors.textSecondary },
     hostChips: { flexDirection: 'row' },
-    chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: theme.colors.border, marginRight: theme.spacing.sm, backgroundColor: theme.colors.background },
-    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
-    chipText: { color: theme.colors.text, fontWeight: '600' },
+    chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: colorMode === 'dark' ? theme.colors.border : '#F4F4F5', marginRight: theme.spacing.sm, backgroundColor: theme.colors.background },
+    chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : '#E2E8F0', backgroundColor: theme.colors.background },
+    chipText: { color: colorMode === 'light' ? '#4B5563' : theme.colors.text, fontWeight: '600' },
   });
 
   const handleAddExpense = () => {
@@ -340,10 +366,23 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       )}
     >
       <View style={styles.expenseItemRow}>
-        <Text style={styles.expenseItemLeft}>
-          {categoryLabelMap[expense.category]}
-          {expense.host ? ` · ${expense.host}` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          {expense.category === 'venue' ? (
+            <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
+          ) : expense.category === 'miscellaneous' ? (
+            <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm }} />
+          ) : expense.category === 'taxi' ? (
+            <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm }} />
+          ) : expense.category === 'takeout' ? (
+            <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm }} />
+          ) : expense.category === 'other' ? (
+            <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm }} />
+          ) : null}
+          <Text style={styles.expenseItemLeft}>
+            {categoryLabelMap[expense.category]}
+            {expense.host ? ` · ${expense.host}` : ''}
+          </Text>
+        </View>
         <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
         <Text style={styles.expenseItemTime}>{new Date(expense.timestamp).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
       </View>
@@ -355,15 +394,16 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       visible={visible}
       onClose={onClose}
       title={t('modals.expense')}
-      maxWidth={420} // 縮短支出視窗寬度
+      maxWidth={isMobile ? screenWidth - 32 : 480}
+      maxHeight={isMobile ? screenHeight * 0.9 : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 480, minWidth: 480, maxWidth: 'none' }}
     >
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 0 }}
+        contentContainerStyle={{ maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}
       >
         {/* 支出類別選擇（按鈕樣式） */}
         <View style={[styles.inputGroup, styles.categoryGroup]}>
-          <Text style={styles.label}>{t('expense.category')}</Text>
           <View style={styles.categoriesGrid}>
             <View style={styles.categoryRow}>
               {firstRow.map((category) => (
@@ -376,27 +416,37 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
                   onPress={() => setSelectedCategory(category.id)}
                   activeOpacity={1}
                 >
-                  {category.icon === 'table' ? (
-                    <Icon name="table" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'misc711' ? (
-                    <Icon name="misc711" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'taxi' ? (
-                    <Icon name="taxi" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'burger' ? (
-                    <Icon name={'burger' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'other' ? (
-                    <Icon name={'other' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : (
-                    <Text style={styles.categoryIcon}>{category.icon}</Text>
-                  )}
-                  <Text
-                    style={[
-                      styles.categoryLabel,
-                      selectedCategory === category.id && styles.categoryLabelSelected,
-                    ]}
-                  >
-                    {category.label}
-                  </Text>
+                  <View style={styles.categoryButtonContent}>
+                    <View style={{ 
+                      flex: 1, 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      marginBottom: category.icon === 'taxi' ? theme.spacing.sm : 0 
+                    }}>
+                      {category.icon === 'table' ? (
+                        <Icon name="table" size={48} />
+                      ) : category.icon === 'misc711' ? (
+                        <Icon name="misc711" size={48} />
+                      ) : category.icon === 'taxi' ? (
+                        <Icon name="taxi" size={60} />
+                      ) : category.icon === 'burger' ? (
+                        <Icon name={'burger' as any} size={48} />
+                      ) : category.icon === 'other' ? (
+                        <Icon name={'other' as any} size={48} />
+                      ) : (
+                        <Text style={styles.categoryIcon}>{category.icon}</Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.categoryLabel,
+                        selectedCategory === category.id && styles.categoryLabelSelected,
+                        { marginTop: 'auto', marginBottom: -theme.spacing.sm },
+                      ]}
+                    >
+                      {category.label}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -411,27 +461,37 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
                   onPress={() => setSelectedCategory(category.id)}
                   activeOpacity={1}
                 >
-                  {category.icon === 'table' ? (
-                    <Icon name="table" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'misc711' ? (
-                    <Icon name="misc711" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'taxi' ? (
-                    <Icon name="taxi" size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'burger' ? (
-                    <Icon name={'burger' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : category.icon === 'other' ? (
-                    <Icon name={'other' as any} size={60} style={{ marginBottom: theme.spacing.xs / 4 }} />
-                  ) : (
-                    <Text style={styles.categoryIcon}>{category.icon}</Text>
-                  )}
-                  <Text
-                    style={[
-                      styles.categoryLabel,
-                      selectedCategory === category.id && styles.categoryLabelSelected,
-                    ]}
-                  >
-                    {category.label}
-                  </Text>
+                  <View style={styles.categoryButtonContent}>
+                    <View style={{ 
+                      flex: 1, 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      marginBottom: category.icon === 'taxi' ? theme.spacing.sm : 0 
+                    }}>
+                      {category.icon === 'table' ? (
+                        <Icon name="table" size={48} />
+                      ) : category.icon === 'misc711' ? (
+                        <Icon name="misc711" size={48} />
+                      ) : category.icon === 'taxi' ? (
+                        <Icon name="taxi" size={60} />
+                      ) : category.icon === 'burger' ? (
+                        <Icon name={'burger' as any} size={48} />
+                      ) : category.icon === 'other' ? (
+                        <Icon name={'other' as any} size={48} />
+                      ) : (
+                        <Text style={styles.categoryIcon}>{category.icon}</Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.categoryLabel,
+                        selectedCategory === category.id && styles.categoryLabelSelected,
+                        { marginTop: 'auto', marginBottom: -theme.spacing.sm },
+                      ]}
+                    >
+                      {category.label}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
               {/* 佔位以使第五個在第二個正下方 */}
@@ -442,20 +502,33 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
 
         {/* 已選擇提示依需求移除，保持介面簡潔 */}
 
-        {/* 支出描述 */}
+        {/* 支出描述（可展開） */}
         <View style={[styles.inputGroup, styles.descriptionGroup]}>
-          <Text style={styles.label}>{t('expense.description')}</Text>
-          <TextInput
-            style={[styles.input, focusedInput === 'description' && styles.inputFocused]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder={t('expense.descriptionPlaceholder')}
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline={false}
-            numberOfLines={1}
-            onFocus={() => setFocusedInput('description')}
-            onBlur={() => setFocusedInput(null)}
-          />
+          <TouchableOpacity
+            onPress={() => setDescriptionExpanded(!descriptionExpanded)}
+            activeOpacity={0.7}
+            style={styles.descriptionToggle}
+          >
+            <Text style={styles.label}>{t('expense.description')}</Text>
+            <Text style={styles.expandIcon}>{descriptionExpanded ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+          {descriptionExpanded && (
+            <TextInput
+              style={[styles.input, focusedInput === 'description' && styles.inputFocused]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t('expense.descriptionPlaceholder')}
+              placeholderTextColor={
+                focusedInput === 'description'
+                  ? 'transparent'
+                  : theme.colors.textSecondary
+              }
+              multiline={false}
+              numberOfLines={1}
+              onFocus={() => setFocusedInput('description')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          )}
         </View>
 
         {/* 支出金額 */}
@@ -465,9 +538,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
             style={[styles.input, focusedInput === 'amount' && styles.inputFocused]}
             value={amount}
             onChangeText={setAmount}
-            placeholder={t('expense.amountPlaceholder')}
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholder="$"
+            placeholderTextColor={
+              focusedInput === 'amount'
+                ? 'transparent'
+                : theme.colors.textSecondary
+            }
             keyboardType="numeric"
+            inputMode="decimal"
+            {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
             onFocus={() => setFocusedInput('amount')}
             onBlur={() => setFocusedInput(null)}
           />
@@ -497,19 +576,8 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           title={editingExpenseId ? t('expense.updateExpense') : t('expense.addExpense')}
           onPress={handleAddExpense}
           size="lg"
-          style={colorMode === 'light' ? {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            elevation: 6,
-          } : {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 6,
-          }}
+          variant="primary"
+          style={{ marginBottom: theme.spacing.md }} // 增加底部間距確保陰影顯示
         />
 
         {/* 支出記錄（可展開的卡片式設計） */}

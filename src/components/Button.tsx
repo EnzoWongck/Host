@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, TextStyle, StyleProp } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from './Icon';
 
@@ -9,8 +9,8 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'outline' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   leftIconName?: 'buy-in' | 'close' | 'home' | 'insurance' | 'rent' | 'settings' | 'expense' | 'rake' | 'dealer' | 'table' | 'taxi' | 'misc711' | 'pokercard' | 'number' | 'cashout' | 'player' | 'player2' | 'cost' | 'burger' | 'other';
 }
 
@@ -36,14 +36,16 @@ const Button: React.FC<ButtonProps> = ({
 
     switch (variant) {
       case 'primary':
+        // 主按鈕添加微光和內陰影效果（3D 擬物風格）
         return {
           ...baseStyle,
           backgroundColor: disabled ? theme.colors.textSecondary : theme.colors.primary,
           shadowColor: theme.colorMode === 'light' ? '#000' : '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme.colorMode === 'light' ? 0.1 : 0.2,
-          shadowRadius: 4,
-          elevation: 3,
+          shadowOffset: { width: 0, height: 4 }, // 增加陰影深度
+          shadowOpacity: theme.colorMode === 'light' ? 0.15 : 0.25, // 增強陰影
+          shadowRadius: 8, // 增加陰影半徑
+          elevation: 5, // 增加 elevation
+          // 添加內陰影效果（通過偽元素或額外 View 實現，這裡先設置基礎）
         };
       case 'secondary':
         return {
@@ -65,12 +67,12 @@ const Button: React.FC<ButtonProps> = ({
       case 'danger':
         return {
           ...baseStyle,
-          backgroundColor: disabled ? theme.colors.textSecondary : theme.colors.error,
+          backgroundColor: disabled ? theme.colors.textSecondary : theme.colors.error, // 已更新為 #D70015
           shadowColor: theme.colorMode === 'light' ? '#000' : '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: theme.colorMode === 'light' ? 0.1 : 0.2,
-          shadowRadius: 4,
-          elevation: 3,
+          shadowOffset: { width: 0, height: 4 }, // 與 primary 相同
+          shadowOpacity: theme.colorMode === 'light' ? 0.15 : 0.25, // 與 primary 相同
+          shadowRadius: 8, // 與 primary 相同
+          elevation: 5, // 與 primary 相同
         };
       default:
         return baseStyle;
@@ -81,6 +83,7 @@ const Button: React.FC<ButtonProps> = ({
     const baseTextStyle = {
       fontWeight: '600' as const,
       letterSpacing: 0.3,
+      textAlign: 'center' as const,
       ...textSizes[size],
     };
 
@@ -110,13 +113,28 @@ const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  // 主按鈕的內陰影效果（僅 primary variant）
+  const hasInnerShadow = variant === 'primary' && !disabled;
+  
   return (
     <TouchableOpacity
-      style={[getButtonStyle(), style]}
+      style={[getButtonStyle(), style, { overflow: 'visible' }]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={1}
     >
+      {hasInnerShadow && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: theme.borderRadius.md,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(255, 255, 255, 0.1)',
+        }} />
+      )}
       <View style={styles.contentRow}>
         {leftIconName ? (
           <Icon
@@ -132,9 +150,9 @@ const Button: React.FC<ButtonProps> = ({
 };
 
 const sizes = {
-  sm: { paddingHorizontal: 12, paddingVertical: 8 },
-  md: { paddingHorizontal: 16, paddingVertical: 12 },
-  lg: { paddingHorizontal: 24, paddingVertical: 16 },
+  sm: { paddingHorizontal: 16, paddingVertical: 10 }, // 增加按鈕大小
+  md: { paddingHorizontal: 20, paddingVertical: 14 }, // 增加按鈕大小
+  lg: { paddingHorizontal: 28, paddingVertical: 18 }, // 增加按鈕大小
 };
 
 const textSizes = {

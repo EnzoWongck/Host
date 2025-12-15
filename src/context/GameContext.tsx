@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Game, Player, Dealer, Expense, Rake, Insurance, InsurancePartner, BuyInEntry } from '../types/game';
 
@@ -404,22 +404,29 @@ interface GameContextType {
   setGameSummaryModalVisible: (visible: boolean) => void;
   deleteGame: (gameId: string) => void;
   reorderGames: (orderedIds: string[]) => void;
+  clearAllGames: () => void; // 清除所有遊戲數據（用於新用戶）
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const stateRef = useRef(state);
+  
+  // 保持 stateRef 與 state 同步
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
-  const saveToStorage = async (games: Game[]) => {
+  const saveToStorage = useCallback(async (games: Game[]) => {
     try {
       await AsyncStorage.setItem('pokerGames', JSON.stringify(games));
     } catch (error) {
       console.error('Error saving games:', error);
     }
-  };
+  }, []);
 
-  const loadGames = async () => {
+  const loadGames = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const stored = await AsyncStorage.getItem('pokerGames');
@@ -436,9 +443,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  };
+  }, []);
 
-  const createGame = (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => {
+  const createGame = useCallback((gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => {
     const newGame: Game = {
       ...gameData,
       id: Date.now().toString(),
@@ -457,150 +464,130 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     dispatch({ type: 'ADD_GAME', payload: newGame });
-    const updatedGames = [newGame, ...state.games];
+    const updatedGames = [newGame, ...stateRef.current.games];
     saveToStorage(updatedGames);
     AsyncStorage.setItem('currentGame', JSON.stringify(newGame));
-  };
+  }, [saveToStorage]);
 
-  const selectCurrentGame = (gameId: string) => {
-    const game = state.games.find(g => g.id === gameId) || null;
+
+  useEffect(() => {
+    loadGames();
+  }, []);
+
+  // 使用 useCallback 包裝所有函數，避免每次渲染都創建新對象
+  const selectCurrentGame = useCallback((gameId: string) => {
+    const game = stateRef.current.games.find(g => g.id === gameId) || null;
     dispatch({ type: 'SET_CURRENT_GAME', payload: game });
     if (game) AsyncStorage.setItem('currentGame', JSON.stringify(game));
-  };
-
-  const updateGame = (game: Game) => {
+  }, []);
+  const updateGame = useCallback((game: Game) => {
     dispatch({ type: 'UPDATE_GAME', payload: game });
-    const updatedGames = state.games.map(g => g.id === game.id ? game : g);
+    const updatedGames = stateRef.current.games.map(g => g.id === game.id ? game : g);
     saveToStorage(updatedGames);
-    if (state.currentGame?.id === game.id) {
+    if (stateRef.current.currentGame?.id === game.id) {
       AsyncStorage.setItem('currentGame', JSON.stringify(game));
     }
-  };
-
-  const addPlayer = (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
+  }, [saveToStorage]);
+  const addPlayer = useCallback((gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date();
     const newPlayer: Player = {
       ...playerData,
       id: Date.now().toString(),
       createdAt: now,
       updatedAt: now,
-      buyInTime: now, // 記錄買入時間
+      buyInTime: now,
       buyIns: playerData.buyIns || (playerData.buyIn ? [{ id: (Date.now()+1).toString(), amount: playerData.buyIn, timestamp: now }] : []),
     };
-    
     dispatch({ type: 'ADD_PLAYER', payload: { gameId, player: newPlayer } });
-  };
-
-  // Implement other functions...
-  const updatePlayer = (gameId: string, player: Player) => {
+  }, []);
+  const updatePlayer = useCallback((gameId: string, player: Player) => {
     dispatch({ type: 'UPDATE_PLAYER', payload: { gameId, player } });
-  };
-
-  const deletePlayer = (gameId: string, playerId: string) => {
+  }, []);
+  const deletePlayer = useCallback((gameId: string, playerId: string) => {
     dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
-  };
-
-  const addBuyInEntry = (gameId: string, playerId: string, amount: number, timestamp?: Date) => {
+  }, []);
+  const addBuyInEntry = useCallback((gameId: string, playerId: string, amount: number, timestamp?: Date) => {
     const entry: BuyInEntry = { id: Date.now().toString(), amount, timestamp: timestamp || new Date() };
     dispatch({ type: 'ADD_BUYIN', payload: { gameId, playerId, entry } });
-  };
-
-  const updateBuyInEntry = (gameId: string, playerId: string, entry: BuyInEntry) => {
+  }, []);
+  const updateBuyInEntry = useCallback((gameId: string, playerId: string, entry: BuyInEntry) => {
     dispatch({ type: 'UPDATE_BUYIN', payload: { gameId, playerId, entry } });
-  };
-
-  const deleteBuyInEntry = (gameId: string, playerId: string, entryId: string) => {
+  }, []);
+  const deleteBuyInEntry = useCallback((gameId: string, playerId: string, entryId: string) => {
     dispatch({ type: 'DELETE_BUYIN', payload: { gameId, playerId, entryId } });
-  };
-
-  const addDealer = (gameId: string, dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'>) => {
+  }, []);
+  const addDealer = useCallback((gameId: string, dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'>) => {
     const newDealer: Dealer = {
       ...dealerData,
       id: Date.now().toString(),
       totalTips: 0,
       estimatedSalary: 0,
     };
-    
     dispatch({ type: 'ADD_DEALER', payload: { gameId, dealer: newDealer } });
-  };
-
-  const updateDealer = (gameId: string, dealer: Dealer) => {
+  }, []);
+  const updateDealer = useCallback((gameId: string, dealer: Dealer) => {
     dispatch({ type: 'UPDATE_DEALER', payload: { gameId, dealer } });
-  };
-
-  const deleteDealer = (gameId: string, dealerId: string) => {
+  }, []);
+  const deleteDealer = useCallback((gameId: string, dealerId: string) => {
     dispatch({ type: 'DELETE_DEALER', payload: { gameId, dealerId } });
-  };
-
-  const addExpense = (gameId: string, expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
+  }, []);
+  const addExpense = useCallback((gameId: string, expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
     const newExpense: Expense = {
       ...expenseData,
       id: Date.now().toString(),
       timestamp: new Date(),
     };
-    
     dispatch({ type: 'ADD_EXPENSE', payload: { gameId, expense: newExpense } });
-  };
-
-  const updateExpense = (gameId: string, expense: Expense) => {
+  }, []);
+  const updateExpense = useCallback((gameId: string, expense: Expense) => {
     dispatch({ type: 'UPDATE_EXPENSE', payload: { gameId, expense } });
-  };
-
-  const deleteExpense = (gameId: string, expenseId: string) => {
+  }, []);
+  const deleteExpense = useCallback((gameId: string, expenseId: string) => {
     dispatch({ type: 'DELETE_EXPENSE', payload: { gameId, expenseId } });
-  };
-
-  const addRake = (gameId: string, rakeData: Omit<Rake, 'id' | 'timestamp'>) => {
+  }, []);
+  const addRake = useCallback((gameId: string, rakeData: Omit<Rake, 'id' | 'timestamp'>) => {
     const newRake: Rake = {
       ...rakeData,
       id: Date.now().toString(),
       timestamp: new Date(),
     };
-    
     dispatch({ type: 'ADD_RAKE', payload: { gameId, rake: newRake } });
-  };
-
-  const updateRake = (gameId: string, rake: Rake) => {
+  }, []);
+  const updateRake = useCallback((gameId: string, rake: Rake) => {
     dispatch({ type: 'UPDATE_RAKE', payload: { gameId, rake } });
-  };
-  const deleteRake = (gameId: string, rakeId: string) => {
+  }, []);
+  const deleteRake = useCallback((gameId: string, rakeId: string) => {
     dispatch({ type: 'DELETE_RAKE', payload: { gameId, rakeId } });
-  };
-
-  const addInsurance = (gameId: string, insuranceData: Omit<Insurance, 'id' | 'timestamp'>) => {
+  }, []);
+  const addInsurance = useCallback((gameId: string, insuranceData: Omit<Insurance, 'id' | 'timestamp'>) => {
     const newInsurance: Insurance = {
       ...insuranceData,
       id: Date.now().toString(),
       timestamp: new Date(),
     };
-    
     dispatch({ type: 'ADD_INSURANCE', payload: { gameId, insurance: newInsurance } });
-  };
-
-  const updateInsurance = (gameId: string, insurance: Insurance) => {
+  }, []);
+  const updateInsurance = useCallback((gameId: string, insurance: Insurance) => {
     dispatch({ type: 'UPDATE_INSURANCE', payload: { gameId, insurance } });
-  };
-  const deleteInsurance = (gameId: string, insuranceId: string) => {
+  }, []);
+  const deleteInsurance = useCallback((gameId: string, insuranceId: string) => {
     dispatch({ type: 'DELETE_INSURANCE', payload: { gameId, insuranceId } });
-  };
-
-  const setDefaultInsurancePartners = (gameId: string, partners: InsurancePartner[]) => {
-    const game = state.games.find(g => g.id === gameId);
+  }, []);
+  const setDefaultInsurancePartners = useCallback((gameId: string, partners: InsurancePartner[]) => {
+    const game = stateRef.current.games.find(g => g.id === gameId);
     if (!game) return;
     const updated: Game = { ...game, defaultInsurancePartners: partners };
     dispatch({ type: 'UPDATE_GAME', payload: updated });
-  };
-
-  const setGameSummaryModalVisible = (visible: boolean) => {
+  }, []);
+  const setGameSummaryModalVisible = useCallback((visible: boolean) => {
     dispatch({ type: 'SET_GAME_SUMMARY_MODAL_VISIBLE', payload: visible });
-  };
-
-  const deleteGame = (gameId: string) => {
-    const updatedGames = state.games.filter((g) => g.id !== gameId);
+  }, []);
+  const deleteGame = useCallback((gameId: string) => {
+    const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
     const newCurrent =
-      state.currentGame && state.currentGame.id === gameId
+      stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
         ? null
-        : state.currentGame;
+        : stateRef.current.currentGame;
 
     dispatch({ type: 'SET_GAMES', payload: updatedGames });
     dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
@@ -611,24 +598,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       AsyncStorage.removeItem('currentGame');
     }
-  };
+  }, [saveToStorage]);
+  // 清除所有遊戲數據（用於新用戶）
+  const clearAllGames = useCallback(async () => {
+    try {
+      await AsyncStorage.removeItem('pokerGames');
+      await AsyncStorage.removeItem('currentGame');
+      dispatch({ type: 'SET_GAMES', payload: [] });
+      dispatch({ type: 'SET_CURRENT_GAME', payload: null });
+    } catch (error) {
+      console.error('Error clearing games:', error);
+    }
+  }, []);
 
-  const reorderGames = (orderedIds: string[]) => {
+  const reorderGames = useCallback((orderedIds: string[]) => {
     if (!orderedIds.length) return;
     const idSet = new Set(orderedIds);
     const reordered: Game[] = [
       ...orderedIds
-        .map((id) => state.games.find((g) => g.id === id))
+        .map((id) => stateRef.current.games.find((g) => g.id === id))
         .filter((g): g is Game => !!g),
-      ...state.games.filter((g) => !idSet.has(g.id)),
+      ...stateRef.current.games.filter((g) => !idSet.has(g.id)),
     ];
 
     dispatch({ type: 'SET_GAMES', payload: reordered });
     saveToStorage(reordered);
-  };
-
-  const endGame = (gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => {
-    const game = state.games.find(g => g.id === gameId);
+  }, [saveToStorage]);
+  const endGame = useCallback((gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => {
+    const game = stateRef.current.games.find(g => g.id === gameId);
     if (!game) return;
 
     const updatedGame: Game = {
@@ -646,15 +643,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     AsyncStorage.removeItem('currentGame');
     
     // 保存更新後的牌局列表
-    const updatedGames = state.games.map(g => g.id === gameId ? updatedGame : g);
+    const updatedGames = stateRef.current.games.map(g => g.id === gameId ? updatedGame : g);
     saveToStorage(updatedGames);
-  };
+  }, [saveToStorage]);
 
-  useEffect(() => {
-    loadGames();
-  }, []);
-
-  const contextValue: GameContextType = {
+  const contextValue: GameContextType = useMemo(() => ({
     state,
     createGame,
     endGame,
@@ -683,7 +676,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGameSummaryModalVisible,
     deleteGame,
     reorderGames,
-  };
+    clearAllGames,
+  }), [
+    state,
+    createGame,
+    endGame,
+    selectCurrentGame,
+    updateGame,
+    addPlayer,
+    updatePlayer,
+    deletePlayer,
+    addBuyInEntry,
+    updateBuyInEntry,
+    deleteBuyInEntry,
+    addDealer,
+    updateDealer,
+    deleteDealer,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    addRake,
+    updateRake,
+    deleteRake,
+    addInsurance,
+    updateInsurance,
+    deleteInsurance,
+    setDefaultInsurancePartners,
+    loadGames,
+    setGameSummaryModalVisible,
+    deleteGame,
+    reorderGames,
+    clearAllGames,
+  ]);
 
   return (
     <GameContext.Provider value={contextValue}>

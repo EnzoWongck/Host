@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,25 @@ import {
   TouchableOpacity,
   Share,
   Platform,
+  TextInput,
+  Alert,
+  Image,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 import { Expense, Player, Host } from '../types/game';
 import { FlatList } from 'react-native';
 import Icon from './Icon';
 import PlayerEntryFeeEditModal from './PlayerEntryFeeEditModal';
+import Button from './Button';
+import GameSettingsEditModal from './GameSettingsEditModal';
+import HostEditModal from './HostEditModal';
+import PlayerDetailsModal from './PlayerDetailsModal';
+// 靜態導入圖片
+import EditIconImage from '../../assets/icons/edit.png';
+import EditBlackIconImage from '../../assets/icons/edit.black.png';
 
 interface GameSummaryModalProps {
   visible: boolean;
@@ -25,12 +36,11 @@ interface GameSummaryModalProps {
 const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
   const { t, language } = useLanguage();
-  const { state, updatePlayer } = useGame();
+  const { state, updatePlayer, updateGame } = useGame();
+  const { showToast } = useToast();
   
   // 獲取正數顏色（深色模式下為白色，淺色模式下為綠色）
   const getPositiveColor = () => colorMode === 'dark' ? theme.colors.text : theme.colors.success;
-  
-  console.log('GameSummaryModal visible:', visible);
 
   const currentGame = state.currentGame;
   
@@ -42,10 +52,49 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
   const [expensesExpanded, setExpensesExpanded] = useState(false);
   const [settlementExpanded, setSettlementExpanded] = useState(false);
   const [insuranceExpanded, setInsuranceExpanded] = useState(false);
+  const [formulaExpanded, setFormulaExpanded] = useState(false);
   
   // 編輯入場費狀態
   const [editEntryFeeVisible, setEditEntryFeeVisible] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  
+  // 分成設定狀態
+  const [profitShareExpanded, setProfitShareExpanded] = useState(false);
+  const [hostShares, setHostShares] = useState<{ name: string; shareRatio: number }[]>([]);
+  const [hostInputs, setHostInputs] = useState<string[]>([]);
+  
+  // 編輯視窗狀態
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editType, setEditType] = useState<'gameName' | 'blinds' | 'hostName' | null>(null);
+  const [editHostIndex, setEditHostIndex] = useState<number | undefined>(undefined);
+  const [hostEditModalVisible, setHostEditModalVisible] = useState(false);
+  const [playerDetailsVisible, setPlayerDetailsVisible] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  
+  // 格式化百分比：整數時不顯示小數點
+  const formatPercentage = (ratio: number): string => {
+    const percent = ratio * 100;
+    if (percent % 1 === 0) {
+      return percent.toString(); // 整數時直接返回整數字符串
+    }
+    return percent.toFixed(1); // 有小數時顯示一位小數
+  };
+
+  // 初始化分成設定（當 host 更新時也要重新初始化）
+  useEffect(() => {
+    if (visible && currentGame) {
+      const rawHosts = currentGame.hosts || [];
+      const equalShare = rawHosts.length > 0 ? 1 / rawHosts.length : 0;
+      const initialHosts = rawHosts.map((h) => {
+        if (typeof h === 'string') {
+          return { name: h, shareRatio: equalShare };
+        }
+        return { name: h.name, shareRatio: h.shareRatio ?? equalShare };
+      });
+      setHostShares(initialHosts);
+      setHostInputs(initialHosts.map((h) => formatPercentage(h.shareRatio)));
+    }
+  }, [visible, currentGame, currentGame?.hosts]); // 添加 currentGame?.hosts 依賴，確保 host 更新時觸發
 
   // 每次開啟總結頁面時，收起所有可展開卡片
   useEffect(() => {
@@ -57,8 +106,36 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       setExpensesExpanded(false);
       setSettlementExpanded(false);
       setInsuranceExpanded(false);
+      setProfitShareExpanded(false);
     }
   }, [visible]);
+  
+  // 保存分成設定
+  const handleSaveProfitShare = () => {
+    if (!currentGame) return;
+    
+    const totalRatio = hostInputs.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+    if (totalRatio <= 0) {
+      Alert.alert('錯誤', '總比例必須大於 0');
+      return;
+    }
+    
+    const updatedHosts: Host[] = hostShares.map((h, index) => {
+      const ratio = parseFloat(hostInputs[index]) || 0;
+      return {
+        ...h,
+        shareRatio: ratio / totalRatio,
+      };
+    });
+    
+    updateGame({
+      ...currentGame,
+      hosts: updatedHosts,
+    });
+    
+    showToast('分成設定已更新', 'success');
+    setProfitShareExpanded(false);
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -80,14 +157,24 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       borderBottomColor: theme.colors.border,
     },
     closeButton: {
-      padding: theme.spacing.sm,
+      padding: theme.spacing.xs,
       borderRadius: theme.borderRadius.sm,
-      backgroundColor: theme.colors.border,
+      backgroundColor: 'transparent',
+      minWidth: 32,
+      minHeight: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     closeButtonText: {
-      fontSize: theme.fontSize.md,
-      fontWeight: '600',
+      fontSize: theme.fontSize.xl,
+      fontWeight: '300',
       color: theme.colors.textSecondary,
+      lineHeight: theme.fontSize.xl,
+    },
+    closeButtonOld: {
+      padding: theme.spacing.sm,
+      borderRadius: theme.borderRadius.sm,
+      backgroundColor: 'transparent',
     },
     scrollContainer: {
       flex: 1,
@@ -155,6 +242,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       flex: 1,
     },
     financialValue: {
+      fontVariant: ['tabular-nums'], // 等寬數字
       fontSize: theme.fontSize.md,
       fontWeight: '700',
       color: theme.colors.text,
@@ -255,12 +343,15 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       marginBottom: theme.spacing.lg,
     },
     playerItem: {
-      padding: theme.spacing.md,
-      backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.background,
-      borderRadius: theme.borderRadius.md,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: 0,
       marginBottom: theme.spacing.sm,
+    },
+    playersItemsContainer: {
+      borderRadius: theme.borderRadius.sm,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      padding: theme.spacing.md,
     },
     playerHeaderRow: {
       flexDirection: 'row',
@@ -297,12 +388,9 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: theme.spacing.sm,
-      backgroundColor: theme.colors.background,
-      borderRadius: theme.borderRadius.sm,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: 0,
       marginBottom: theme.spacing.xs,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
     },
     expenseDescription: {
       fontSize: theme.fontSize.sm,
@@ -312,7 +400,13 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     expenseAmount: {
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
-      color: theme.colors.error,
+      color: theme.colors.text,
+    },
+    expenseItemsContainer: {
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.sm,
     },
     emptyState: {
       alignItems: 'center',
@@ -382,7 +476,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     expandableCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
-      marginBottom: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
       shadowColor: '#000',
@@ -630,17 +724,115 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
 
   const handleExport = async () => {
     try {
-      const text = buildExportText();
-      await Share.share({ message: text });
-    } catch (e) {
-      // no-op（Share 取消或失敗不阻塞）
+      if (!currentGame) {
+        showToast(t('summary.exportError') || '沒有進行中的牌局', 'error');
+        return;
+      }
+      
+      const text = buildExportText() + '\n\nhttps://lunchips.com';
+      if (!text || text.trim().length === 0) {
+        showToast(t('summary.exportError') || '導出內容為空', 'error');
+        return;
+      }
+      
+      const shareTitle = t('summary.exportSummary') || '牌局總結';
+      
+      if (Platform.OS === 'web') {
+        // Web 平台：使用 Web Share API 調用系統分享面板
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          try {
+            await navigator.share({
+              title: shareTitle,
+              text: text,
+            });
+          } catch (shareError: any) {
+            // 用戶取消分享時不顯示錯誤
+            if (shareError.name !== 'AbortError') {
+              throw shareError;
+            }
+          }
+        } else {
+          showToast(t('summary.exportError') || '您的瀏覽器不支援分享功能', 'error');
+        }
+      } else {
+        // 移動平台：直接使用 Share API 調用原生分享面板
+        // 這會自動顯示系統分享面板，包含所有可用的分享選項
+        // （WhatsApp、Airdrop、Line、Copy、保存圖片等）
+        try {
+          const shareOptions: { message: string; title?: string; url?: string } = { 
+            message: text,
+          };
+          
+          // iOS 支援 title，Android 不支援
+          if (Platform.OS === 'ios') {
+            shareOptions.title = shareTitle;
+          }
+          
+          // 嘗試分享
+          const result = await Share.share(shareOptions);
+          
+          // 檢查分享結果
+          // iOS 會返回明確的 action，Android 可能返回 undefined
+          if (result && result.action) {
+            if (result.action === Share.sharedAction) {
+              // 分享成功
+              console.log('分享成功', result.activityType || '');
+              showToast(t('summary.exportSuccess') || '導出成功', 'success');
+            } else if (result.action === Share.dismissedAction) {
+              // 用戶取消分享，不顯示錯誤
+              console.log('用戶取消分享');
+            }
+          } else if (Platform.OS === 'android') {
+            // Android 上可能返回 undefined，但分享面板已經打開
+            // 這種情況下我們認為操作已開始，不顯示錯誤
+            // 如果分享失敗，會拋出錯誤被外層 catch 捕獲
+            console.log('分享面板已打開（Android）');
+          } else if (Platform.OS === 'ios') {
+            // iOS 上如果返回 undefined，可能是分享面板已打開但用戶尚未操作
+            // 這種情況下不顯示錯誤，靜默處理
+            console.log('分享面板已打開（iOS）');
+          }
+        } catch (shareError: any) {
+          // Share.share 拋出的錯誤
+          console.error('分享錯誤:', shareError);
+          throw shareError;
+        }
+      }
+    } catch (e: any) {
+      console.error('導出失敗:', e);
+      // 如果用戶取消分享，不顯示錯誤提示
+      const isUserCancelled = 
+        e?.name === 'AbortError' || 
+        e?.message?.includes('User cancelled') || 
+        e?.message?.includes('cancel') || 
+        e?.message?.includes('Cancel') ||
+        e?.code === 'E_SHARING_CANCELLED' ||
+        (Platform.OS === 'android' && e?.message?.includes('User did not share')) ||
+        (Platform.OS === 'android' && !e?.message) ||
+        (Platform.OS === 'ios' && e?.message?.includes('cancel')) ||
+        (Platform.OS === 'ios' && e?.message?.includes('Cancel'));
+      
+      if (isUserCancelled) {
+        return;
+      }
+      
+      // 顯示具體的錯誤信息
+      console.error('分享錯誤詳情:', {
+        name: e?.name,
+        message: e?.message,
+        code: e?.code,
+        platform: Platform.OS,
+        error: e,
+      });
+      const errorMessage = e?.message || e?.toString() || '未知錯誤';
+      showToast(t('summary.exportError') || `導出失敗：${errorMessage}`, 'error');
     }
   };
 
   const renderExpenseItem = ({ item }: { item: Expense }) => (
     <View style={styles.expenseItem}>
       <Text style={styles.expenseDescription}>{item.description}</Text>
-      <Text style={styles.expenseAmount}>-{formatCurrency(item.amount)}</Text>
+      <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
     </View>
   );
 
@@ -899,7 +1091,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
         {/* 頂部關閉按鈕 */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={1}>
-            <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+            <Text style={styles.closeButtonText}>×</Text>
           </TouchableOpacity>
         </View>
         
@@ -909,64 +1101,139 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
           bounces={true}
           decelerationRate="fast"
         >
-          {/* 牌局資訊卡片 */}
+          {/* 牌局設定卡片（整合牌局資訊和分成設定） */}
           <View style={styles.expandableCard}>
             <TouchableOpacity 
               style={styles.cardHeader}
-              onPress={() => setGameInfoExpanded(!gameInfoExpanded)}
+              onPress={() => setProfitShareExpanded(!profitShareExpanded)}
               activeOpacity={1}
             >
               <View style={styles.headerLeft}>
                 <Icon name="table" size={28} style={styles.headerIcon} />
-                <Text style={styles.cardTitle}>{t('summary.gameInfo')}</Text>
+                <Text style={styles.cardTitle}>牌局設定</Text>
               </View>
-              <Text style={styles.expandIcon}>{gameInfoExpanded ? '▲' : '▼'}</Text>
+              <Text style={styles.expandIcon}>{profitShareExpanded ? '▲' : '▼'}</Text>
             </TouchableOpacity>
             
-            {gameInfoExpanded && (
+            {profitShareExpanded && (
               <View style={styles.cardContent}>
-                <View style={styles.infoRow}>
+                {/* 牌局名稱 */}
+                <View style={[styles.infoRow, { marginBottom: theme.spacing.md }]}>
                   <Text style={styles.infoLabel}>{t('summary.gameName')}</Text>
-                  <Text style={styles.infoValue}>{currentGame.name}</Text>
-                </View>
-                
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>{t('summary.startTime')}</Text>
-                  <Text style={styles.infoValue}>
-                    {new Date(currentGame.startTime).toLocaleString(language === 'zh-TW' ? 'zh-TW' : 'zh-CN')}
-                  </Text>
-                </View>
-                
-                {currentGame.endTime && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>{t('summary.endTime')}</Text>
-                    <Text style={styles.infoValue}>
-                      {new Date(currentGame.endTime as any).toLocaleString(language === 'zh-TW' ? 'zh-TW' : 'zh-CN')}
-                    </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.infoValue}>{currentGame.name}</Text>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setEditType('gameName');
+                        setEditModalVisible(true);
+                      }} 
+                      style={{ marginLeft: theme.spacing.sm }}
+                    >
+                      <Image 
+                        source={colorMode === 'dark' 
+                          ? EditBlackIconImage 
+                          : EditIconImage} 
+                        style={{ width: 20, height: 20 }}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
                   </View>
-                )}
-                
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>{t('summary.gameDuration')}</Text>
-                  <Text style={styles.infoValue}>
-                    {formatDuration(currentGame.startTime, currentGame.endTime)}
-                  </Text>
                 </View>
                 
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>{t('summary.playerCount')}</Text>
-                  <Text style={styles.infoValue}>{currentGame.players.length} {t('summaryExport.people')}</Text>
+                {/* Host名稱 - 在牌局名稱下一行，只顯示一行 */}
+                <View style={[styles.infoRow, { marginBottom: theme.spacing.md }]}>
+                  <Text style={styles.infoLabel}>Host</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                    <Text style={[styles.infoValue, { flex: 1, textAlign: 'right' }]}>
+                      {hosts.map(h => h.name).join(', ')}
+                    </Text>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setHostEditModalVisible(true);
+                      }} 
+                      style={{ marginLeft: theme.spacing.sm }}
+                    >
+                      <Image 
+                        source={colorMode === 'dark' 
+                          ? EditBlackIconImage 
+                          : EditIconImage} 
+                        style={{ width: 20, height: 20 }}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 
-                <View style={styles.infoRow}>
+                {/* 小盲/大盲 */}
+                <View style={[styles.infoRow, { marginBottom: theme.spacing.md }]}>
                   <Text style={styles.infoLabel}>{t('summary.blinds')}</Text>
-                  <Text style={styles.infoValue}>
-                    {formatCurrency(currentGame.smallBlind)}/{formatCurrency(currentGame.bigBlind)}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.infoValue}>
+                      {formatCurrency(currentGame.smallBlind)}/{formatCurrency(currentGame.bigBlind)}
+                    </Text>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setEditType('blinds');
+                        setEditModalVisible(true);
+                      }} 
+                      style={{ marginLeft: theme.spacing.sm }}
+                    >
+                      <Image 
+                        source={colorMode === 'dark' 
+                          ? EditBlackIconImage 
+                          : EditIconImage} 
+                        style={{ width: 20, height: 20 }}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                
+                {/* 盈利分成 */}
+                <View style={{ marginTop: theme.spacing.md, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                  <Text style={[styles.infoLabel, { marginBottom: theme.spacing.sm }]}>盈利分成</Text>
+                  {hostShares.map((host, index) => (
+                    <View key={index} style={[styles.infoRow, { marginBottom: theme.spacing.md }]}>
+                      <Text style={styles.infoLabel}>{host.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TextInput
+                          style={{
+                            width: 80,
+                            paddingVertical: theme.spacing.xs,
+                            paddingHorizontal: theme.spacing.sm,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderRadius: theme.borderRadius.sm,
+                            textAlign: 'right',
+                            color: theme.colors.text,
+                            backgroundColor: theme.colors.surface,
+                          }}
+                          value={hostInputs[index] || '0'}
+                          onChangeText={(value) => {
+                            const numericValue = value.replace(/[^0-9.]/g, '');
+                            const newInputs = [...hostInputs];
+                            newInputs[index] = numericValue;
+                            setHostInputs(newInputs);
+                          }}
+                          keyboardType="numeric"
+                          placeholder="0"
+                        />
+                        <Text style={{ marginLeft: 4, fontSize: theme.fontSize.sm, color: theme.colors.textSecondary }}>%</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <Button
+                    title="儲存"
+                    onPress={handleSaveProfitShare}
+                    variant="primary"
+                    size="md"
+                    style={{ marginTop: theme.spacing.md }}
+                  />
                 </View>
               </View>
             )}
           </View>
+          
 
           {/* 財務報表卡片 */}
           <View style={[styles.expandableCard, styles.financialCard]}>
@@ -976,7 +1243,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
               activeOpacity={1}
             >
               <View style={styles.headerLeft}>
-                <Icon name="cost" size={28} style={styles.headerIcon} />
+                <Icon name="cost" size={42} style={[styles.headerIcon, { marginTop: -4 }]} />
                 <Text style={[styles.cardTitle, styles.financialTitle]}>{t('summary.financialStatement')}</Text>
               </View>
               <Text style={styles.expandIcon}>{financialExpanded ? '▲' : '▼'}</Text>
@@ -1028,7 +1295,21 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
             
             <View style={[styles.totalRow, { borderTopWidth: 0 }]}>
               <Text style={styles.totalLabel}>{t('summary.netIncome')}</Text>
-              <Text style={[styles.totalValue, { color: netIncome >= 0 ? getPositiveColor() : theme.colors.error }]}>
+              <Text
+                style={[
+                  styles.totalValue,
+                  {
+                    color:
+                      colorMode === 'dark'
+                        ? netIncome >= 0
+                          ? '#10B981'
+                          : theme.colors.error
+                        : netIncome >= 0
+                          ? getPositiveColor()
+                          : theme.colors.error,
+                  },
+                ]}
+              >
                 {netIncome >= 0 ? '+' : ''}{formatCurrency(netIncome)}
               </Text>
             </View>
@@ -1036,20 +1317,37 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
             {/* 實際收賬與平帳檢查 */}
             <View style={styles.financialRow}>
               <Text style={styles.financialLabel}>{t('summary.actualReceipts')}</Text>
-              <Text style={styles.financialValue}>{formatCurrency(actualReceipts)}</Text>
+              <Text
+                style={[
+                  styles.financialValue,
+                  {
+                    color:
+                      colorMode === 'dark'
+                        ? actualReceipts >= 0
+                          ? '#10B981'
+                          : theme.colors.error
+                        : undefined,
+                  },
+                ]}
+              >
+                {formatCurrency(actualReceipts)}
+              </Text>
             </View>
             <View style={styles.financialRow}>
-              <Text style={styles.financialLabel}>
+              <Text style={[
+                styles.financialLabel,
+                {
+                  color: isBalanced ? theme.colors.success : theme.colors.error
+                }
+              ]}>
                 {isBalanced ? t('summary.balanced') : t('summary.unbalanced')}
               </Text>
               <Text style={[
                 styles.financialValue, 
                 { 
-                  color: isBalanced 
-                    ? getPositiveColor()
-                    : difference > 0 
-                      ? getPositiveColor()
-                      : theme.colors.error 
+                  color: difference >= 0 
+                    ? theme.colors.success
+                    : theme.colors.error 
                 }
               ]}>
                 {isBalanced 
@@ -1074,6 +1372,60 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                     );
                   })
                 )}
+              </View>
+            )}
+
+            {/* 顯示詳細計算公式 */}
+            <TouchableOpacity
+              onPress={() => setFormulaExpanded(!formulaExpanded)}
+              activeOpacity={0.7}
+              style={{ marginTop: theme.spacing.md }}
+            >
+              <Text style={{
+                fontSize: theme.fontSize.sm,
+                color: theme.colors.textSecondary,
+                textAlign: 'center',
+              }}>
+                {t('summary.showFormula') || '顯示詳細計算公式'}
+              </Text>
+            </TouchableOpacity>
+
+            {formulaExpanded && (
+              <View style={{
+                marginTop: theme.spacing.md,
+                padding: theme.spacing.md,
+                backgroundColor: theme.colors.background,
+                borderRadius: theme.borderRadius.sm,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}>
+                <Text style={{
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.text,
+                  lineHeight: 22,
+                  marginBottom: theme.spacing.xs,
+                }}>
+                  {t('summary.netIncome')} = {
+                    currentGame.gameMode === 'noRake' 
+                      ? t('summary.totalEntryFee') 
+                      : t('summary.totalRake')
+                  } + {t('summary.totalTips')} - {t('summary.totalExpenses')} - {t('summary.dealerSalary')}
+                </Text>
+                <Text style={{
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.textSecondary,
+                  lineHeight: 22,
+                }}>
+                  = {formatCurrency(revenue)} + {formatCurrency(totalTips)} - {formatCurrency(totalExpenses)} - {formatCurrency(totalDealerSalary)}
+                </Text>
+                <Text style={{
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.textSecondary,
+                  lineHeight: 22,
+                  marginTop: theme.spacing.xs,
+                }}>
+                  = {formatCurrency(netIncome)}
+                </Text>
               </View>
             )}
               </View>
@@ -1150,7 +1502,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                               : `已支付 ${formatCurrency(Math.abs(playerCollected))}`}
                           </Text>
                           <Text style={styles.settlementFormula}>
-                            收入分成：{formatCurrency(shareAmount)}（{formatCurrency(netIncome)} × 分成 {Math.round((h.shareRatio || equalShare) * 100)}%）
+                            收入分成：{formatCurrency(shareAmount)}（{formatCurrency(netIncome)} × 分成 {formatPercentage(h.shareRatio || equalShare)}%）
                           </Text>
                           <Text style={styles.settlementFormula}>
                             支出金額：{formatCurrency(h.cost || 0)}
@@ -1279,7 +1631,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                   {/* 總入場費 */}
                   <View style={styles.entryFeeTotalRow}>
                     <Text style={styles.entryFeeTotalLabel}>{t('summary.totalEntryFee')}</Text>
-                    <Text style={styles.entryFeeTotalAmount}>
+                    <Text style={[styles.entryFeeTotalAmount, { color: '#FFD700' }]}>
                       {formatCurrency(totalEntryFee)}
                     </Text>
                   </View>
@@ -1305,30 +1657,40 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
             {playersExpanded && (
               <View style={styles.cardContent}>
                 <View style={styles.playersList}>
-                  {currentGame.players.map((player, index) => {
-                    const cashOutHost = (player as any).cashOutHost as string | undefined;
-                    return (
-                      <View key={index} style={styles.playerItem}>
-                        <View style={styles.playerHeaderRow}>
-                          <Text style={styles.playerName}>{player.name}</Text>
-                          <Text style={styles.playerBuyIn}>
-                            {t('game.buyIn')}: {formatCurrency(player.buyIn)}
-                          </Text>
-                          <Text style={[
-                            styles.playerProfit,
-                            player.profit >= 0 ? styles.positiveProfit : styles.negativeProfit
-                          ]}>
-                            {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
-                          </Text>
-                        </View>
-                        {!!cashOutHost && (
-                          <Text style={styles.playerHost}>
-                            負責 Host：{cashOutHost}
-                          </Text>
-                        )}
-                      </View>
-                    );
-                  })}
+                  <View style={styles.playersItemsContainer}>
+                    {currentGame.players.map((player, index) => {
+                      const cashOutHost = (player as any).cashOutHost as string | undefined;
+                      return (
+                        <TouchableOpacity 
+                          key={index} 
+                          style={styles.playerItem}
+                          onPress={() => {
+                            setSelectedPlayer(player);
+                            setPlayerDetailsVisible(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.playerHeaderRow}>
+                            <Text style={styles.playerName}>{player.name}</Text>
+                            <Text style={styles.playerBuyIn}>
+                              {t('game.buyIn')}: {formatCurrency(player.buyIn)}
+                            </Text>
+                            <Text style={[
+                              styles.playerProfit,
+                              player.profit >= 0 ? styles.positiveProfit : styles.negativeProfit
+                            ]}>
+                              {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
+                            </Text>
+                          </View>
+                          {!!cashOutHost && (
+                            <Text style={styles.playerHost}>
+                              負責 Host：{cashOutHost}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
 
                   {/* 玩家列表底部：先顯示玩家總盈虧，再顯示每個 Host 玩家總盈虧 * -1 
                       total > 0 → 已收取 total（例如玩家合計 -300，Host 收取 300）
@@ -1382,45 +1744,50 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
               
               {expensesExpanded && (
                 <View style={styles.cardContent}>
-                  {currentGame.expenses.map((expense, index) => {
-                    const hosts = currentGame.hosts || [];
-                    const showHost = hosts.length > 1 && expense.host;
-                    return (
-                      <View key={index} style={styles.expenseItem}>
-                        <Text style={styles.expenseDescription}>
-                          {expenseCategoryMap[expense.category] || expense.category}
-                          {showHost ? ` · ${expense.host}` : ''}
-                          {expense.description ? ` - ${expense.description}` : ''}
-                        </Text>
-                        <Text style={styles.expenseAmount}>
-                          -{formatCurrency(expense.amount)}
-                        </Text>
-                      </View>
-                    );
-                  })}
+                  <View style={styles.expenseItemsContainer}>
+                    {currentGame.expenses.map((expense, index) => {
+                      const hosts = currentGame.hosts || [];
+                      const showHost = hosts.length > 1 && expense.host;
+                      return (
+                        <View key={index} style={styles.expenseItem}>
+                          <Text style={styles.expenseDescription}>
+                            {expenseCategoryMap[expense.category] || expense.category}
+                            {showHost ? ` · ${expense.host}` : ''}
+                            {expense.description ? ` - ${expense.description}` : ''}
+                          </Text>
+                          <Text style={styles.expenseAmount}>
+                            {formatCurrency(expense.amount)}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
 
                   {/* 支出卡片底部：先顯示總支出金額，再顯示每個 Host 負責支出總數（不含發牌員薪金） */}
-                  {hosts.length > 1 && (
-                    <View style={{ marginTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing.xs }}>
-                        <Text style={styles.settlementLabel}>總支出</Text>
-                        <Text
-                          style={[
-                            styles.settlementValue,
-                            { color: theme.colors.error },
-                          ]}
-                        >
-                          {formatCurrency(totalExpenses)}
-                        </Text>
-                      </View>
-                      {hostExpenseTotalByHost.map((h) => (
-                        <View key={h.name} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing.xs }}>
-                          <Text style={styles.settlementLabel}>{h.name}</Text>
-                          <Text style={styles.settlementValue}>{formatCurrency(h.total)}</Text>
+                  {(() => {
+                    const hosts = currentGame.hosts || [];
+                    return hosts.length > 1 ? (
+                      <View style={{ marginTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing.xs }}>
+                          <Text style={styles.settlementLabel}>總支出</Text>
+                          <Text
+                            style={[
+                              styles.settlementValue,
+                              { color: theme.colors.error },
+                            ]}
+                          >
+                            {formatCurrency(totalExpenses)}
+                          </Text>
                         </View>
-                      ))}
-                    </View>
-                  )}
+                        {hostExpenseTotalByHost.map((h) => (
+                          <View key={h.name} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing.xs }}>
+                            <Text style={styles.settlementLabel}>{h.name}</Text>
+                            <Text style={styles.settlementValue}>{formatCurrency(h.total)}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null;
+                  })()}
                 </View>
               )}
             </View>
@@ -1531,20 +1898,17 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
         </ScrollView>
 
         {/* 導出牌局總結按鈕 */}
-        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.lg }}>
-          <TouchableOpacity
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.md, paddingBottom: theme.spacing.sm }}>
+          <Button
+            title={t('summary.exportSummary')}
             onPress={handleExport}
-            activeOpacity={1}
-            style={{
-              backgroundColor: colorMode === 'dark' ? '#202124' : theme.colors.primary,
-              paddingVertical: theme.spacing.md,
-              borderRadius: theme.borderRadius.md,
-              alignItems: 'center',
-              justifyContent: 'center',
+            variant="primary"
+            size="md"
+            style={{ 
+              width: '100%',
+              paddingVertical: theme.spacing.xs, // 收窄按鈕上下空白空間
             }}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: theme.fontSize.md }}>{t('summary.exportSummary')}</Text>
-          </TouchableOpacity>
+          />
         </View>
       </SafeAreaView>
 
@@ -1569,6 +1933,36 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
           }}
         />
       )}
+
+      {/* 牌局設定編輯視窗 */}
+      <GameSettingsEditModal
+        visible={editModalVisible}
+        onClose={() => {
+          setEditModalVisible(false);
+          setEditType(null);
+          setEditHostIndex(undefined);
+        }}
+        editType={editType}
+        hostIndex={editHostIndex}
+      />
+
+      {/* Host 編輯視窗 */}
+      <HostEditModal
+        visible={hostEditModalVisible}
+        onClose={() => {
+          setHostEditModalVisible(false);
+        }}
+      />
+
+      {/* 玩家買入視窗 */}
+      <PlayerDetailsModal
+        visible={playerDetailsVisible}
+        onClose={() => {
+          setPlayerDetailsVisible(false);
+          setSelectedPlayer(null);
+        }}
+        player={selectedPlayer}
+      />
     </View>
   );
 };

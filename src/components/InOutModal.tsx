@@ -78,7 +78,7 @@ const InOutModal: React.FC<InOutModalProps> = ({
       right: theme.spacing.sm,
       padding: theme.spacing.xs,
       borderRadius: 16,
-      backgroundColor: theme.colors.border,
+      backgroundColor: 'transparent',
     },
     closeButtonText: {
       fontSize: theme.fontSize.lg,
