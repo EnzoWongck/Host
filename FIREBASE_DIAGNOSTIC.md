@@ -71,7 +71,7 @@ https://console.firebase.google.com/project/lunchips-8c124/authentication/settin
 - [ ] `localhost` 已在授權網域列表中（Authentication > Settings > Authorized domains）
 - [ ] 專案已升級到 Blaze 方案（Usage and billing）
 - [ ] Firebase 專案 ID 正確：`lunchips-8c124`
-- [ ] API Key 正確：`AIzaSyBuAQUU2xrp8pk418EkKkiQVlIHvkd5-TE`
+- [ ] API Key 正確：**請填寫你在 Firebase 專案設定「一般」頁面看到的 Web API key（不要在文件中寫出實際值）**
 
 ### 測試步驟
 
