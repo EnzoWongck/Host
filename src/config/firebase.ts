@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 
 // Firebase 配置
 export const firebaseConfig = {
-  apiKey: "AIzaSyBuAQUU2xrp8pk418EkKkiQVlIHvkd5-TE",
+  apiKey: "AIzaSyCTrISb2U6THeFtQ3Jg3o-5hMU_MI3f4wI",
   authDomain: "lunchips-8c124.firebaseapp.com",
   projectId: "lunchips-8c124",
   storageBucket: "lunchips-8c124.firebasestorage.app",
