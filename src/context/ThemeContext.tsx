@@ -12,7 +12,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [colorMode, setColorModeState] = useState<ColorMode>('light');
+  // 預設為深色模式
+  const [colorMode, setColorModeState] = useState<ColorMode>('dark');
 
   const theme = colorMode === 'light' ? lightTheme : darkTheme;
 
@@ -21,9 +22,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const stored = await AsyncStorage.getItem('colorMode');
       if (stored === 'dark' || stored === 'light') {
         setColorModeState(stored);
+      } else {
+        // 如果沒有存儲的偏好，使用深色模式作為預設
+        setColorModeState('dark');
       }
     } catch (error) {
       console.error('Error loading color mode:', error);
+      // 錯誤時也使用深色模式作為預設
+      setColorModeState('dark');
     }
   };
 

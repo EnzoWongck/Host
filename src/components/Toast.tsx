@@ -24,7 +24,7 @@ const Toast: React.FC<ToastProps> = ({
   duration = 3000,
   onClose,
 }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-100));
 
@@ -52,9 +52,11 @@ const Toast: React.FC<ToastProps> = ({
   const getToastStyle = () => {
     switch (type) {
       case 'success':
+        // 深色模式下使用深綠色背景，淺色模式下使用主題的 success 顏色
+        const successBg = colorMode === 'dark' ? '#10B981' : theme.colors.success;
         return {
-          backgroundColor: theme.colors.success,
-          borderColor: theme.colors.success,
+          backgroundColor: successBg,
+          borderColor: successBg,
         };
       case 'error':
         return {
@@ -62,14 +64,17 @@ const Toast: React.FC<ToastProps> = ({
           borderColor: theme.colors.error,
         };
       case 'info':
+        // 深色模式下使用深色背景，淺色模式下使用主題的 primary 顏色
+        const infoBg = colorMode === 'dark' ? '#3B82F6' : theme.colors.primary;
         return {
-          backgroundColor: theme.colors.primary,
-          borderColor: theme.colors.primary,
+          backgroundColor: infoBg,
+          borderColor: infoBg,
         };
       default:
+        const defaultBg = colorMode === 'dark' ? '#10B981' : theme.colors.success;
         return {
-          backgroundColor: theme.colors.success,
-          borderColor: theme.colors.success,
+          backgroundColor: defaultBg,
+          borderColor: defaultBg,
         };
     }
   };

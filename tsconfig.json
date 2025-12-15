@@ -16,18 +16,22 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"],
-      "@/components/*": ["components/*"],
-      "@/screens/*": ["screens/*"],
-      "@/context/*": ["context/*"],
-      "@/types/*": ["types/*"],
-      "@/utils/*": ["utils/*"]
+      "@/*": ["src/*"],
+      "@/src/*": ["src/*"],
+      "@/components/*": ["src/components/*"],
+      "@/screens/*": ["src/screens/*"],
+      "@/context/*": ["src/context/*"],
+      "@/types/*": ["src/types/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/pages/*": ["src/pages/*"],
+      "@/navigation/*": ["src/navigation/*"]
     }
   },
   "include": [
     "src/**/*",
+    "app/**/*",
     "App.tsx"
   ],
   "exclude": [

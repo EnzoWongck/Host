@@ -1,32 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   Image,
+  ImageBackground,
   TouchableOpacity,
   Modal,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import { Language } from '../types/language';
+import { resolveImageSource } from '../utils/imageUtils';
+// 靜態導入圖片
+import BackgroundImage from '../../assets/icons/background.jpg';
+import WelcomeIconImage from '../../assets/icons/welcomeicon.png';
+import SpaceIconImage from '../../assets/icons/space.1.png';
+import SpadeIconImage from '../../assets/icons/spade.1.png';
+import HeartIconImage from '../../assets/icons/heart.1.png';
+import ChangeIconImage from '../../assets/icons/change.png';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
-  const { theme, colorMode } = useTheme();
+  const { theme, colorMode, toggleColorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colorMode === 'dark' ? '#0A0A0A' : '#F5F5F7',
+    },
+    backgroundImage: {
+      flex: 1,
+      width: '100%',
+      height: '100%',
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)', // 半透明黑色遮罩，淡化背景
     },
     content: {
       flex: 1,
@@ -47,6 +65,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     hostTitle: {
       fontSize: 48,
       fontWeight: '700',
+      fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
       letterSpacing: -1,
       transform: [{ translateY: -25 }], // 向上移動更多
@@ -72,19 +91,25 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: theme.spacing.md,
+      justifyContent: 'center',
     },
     featureIcon: {
-      width: 24,
-      height: 24,
-      marginRight: theme.spacing.md,
+      width: 28,
+      height: 28,
+      marginRight: 0,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    featureIconImage: {
+      width: 28,
+      height: 28,
+      resizeMode: 'contain',
     },
     featureText: {
       fontSize: theme.fontSize.md,
       color: colorMode === 'dark' ? '#D1D5DB' : '#4B5563',
-      flex: 1,
       fontWeight: '500',
+      textAlign: 'left',
     },
     buttonContainer: {
       alignItems: 'center',
@@ -93,7 +118,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       paddingHorizontal: theme.spacing.md,
     },
     getStartedButton: {
-      backgroundColor: '#fef8e8',
+      backgroundColor: colorMode === 'dark' ? '#FFFFFF' : '#fef8e8',
       paddingVertical: theme.spacing.md + 4,
       paddingHorizontal: theme.spacing.xl + 8,
       borderRadius: 12,
@@ -121,7 +146,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontSize: theme.fontSize.sm,
       color: colorMode === 'dark' ? '#6B7280' : '#6B7280',
     },
-    languageButton: {
+    settingsButton: {
       position: 'absolute',
       top: theme.spacing.md,
       right: theme.spacing.md,
@@ -132,52 +157,123 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    threeDotsContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: 40,
+      width: 40,
+    },
+    dot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: '#FFFFFF', // 白色點，在淡化背景上更清晰可見
+      marginVertical: 2,
+    },
   });
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
-    setLanguageModalVisible(false);
   };
+
+  const handleColorModeToggle = () => {
+    toggleColorMode();
+  };
+
+  // 獲取背景圖片源
+  // 在開發模式下直接使用靜態導入，在生產構建中使用構建後的路徑
+  const backgroundImage = BackgroundImage;
+  const backgroundImageSource = Platform.OS === 'web' 
+    ? (() => {
+        // 檢查是否為開發模式（通過檢查 URL 是否包含 localhost 或是否有 dev 參數）
+        const isDev = typeof window !== 'undefined' && (
+          window.location.hostname === 'localhost' || 
+          window.location.hostname === '127.0.0.1' ||
+          window.location.search.includes('dev=true')
+        );
+        
+        if (isDev) {
+          // 開發模式：直接使用 require 的結果，Expo 會自動處理
+          return backgroundImage;
+        } else {
+          // 生產模式：使用構建後的靜態路徑
+          // 確保路徑正確，使用絕對路徑
+          const imagePath = '/assets/assets/icons/background.9fe3e57bd1f14f038a9bb47d1977bc67.jpg';
+          console.log('Welcome 背景圖片路徑（生產環境）:', imagePath);
+          return { uri: imagePath };
+        }
+      })()
+    : backgroundImage;
+
+  // 在 Web 上添加調試信息
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      console.log('Welcome 背景圖片源:', backgroundImageSource);
+    }
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.languageButton}
-        onPress={() => setLanguageModalVisible(true)}
-        activeOpacity={0.7}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      <ImageBackground
+        source={backgroundImageSource}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+        onError={(error) => {
+          console.error('背景圖片加載失敗:', error);
+        }}
       >
-        <Icon 
-          name="earth2"
-          size={40}
-        />
-      </TouchableOpacity>
-      <View style={styles.content}>
+        <View style={styles.overlay}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => setSettingsModalVisible(true)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <View style={styles.threeDotsContainer}>
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+            </View>
+          </TouchableOpacity>
+          <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/icons/host27o.icon.png')} 
+            // 使用自訂的歡迎頁圖示（welcomeicon.png）
+            source={WelcomeIconImage}
             style={styles.logoImage}
             resizeMode="contain"
           />
-          <Text style={styles.hostTitle}>Host27o</Text>
+          <Text style={styles.hostTitle}>LunChips</Text>
         </View>
 
         <View style={styles.featureList}>
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>
-              <Text style={{ fontSize: 20 }}>🎯</Text>
+              <Image 
+                source={SpaceIconImage} 
+                style={styles.featureIconImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.featureText}>{t('welcome.feature1')}</Text>
           </View>
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>
-              <Text style={{ fontSize: 20 }}>💰</Text>
+              <Image 
+                source={SpadeIconImage} 
+                style={styles.featureIconImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.featureText}>{t('welcome.feature2')}</Text>
           </View>
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>
-              <Text style={{ fontSize: 20 }}>📊</Text>
+              <Image 
+                source={HeartIconImage} 
+                style={styles.featureIconImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.featureText}>{t('welcome.feature3')}</Text>
           </View>
@@ -196,14 +292,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
         <View style={styles.bottomLinks}>
           <Text style={styles.privacyText}>{t('welcome.privacy')}</Text>
         </View>
-      </View>
+          </View>
+        </View>
+      </ImageBackground>
 
-      {/* Language Selection Modal */}
+      {/* Settings Modal */}
       <Modal
-        visible={languageModalVisible}
+        visible={settingsModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setLanguageModalVisible(false)}
+        onRequestClose={() => setSettingsModalVisible(false)}
       >
         <TouchableOpacity
           style={{
@@ -213,7 +311,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
             alignItems: 'center',
           }}
           activeOpacity={1}
-          onPress={() => setLanguageModalVisible(false)}
+          onPress={() => setSettingsModalVisible(false)}
         >
           <TouchableOpacity
             activeOpacity={1}
@@ -225,29 +323,51 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
               minWidth: 200,
             }}
           >
-            <Text style={{ fontSize: theme.fontSize.lg, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing.md }}>
-              {t('settings.language')}
-            </Text>
             <TouchableOpacity
               style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius.sm,
-                backgroundColor: language === 'zh-TW' ? theme.colors.primary + '20' : 'transparent',
+                backgroundColor: 'transparent',
                 marginBottom: theme.spacing.sm,
               }}
-              onPress={() => handleLanguageSelect('zh-TW')}
+              onPress={() => {
+                handleLanguageSelect(language === 'zh-TW' ? 'zh-CN' : 'zh-TW');
+              }}
             >
-              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md }}>{t('settings.traditionalChinese')}</Text>
+              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md }}>
+                {language === 'zh-TW' ? '繁體中文' : '简体中文'}
+              </Text>
+              <Image
+                source={ChangeIconImage}
+                style={{ width: 20, height: 20 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
+            
             <TouchableOpacity
               style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius.sm,
-                backgroundColor: language === 'zh-CN' ? theme.colors.primary + '20' : 'transparent',
+                backgroundColor: 'transparent',
               }}
-              onPress={() => handleLanguageSelect('zh-CN')}
+              onPress={() => {
+                handleColorModeToggle();
+              }}
             >
-              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md, fontWeight: language === 'zh-CN' ? '700' : '400' }}>{t('settings.simplifiedChinese')}</Text>
+              <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md }}>
+                {colorMode === 'light' ? '淺色模式' : '深色模式'}
+              </Text>
+              <Image
+                source={ChangeIconImage}
+                style={{ width: 20, height: 20 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>

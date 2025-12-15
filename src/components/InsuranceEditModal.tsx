@@ -13,6 +13,7 @@ interface InsuranceEditModalProps {
   setAmount: (v: string) => void;
   onSave: (payload: { amount: number; partners: InsurancePartner[] }) => void;
   partners: InsurancePartner[];
+  timestamp?: Date;
 }
 
 const InsuranceEditModal: React.FC<InsuranceEditModalProps> = ({
@@ -22,9 +23,10 @@ const InsuranceEditModal: React.FC<InsuranceEditModalProps> = ({
   setAmount,
   onSave,
   partners,
+  timestamp,
 }) => {
-  const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { theme, colorMode } = useTheme();
+  const { t, language } = useLanguage();
 
   const [localPartners, setLocalPartners] = React.useState<InsurancePartner[]>(partners);
 
@@ -37,7 +39,7 @@ const InsuranceEditModal: React.FC<InsuranceEditModalProps> = ({
   const styles = StyleSheet.create({
     group: { marginBottom: theme.spacing.lg },
     label: { fontSize: theme.fontSize.md, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing.sm },
-    input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.sm, padding: theme.spacing.md, color: theme.colors.text, backgroundColor: theme.colors.background },
+    input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.sm, padding: theme.spacing.md, color: theme.colors.text, backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface },
     partnersRow: { paddingVertical: theme.spacing.sm },
     partnersText: { color: theme.colors.textSecondary },
     partnerRow: {
@@ -139,12 +141,26 @@ const InsuranceEditModal: React.FC<InsuranceEditModalProps> = ({
             style={styles.input}
             value={amount}
             onChangeText={setAmount}
-            placeholder={t('insurance.insuranceAmountPlaceholder')}
+            placeholder="$"
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="numbers-and-punctuation"
           />
         </View>
-        <Button title={t('common.save')} onPress={handleSave} size="lg" />
+        {timestamp && (
+          <View style={styles.group}>
+            <Text style={styles.label}>日期時間</Text>
+            <Text style={[styles.partnersText, { fontSize: theme.fontSize.md }]}>
+              {new Date(timestamp).toLocaleString(language === 'zh-TW' ? 'zh-TW' : 'zh-CN')}
+            </Text>
+          </View>
+        )}
+        <Button 
+          title={t('common.save')} 
+          onPress={handleSave} 
+          size="lg" 
+          variant="primary"
+          style={{ marginBottom: theme.spacing.md }}
+        />
       </ScrollView>
     </Modal>
   );

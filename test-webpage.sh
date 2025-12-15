@@ -5,7 +5,6 @@ echo "🧪 測試 Poker Host PWA 網頁..."
 # 檢查伺服器是否運行
 if ! curl -s http://localhost:3000 > /dev/null; then
     echo "❌ 伺服器未運行，請先啟動伺服器："
-    echo "   cd /Users/kwokheitung/Desktop/Host.2/PokerHost"
     echo "   node server.js"
     exit 1
 fi

@@ -1,7 +1,9 @@
 console.log('firebaseAuth.ts 已成功載入！！！');
 
 import { 
-  signInWithPopup, 
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   User, 
   UserCredential,
@@ -20,35 +22,103 @@ export interface AuthUser {
   providerId: string;
 }
 
+// 檢測是否為移動設備
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768);
+};
+
 // Google 登入
 export const signInWithGoogle = async (): Promise<AuthUser> => {
   try {
-    const result: UserCredential = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    
-    console.log('Google 登入成功', user);
-    
-    // 保存 token 到 localStorage
-    const token = await user.getIdToken();
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('userProfile', JSON.stringify({
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      providerId: 'google.com'
-    }));
-    
-    return {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      providerId: 'google.com'
-    };
-  } catch (error) {
+    // 在 Web 平台上，優先使用重定向方式（避免彈出視窗被阻止）
+    // 在移動設備上也使用重定向
+    const isWeb = typeof window !== 'undefined';
+    if (isWeb && (isMobileDevice() || true)) { // 在 Web 上總是使用重定向
+      // Web 和移動設備：使用重定向（更可靠，不會被瀏覽器阻止）
+      console.log('使用重定向方式進行 Google 登入...');
+      await signInWithRedirect(auth, googleProvider);
+      // 重定向後會返回，這裡不會執行
+      throw new Error('Redirecting to Google sign in...');
+    } else {
+      // 其他平台（如 React Native）：嘗試使用彈窗
+      try {
+        const result: UserCredential = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        
+        console.log('Google 登入成功', user);
+        
+        // 保存 token 到 localStorage
+        const token = await user.getIdToken();
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('userProfile', JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          providerId: 'google.com'
+        }));
+        
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          providerId: 'google.com'
+        };
+      } catch (popupError: any) {
+        // 如果彈窗被阻止，回退到重定向
+        if (popupError?.code === 'auth/popup-blocked' || popupError?.code === 'auth/popup-closed-by-user') {
+          console.log('彈窗被阻止，切換到重定向方式...');
+          await signInWithRedirect(auth, googleProvider);
+          throw new Error('Redirecting to Google sign in...');
+        }
+        throw popupError;
+      }
+    }
+  } catch (error: any) {
+    // 如果是重定向，不拋出錯誤
+    if (error?.message?.includes('Redirecting')) {
+      return {} as AuthUser; // 臨時返回，重定向後會處理
+    }
     console.error('Google 登入失敗', error);
     throw error;
+  }
+};
+
+// 處理重定向回調（需要在應用啟動時調用）
+export const handleGoogleRedirect = async (): Promise<AuthUser | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      const user = result.user;
+      
+      console.log('Google 重定向登入成功', user);
+      
+      // 保存 token 到 localStorage
+      const token = await user.getIdToken();
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userProfile', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        providerId: 'google.com'
+      }));
+      
+      return {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        providerId: 'google.com'
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('處理 Google 重定向失敗', error);
+    return null;
   }
 };
 

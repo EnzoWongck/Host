@@ -9,11 +9,18 @@ import {
   Alert,
   Modal,
   Image,
+  ImageBackground,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { Language } from '../types/language';
+import { resolveImageSource } from '../utils/imageUtils';
+// 靜態導入圖片
+import Background1212Image from '../../assets/icons/1212.png';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import Card from '../components/Card';
@@ -39,6 +46,7 @@ import TopTabBar from '../components/TopTabBar';
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
+  const { trialEnded, isSubscribed } = useSubscription();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { state, setGameSummaryModalVisible } = useGame();
@@ -50,6 +58,8 @@ const GameScreen: React.FC = () => {
   };
   const [playersExpanded, setPlayersExpanded] = useState(false);
   const playersScrollRef = useRef<ScrollView>(null);
+  const mainScrollRef = useRef<ScrollView>(null);
+  const playersCardLayoutRef = useRef<{ y: number } | null>(null);
   
   // Modal states
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
@@ -65,14 +75,80 @@ const GameScreen: React.FC = () => {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [collaborationModalVisible, setCollaborationModalVisible] = useState(false);
   const [entryFeeModalVisible, setEntryFeeModalVisible] = useState(false);
-  const [profitShareVisible, setProfitShareVisible] = useState(false);
 
   const currentGame = state.currentGame;
   
+  // 計算已進行時間
+  const [elapsedTime, setElapsedTime] = useState('');
+  useEffect(() => {
+    if (!currentGame?.startTime) return;
+    
+    const updateElapsedTime = () => {
+      const start = new Date(currentGame.startTime);
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      setElapsedTime(`${hours}時 ${minutes}分`);
+    };
+    
+    updateElapsedTime();
+    const interval = setInterval(updateElapsedTime, 60000); // 每分鐘更新
+    
+    return () => clearInterval(interval);
+  }, [currentGame?.startTime]);
+  
+  // 計算淨收入（與 GameSummaryModal 中的計算邏輯一致）
+  const calculateNetIncome = () => {
+    if (!currentGame) return 0;
+    
+    // 計算總抽水/入場費
+    const totalRake = currentGame.rakes.reduce((sum, r) => sum + (r.amount || 0), 0);
+    const totalEntryFee = currentGame.players.reduce((sum, p) => {
+      if (p.customEntryFee !== undefined) return sum + p.customEntryFee;
+      // 簡化計算，實際應該根據入場費模式計算
+      return sum;
+    }, 0);
+    const revenue = currentGame.gameMode === 'noRake' ? totalEntryFee : totalRake;
+    
+    // 計算總小費（使用 Dealer.totalTips）
+    const totalTips = currentGame.dealers.reduce(
+      (sum, dealer) => sum + (dealer.totalTips || 0),
+      0
+    );
+    
+    // 計算總支出
+    const totalExpenses = currentGame.expenses.reduce(
+      (sum, e) => sum + (e.amount || 0),
+      0
+    );
+    
+    // 計算發牌員薪金（與 GameSummaryModal 相同邏輯）
+    const totalDealerSalary = currentGame.dealers.reduce((sum, dealer) => {
+      const tipPortion = (dealer.totalTips || 0) * (dealer.tipShare / 100);
+      const hourlyPortion = (dealer.hourlyRate || 0) * (dealer.workHours || 0);
+      const baseSalary = tipPortion + hourlyPortion;
+      const salary =
+        dealer.estimatedSalary && dealer.estimatedSalary > 0
+          ? dealer.estimatedSalary
+          : baseSalary;
+      return sum + salary;
+    }, 0);
+    
+    // 淨收入 = 總抽水/入場費 + 總小費 - 總支出 - 發牌員薪金
+    return revenue + totalTips - totalExpenses - totalDealerSalary;
+  };
+  
+  const netIncome = calculateNetIncome();
+  
   // 計算玩家列表動態高度：根據玩家數量，最多600
   const playerItemHeight = 70; // 每個玩家項目的估算高度（包括padding和margin）
+  // 計算玩家列表高度，可以展開至tabbar（約100px空間）
+  const screenHeight = Dimensions.get('window').height;
+  const tabBarHeight = 100; // tabbar高度
+  const availableHeight = screenHeight - tabBarHeight - 200; // 減去其他元素高度
   const playerListHeight = currentGame?.players?.length 
-    ? Math.min(currentGame.players.length * playerItemHeight, 600)
+    ? Math.min(currentGame.players.length * playerItemHeight, availableHeight) // 展開時可以全部展開，但不超過可用高度
     : 0;
 
   // 處理導航參數
@@ -82,8 +158,20 @@ const GameScreen: React.FC = () => {
       setEndGameModalVisible(true);
       // 清除參數避免重複觸發
       navigation.setParams({ action: undefined });
+    } else if (params?.action === 'buy_in') {
+      if (!(trialEnded && !isSubscribed)) {
+        setBuyInModalVisible(true);
+      } else {
+        Alert.alert(
+          '試用已到期',
+          '你的免費試用已完結，請訂閱後再新增買入。',
+          [{ text: '確定' }]
+        );
+      }
+      // 清除參數避免重複觸發
+      navigation.setParams({ action: undefined });
     }
-  }, [route.params, navigation]);
+  }, [route.params, navigation, trialEnded, isSubscribed]);
 
   // 當 Modal 關閉時，將玩家列表滾動到頂部
   useEffect(() => {
@@ -102,12 +190,25 @@ const GameScreen: React.FC = () => {
     }
   }, [state.gameSummaryModalVisible]);
 
-  // 每次返回目前牌局頁面時，自動收起玩家列表
+  // 每次返回目前牌局頁面時，自動收起玩家列表和關閉所有視窗
   useFocusEffect(
     useCallback(() => {
       setPlayersExpanded(false);
+      setGameSummaryModalVisible(false);
+      // 關閉所有其他視窗
+      setBuyInModalVisible(false);
+      setExpenseModalVisible(false);
+      setRakeModalVisible(false);
+      setInsuranceModalVisible(false);
+      setInsuranceRecordsVisible(false);
+      setDealerModalVisible(false);
+      setEndGameModalVisible(false);
+      setCashOutModalVisible(false);
+      setDetailsVisible(false);
+      setCollaborationModalVisible(false);
+      setEntryFeeModalVisible(false);
       return () => {};
-    }, [])
+    }, [setGameSummaryModalVisible])
   );
 
 
@@ -119,7 +220,7 @@ const GameScreen: React.FC = () => {
     },
     content: {
       padding: theme.spacing.lg,
-      paddingBottom: 180, // Space for fixed "新增玩家" button and tab bar
+      paddingBottom: 80, // Space for tab bar (reduced)
     },
     header: {
       flexDirection: 'row',
@@ -151,6 +252,12 @@ const GameScreen: React.FC = () => {
     },
     gameTitle: {
       fontSize: 18,
+      fontWeight: '600',
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    title: {
+      fontSize: theme.fontSize.xl,
       fontWeight: '600',
       color: theme.colors.text,
       textAlign: 'center',
@@ -190,6 +297,7 @@ const GameScreen: React.FC = () => {
       padding: theme.spacing.sm,
     },
     playersCard: {
+      marginTop: -theme.spacing.sm, // 向上移動
       marginBottom: theme.spacing.md,
       shadowColor: theme.colorMode === 'light' ? '#000' : '#000',
       shadowOffset: {
@@ -199,6 +307,7 @@ const GameScreen: React.FC = () => {
       shadowOpacity: theme.colorMode === 'light' ? 0.08 : 0.15,
       shadowRadius: 12,
       elevation: 6,
+      maxHeight: 120, // 縮短玩家列表卡片高度，與頂部卡片一樣
     },
     playersHeader: {
       flexDirection: 'row',
@@ -231,28 +340,38 @@ const GameScreen: React.FC = () => {
     playersSubtitle: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.xs,
+    },
+    playersDivider: {
+      height: 0.5,
+      backgroundColor: '#333333', // 極細的霧面分隔線
+      marginTop: theme.spacing.sm,
+      marginBottom: theme.spacing.sm,
     },
     playersAmount: {
       fontSize: theme.fontSize.lg,
       fontWeight: 'bold',
       color: theme.colors.success,
       marginRight: theme.spacing.sm,
+      fontVariant: ['tabular-nums'], // React Native 等寬數字
     },
     expandIcon: {
       fontSize: theme.fontSize.md,
       color: theme.colors.textSecondary,
     },
     playersList: {
-      marginTop: theme.spacing.md,
-      marginBottom: theme.spacing.md,
+      marginTop: -theme.spacing.sm, // 向上移動
+      marginBottom: theme.spacing.xs, // 縮短下方空間
       borderRadius: theme.borderRadius.sm,
       overflow: 'hidden',
+      maxHeight: 120, // 縮短玩家列表高度
     },
     playersListFullScreen: {
       marginTop: theme.spacing.md,
       marginBottom: 0,
       borderRadius: theme.borderRadius.sm,
       overflow: 'hidden',
+      maxHeight: availableHeight, // 限制最大高度，不超過tabbar
     },
     playersListContainer: {
       position: 'relative',
@@ -320,12 +439,6 @@ const GameScreen: React.FC = () => {
       borderRadius: 12,
       marginTop: 4,
     },
-    functionsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      marginBottom: theme.spacing.lg,
-    },
     functionButton: {
       width: '48%',
       marginBottom: theme.spacing.md,
@@ -346,7 +459,7 @@ const GameScreen: React.FC = () => {
       flexDirection: 'column',
     },
     functionCard: {
-      backgroundColor: colorMode === 'light' ? '#FFFFFF' : theme.colors.surface,
+      backgroundColor: colorMode === 'light' ? '#FFFFFF' : '#1E2023',
       borderRadius: theme.borderRadius.lg,
       borderWidth: 0,
       borderColor: 'transparent',
@@ -409,9 +522,116 @@ const GameScreen: React.FC = () => {
       flex: 1,
       marginHorizontal: theme.spacing.xs,
     },
+    // 頂部玻璃態卡片（使用 Card 組件樣式，但添加玻璃態效果）
+    blurCard: {
+      overflow: 'hidden', // 確保背景圖片不會溢出
+      shadowOpacity: 0, // 覆蓋 Card 的陰影
+      elevation: 0, // 覆蓋 Card 的 elevation
+      minHeight: 120, // 向上放大，與玩家卡片高度一致
+      marginTop: -theme.spacing.md, // 向上移動
+    },
+    blurCardBackground: {
+      position: 'absolute',
+      top: -20, // 圖片向上移動
+      left: 0,
+      right: 0,
+      bottom: -20,
+      width: '100%',
+      height: '120%', // 增加高度以補償向上移動
+    },
+    blurCardOverlay: {
+      flex: 1,
+      backgroundColor: colorMode === 'light' 
+        ? 'rgba(255, 255, 255, 0.1)' 
+        : 'rgba(0, 0, 0, 0.15)', // 減少模糊，讓背景圖片更清晰
+      borderWidth: 1,
+      borderColor: colorMode === 'light' 
+        ? 'rgba(226, 232, 240, 0.5)' 
+        : 'rgba(58, 58, 58, 0.5)',
+      borderRadius: theme.borderRadius.lg, // 與 Card 的圓角一致
+      ...(Platform.OS === 'web' && {
+        // Web 平台使用 CSS backdrop-filter 實現模糊，減少模糊值
+        // @ts-ignore
+        backdropFilter: 'blur(0.5px)',
+        WebkitBackdropFilter: 'blur(0.5px)',
+      }),
+    },
+    blurCardContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end', // 金額和三角形向下對齊
+      paddingHorizontal: theme.spacing.md, // 左右內邊距
+      paddingVertical: theme.spacing.md, // 增加上下內邊距
+      minHeight: 100, // 增加高度確保有足夠空間
+    },
+    blurCardLeft: {
+      flex: 1,
+      paddingRight: theme.spacing.md, // 左側內容右邊距
+    },
+    blurCardGameName: {
+      fontSize: theme.fontSize.xl, // 標題文字放大
+      fontWeight: '700',
+      color: '#FFFFFF', // 淺色模式也用白色
+      marginBottom: theme.spacing.xs,
+    },
+    blurCardTime: {
+      fontSize: theme.fontSize.md,
+      color: '#FFFFFF', // 淺色模式也用白色
+    },
+    blurCardProfit: {
+      fontSize: theme.fontSize.xxl + 8,
+      fontWeight: '800',
+      color: netIncome > 0 ? '#FFD700' : netIncome < 0 ? theme.colors.error : theme.colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+      paddingLeft: theme.spacing.md, // 右側內容左邊距
+    },
+    // 功能按鈕（去除背景卡片）
+    functionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginBottom: theme.spacing.md + 4,
+    },
+    functionButtonInCard: {
+      width: '31%',
+      marginBottom: theme.spacing.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: theme.spacing.sm, // 添加一些內邊距以保持點擊區域
+    },
+    functionIconInCard: {
+      marginBottom: theme.spacing.xs,
+      marginTop: theme.spacing.sm, // 向下移動 icon
+    },
+    dealerIconInCard: {
+      marginBottom: theme.spacing.xs,
+      marginTop: theme.spacing.sm - 10, // 向下移動，但保持與其他按鈕 icon 對齊
+    },
+    functionTextInCard: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: '600',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginTop: theme.spacing.xs, // 向下移動文字
+    },
+    dealerTextInCard: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: '600',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginTop: theme.spacing.xs - 10, // 向下移動，但保持與其他按鈕文字對齊
+    },
   });
 
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`;
+  // 使用等寬數字（Tabular Numbers）格式化金額
+  const formatCurrency = (amount: number) => {
+    // 使用 tabular-nums 字體特性來確保數字等寬
+    const formatted = amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    return `$${formatted}`;
+  };
 
   const getProfitColor = (profit: number) => {
     if (profit > 0) return theme.colors.success;
@@ -422,10 +642,10 @@ const GameScreen: React.FC = () => {
   const getStatusStyle = (status: string) => {
     if (status === 'active') {
       return {
-        backgroundColor: '#202124',
+        backgroundColor: 'transparent',
         borderWidth: 0,
         borderColor: 'transparent',
-        color: '#FFFFFF',
+        color: theme.colors.textSecondary,
       };
     }
     return {
@@ -434,6 +654,21 @@ const GameScreen: React.FC = () => {
       borderColor: 'transparent',
       color: '#FFFFFF',
     };
+  };
+
+  // 檢查是否可以編輯（試用到期且未訂閱時不能編輯）
+  const canEdit = !(trialEnded && !isSubscribed);
+  
+  const handleEditAction = (action: () => void, actionName: string) => {
+    if (!canEdit) {
+      Alert.alert(
+        '試用已到期',
+        '你的免費試用已完結，請訂閱後再編輯牌局。',
+        [{ text: '確定' }]
+      );
+      return;
+    }
+    action();
   };
 
   if (!currentGame) {
@@ -459,50 +694,100 @@ const GameScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TopTabBar 
-        title={currentGame ? `牌局 - ${currentGame.name}` : t('game.currentGame')}
-        rightComponent={
-          <CollaborationButton
-            onPress={() => {
-              console.log('GameScreen: 協作按鈕被點擊，設置模態框可見');
-              setCollaborationModalVisible(true);
-            }}
-            gameId={currentGame?.id || "default-game"}
-          />
-        }
-      />
+      <TopTabBar />
 
       <ScrollView 
+        ref={mainScrollRef}
         showsVerticalScrollIndicator={false}
         scrollEnabled={true}
         bounces={true}
         decelerationRate="fast"
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingTop: 120 }}
+        // paddingTop 與 TopTabBar 高度對齊
+        contentContainerStyle={{ paddingTop: 90, flexGrow: 1 }}
       >
         <View style={styles.content}>
-          {/* Settings Button - Moved down to be closer to player list */}
-          <View style={{ marginBottom: theme.spacing.md, paddingHorizontal: theme.spacing.lg }}>
-            <TouchableOpacity
-              style={styles.settingsButton}
-              onPress={() => {
-                setProfitShareVisible(true);
-              }}
-              activeOpacity={0.7}
+          {/* 頂部玻璃態卡片 */}
+          {!playersExpanded && (
+          <Card style={styles.blurCard} padding="lg">
+            <ImageBackground
+              source={resolveImageSource(Background1212Image)}
+              style={styles.blurCardBackground}
+              resizeMode="cover"
+              blurRadius={Platform.OS === 'web' ? 0 : 1} // 減輕模糊效果
             >
-              <Text style={{ fontSize: 20, color: colorMode === 'dark' ? '#FFFFFF' : '#000000' }}>
-                ⚙️
-              </Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.blurCardOverlay}>
+                <TouchableOpacity
+                  onPress={() => setGameSummaryModalVisible(true)}
+                  activeOpacity={0.8}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  <View style={styles.blurCardContent}>
+                    <View style={styles.blurCardLeft}>
+                      <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
+                      <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={styles.blurCardProfit}>
+                        {formatCurrency(netIncome)}
+                      </Text>
+                      <Text style={{ 
+                        fontSize: theme.fontSize.md, 
+                        color: '#FFFFFF', 
+                        marginLeft: theme.spacing.sm,
+                        transform: [{ rotate: '-90deg' }]
+                      }}>▼</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </ImageBackground>
+          </Card>
+          )}
           {/* Players Card */}
+          <View 
+            onLayout={(event) => {
+              // onLayout 獲取的 y 是相對於父 View (styles.content) 的位置
+              // 但實際上需要的是相對於 ScrollView content 的位置
+              // 由於 ScrollView 有 paddingTop: 90，所以實際位置需要加上這個值
+              const { y } = event.nativeEvent.layout;
+              // 使用 findNodeHandle 或直接使用 y（因為 content 是 ScrollView 的直接子元素）
+              playersCardLayoutRef.current = { y };
+            }}
+          >
           <Card style={styles.playersCard}>
             <TouchableOpacity 
               style={styles.playersHeader}
               onPress={() => {
-                setPlayersExpanded(!playersExpanded);
+                const willExpand = !playersExpanded;
+                if (willExpand) {
+                  // 先滾動整個頁面到頂部，隱藏頂部卡片
+                  if (mainScrollRef.current) {
+                    // 滾動到頂部
+                    mainScrollRef.current.scrollTo({ 
+                      y: 0, 
+                      animated: true 
+                    });
+                    // 等待滾動動畫完成後再展開列表並隱藏頂部卡片
+                    setTimeout(() => {
+                      setPlayersExpanded(true);
+                      // 滾動內部列表到頂部
+                      setTimeout(() => {
+                        playersScrollRef.current?.scrollTo({ y: 0, animated: false });
+                      }, 100);
+                    }, 300);
+                  } else {
+                    // 如果沒有滾動引用，直接展開
+                    setPlayersExpanded(true);
+                    setTimeout(() => {
+                      playersScrollRef.current?.scrollTo({ y: 0, animated: false });
+                    }, 100);
+                  }
+                } else {
+                  setPlayersExpanded(false);
+                }
               }}
-              activeOpacity={1}
+              activeOpacity={0.7}
             >
               <View style={styles.playersInfo}>
                 <Icon name="player2" size={42} style={styles.playersIconStyle} />
@@ -511,12 +796,11 @@ const GameScreen: React.FC = () => {
                   <Text style={styles.playersSubtitle}>
                     {currentGame.players.filter(p => p.status === 'active').length} {t('game.playersInProgress')}
                   </Text>
+                  {/* 極細的霧面分隔線 */}
+                  <View style={styles.playersDivider} />
                 </View>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.playersAmount}>
-                  {formatCurrency(currentGame.totalBuyIn)}
-                </Text>
                 <Text style={[styles.expandIcon, { 
                   transform: [{ rotate: playersExpanded ? '180deg' : '0deg' }] 
                 }]}>
@@ -526,11 +810,11 @@ const GameScreen: React.FC = () => {
             </TouchableOpacity>
 
             {playersExpanded && (
-              <View style={[styles.playersList, { height: playerListHeight }]}>
+              <View style={[styles.playersListFullScreen, { maxHeight: availableHeight }]}>
                 <ScrollView 
                   ref={playersScrollRef}
                   nestedScrollEnabled 
-                  showsVerticalScrollIndicator={true}
+                  showsVerticalScrollIndicator={false}
                   scrollEnabled={true}
                   bounces={true}
                   decelerationRate="fast"
@@ -558,11 +842,15 @@ const GameScreen: React.FC = () => {
                         </TouchableOpacity>
                       )}
                     >
-                    <TouchableOpacity style={styles.playerItem} onPress={() => { setDetailsPlayer(player); setDetailsVisible(true); }}>
+                    <TouchableOpacity 
+                      style={styles.playerItem} 
+                      onPress={() => { setDetailsPlayer(player); setDetailsVisible(true); }}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.playerInfo}>
                         <Text style={styles.playerName}>{player.name}</Text>
                             <Text style={styles.playerBuyIn}>
-                              {t('game.buyIn')}: {formatCurrency(player.buyIn)}
+                              {t('game.buyIn')}: <Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>$</Text><Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>{player.buyIn.toLocaleString()}</Text>
                             </Text>
                       </View>
                       <View style={styles.playerProfit}>
@@ -588,86 +876,98 @@ const GameScreen: React.FC = () => {
               </View>
             )}
           </Card>
+          </View>
 
-          {/* 新增玩家卡片 */}
-          {playersExpanded && (
-            <Card style={styles.playersCard}>
-              <Button
-                title={`+ ${t('game.addPlayer')}`}
-                onPress={() => setBuyInModalVisible(true)}
-                size="lg"
-              />
-            </Card>
-          )}
+          {/* 功能按鈕（整合6個按鈕，每行3個，去除背景卡片） */}
 
-          {/* All Function Buttons in Grid Layout */}
-          {!playersExpanded && (
+            {!playersExpanded && (
             <View style={styles.functionsGrid}>
-              <TouchableOpacity 
-                style={[styles.functionButtonLarge, styles.functionCard]}
-                onPress={() => setBuyInModalVisible(true)}
-                activeOpacity={1}
-              >
-                <Icon name="buy-in" size={40} style={styles.functionIcon} />
-                <Text style={styles.functionText}>{t('game.functions.buyIn') || t('game.functions.buyInCashOut')}</Text>
-              </TouchableOpacity>
+                <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                  <TouchableOpacity 
+                    onPress={() => handleEditAction(() => setBuyInModalVisible(true), 'buyIn')}
+                    activeOpacity={0.7}
+                    disabled={!canEdit}
+                    style={{ alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="buy-in" size={40} style={styles.functionIconInCard} />
+                    <Text style={styles.functionTextInCard}>{t('game.functions.buyIn') || t('game.functions.buyInCashOut')}</Text>
+                  </TouchableOpacity>
+                </View>
 
-              <TouchableOpacity 
-                style={[styles.functionButtonLarge, styles.functionCard]}
-                onPress={() => setCashOutModalVisible(true)}
-                activeOpacity={1}
-              >
-                <Icon name="cashout" size={40} style={styles.functionIcon} />
-                <Text style={styles.functionText}>{t('game.functions.cashOut') || t('cashOut.title') || '兌現'}</Text>
-              </TouchableOpacity>
+                <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                  <TouchableOpacity 
+                    onPress={() => handleEditAction(() => setCashOutModalVisible(true), 'cashOut')}
+                    activeOpacity={0.7}
+                    disabled={!canEdit}
+                    style={{ alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="cashout" size={40} style={styles.functionIconInCard} />
+                    <Text style={styles.functionTextInCard}>{t('game.functions.cashOut') || t('cashOut.title') || '兌現'}</Text>
+                  </TouchableOpacity>
+                </View>
 
-              {currentGame.gameMode === 'noRake' ? (
-                <TouchableOpacity 
-                  style={[styles.functionButtonLarge, styles.functionCard]}
-                  onPress={() => setEntryFeeModalVisible(true)}
-                  activeOpacity={1}
-                >
-                  <Icon name="rake" size={40} style={styles.functionIcon} />
-                  <Text style={styles.functionText}>{t('game.functions.entryFee')}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity 
-                  style={[styles.functionButtonLarge, styles.functionCard]}
-                  onPress={() => setRakeModalVisible(true)}
-                  activeOpacity={1}
-                >
-                  <Icon name="rake" size={40} style={styles.functionIcon} />
-                  <Text style={styles.functionText}>{t('game.functions.rake')}</Text>
-                </TouchableOpacity>
-              )}
-              
-              <TouchableOpacity 
-                style={[styles.functionButtonLarge, styles.functionCard]}
-                onPress={() => setExpenseModalVisible(true)}
-                activeOpacity={1}
-              >
-                <Icon name="cost" size={40} style={styles.functionIcon} />
-                <Text style={styles.functionText}>{t('game.functions.expense')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.functionButtonLarge, styles.functionCard]}
-                onPress={() => setInsuranceRecordsVisible(true)}
-                activeOpacity={1}
-              >
-                <Icon name="insurance" size={40} style={styles.functionIcon} />
-                <Text style={styles.functionText}>{t('game.functions.insurance')}</Text>
-              </TouchableOpacity>
+                {currentGame.gameMode === 'noRake' ? (
+                  <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                    <TouchableOpacity 
+                      onPress={() => handleEditAction(() => setEntryFeeModalVisible(true), 'entryFee')}
+                      activeOpacity={0.7}
+                      disabled={!canEdit}
+                      style={{ alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Icon name="rake" size={50} style={styles.functionIconInCard} />
+                      <Text style={[styles.functionTextInCard, { marginTop: 0 }]}>{t('game.functions.entryFee')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                    <TouchableOpacity 
+                      onPress={() => handleEditAction(() => setRakeModalVisible(true), 'rake')}
+                      activeOpacity={0.7}
+                      disabled={!canEdit}
+                      style={{ alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Icon name="rake" size={50} style={styles.functionIconInCard} />
+                      <Text style={[styles.functionTextInCard, { marginTop: 0 }]}>{t('game.functions.rake')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                  <TouchableOpacity 
+                    onPress={() => handleEditAction(() => setExpenseModalVisible(true), 'expense')}
+                    activeOpacity={0.7}
+                    disabled={!canEdit}
+                    style={{ alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="cost" size={40} style={styles.functionIconInCard} />
+                    <Text style={styles.functionTextInCard}>{t('game.functions.expense')}</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                  <TouchableOpacity 
+                    onPress={() => setInsuranceRecordsVisible(true)}
+                    activeOpacity={0.7}
+                    style={{ alignItems: 'center', justifyContent: 'center' }}
+                    disabled={!canEdit}
+                  >
+                    <Icon name="insurance" size={40} style={styles.functionIconInCard} />
+                    <Text style={styles.functionTextInCard}>{t('game.functions.insurance')}</Text>
+                  </TouchableOpacity>
+                </View>
 
-              <TouchableOpacity 
-                style={[styles.functionButtonLarge, styles.functionCard]}
-                onPress={() => setDealerModalVisible(true)}
-                activeOpacity={1}
-              >
-                <Icon name="dealer" size={60} style={styles.dealerIcon} />
-                <Text style={styles.dealerText}>{t('game.functions.dealer')}</Text>
-              </TouchableOpacity>
-            </View>
+                <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
+                  <TouchableOpacity 
+                    onPress={() => handleEditAction(() => setDealerModalVisible(true), 'dealer')}
+                    activeOpacity={0.7}
+                    disabled={!canEdit}
+                    style={{ alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="dealer" size={60} style={styles.dealerIconInCard} />
+                    <Text style={styles.dealerTextInCard}>{t('game.functions.dealer')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
           )}
         </View>
       </ScrollView>
@@ -692,7 +992,7 @@ const GameScreen: React.FC = () => {
         onClose={() => setInsuranceModalVisible(false)}
         onCompleted={() => {
           // 新增保險完成後：關閉新增視窗 → 自動開啟紀錄視窗並滾到頂端
-          setTimeout(() => setInsuranceRecordsVisible(true), 0);
+          setInsuranceRecordsVisible(true);
         }}
       />
       <InsuranceRecordsModal
@@ -700,7 +1000,7 @@ const GameScreen: React.FC = () => {
         onClose={() => setInsuranceRecordsVisible(false)}
         onAddInsurance={() => {
           setInsuranceRecordsVisible(false);
-          setTimeout(() => setInsuranceModalVisible(true), 0);
+          setInsuranceModalVisible(true);
         }}
       />
       <DealerModal
@@ -710,7 +1010,6 @@ const GameScreen: React.FC = () => {
       <GameSummaryModal
         visible={state.gameSummaryModalVisible}
         onClose={() => {
-          console.log('關閉牌局總結 modal');
           setGameSummaryModalVisible(false);
         }}
       />
@@ -741,10 +1040,6 @@ const GameScreen: React.FC = () => {
       />
 
       {/* 牌局 Host Profit Share 設定（彈出視窗） */}
-      <GameProfitShareSettingModal
-        visible={profitShareVisible}
-        onClose={() => setProfitShareVisible(false)}
-      />
 
       {/* Language Selection Modal */}
       <Modal

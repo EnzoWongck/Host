@@ -7,6 +7,8 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -31,6 +33,12 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
   const [amount, setAmount] = useState('');
   const [time, setTime] = useState('');
   const [recordsVisible, setRecordsVisible] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
+  // 獲取螢幕尺寸
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const isMobile = screenWidth < 768; // 判斷是否為手機
 
   const currentGame = state.currentGame;
 
@@ -45,14 +53,15 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
       marginBottom: theme.spacing.sm,
     },
     input: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      // 淺色模式下移除輸入框邊框，僅保留淡背景；深色模式維持原有邊框
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     textArea: {
       height: 80,
@@ -151,19 +160,36 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
         onClose();
       }}
       title={t('modals.rake')}
+      maxWidth={isMobile ? screenWidth - 32 : 800}
+      maxHeight={isMobile ? screenHeight * 0.9 : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : undefined}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* 查看抽水紀錄入口 */}
-        <TouchableOpacity onPress={() => setRecordsVisible(true)} activeOpacity={1}>
-          <Text style={{ color: theme.colors.primary, textAlign: 'center', fontWeight: '600', marginBottom: theme.spacing.sm }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: 680, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.lg }}>
+        {/* 查看服務費紀錄入口（使用較暗的文字顏色） */}
+        <TouchableOpacity onPress={() => setRecordsVisible(true)} activeOpacity={0.7}>
+          <Text
+            style={{
+              color: colorMode === 'dark' ? '#666666' : '#9CA3AF', // 使用更暗的顏色
+              textAlign: 'center',
+              fontWeight: '600',
+              marginBottom: theme.spacing.sm,
+            }}
+          >
             {t('rake.viewRecords')}
           </Text>
         </TouchableOpacity>
 
-        {/* 當前抽水統計（點擊可開啟列表） */}
+        {/* 當前服務費統計（點擊可開啟列表） */}
         {currentGame && rakeCount > 0 && (
           <TouchableOpacity onPress={() => setRecordsVisible(true)} style={styles.summaryCard} activeOpacity={1}>
-            <Text style={styles.summaryTitle}>{t('rake.currentStats')}</Text>
+            <Text
+              style={[
+                styles.summaryTitle,
+                { color: theme.colors.textSecondary }, // 使用與輸入金額相同的文字顏色
+              ]}
+            >
+              {t('rake.currentStats')}
+            </Text>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>{t('rake.totalCount')}</Text>
               <Text style={styles.summaryValue}>{rakeCount} {t('rake.times')}</Text>
@@ -172,10 +198,6 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
               <Text style={styles.summaryLabel}>{t('rake.totalAmount')}</Text>
               <Text style={styles.summaryValue}>{formatCurrency(totalRakes)}</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>{t('rake.average')}</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(averageRake)}</Text>
-            </View>
           </TouchableOpacity>
         )}
 
@@ -183,12 +205,20 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t('rake.amount')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === 'amount' && styles.inputFocused]}
             value={amount}
             onChangeText={setAmount}
-            placeholder={t('rake.amountPlaceholder')}
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholder="$"
+            placeholderTextColor={
+              focusedInput === 'amount'
+                ? 'transparent'
+                : theme.colors.textSecondary
+            }
+            onFocus={() => setFocusedInput('amount')}
+            onBlur={() => setFocusedInput(null)}
             keyboardType="numeric"
+            inputMode="decimal"
+            {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
           />
         </View>
 
@@ -196,11 +226,17 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t('rake.time')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === 'time' && styles.inputFocused, { color: colorMode === 'light' ? '#4B5563' : theme.colors.text }]}
             value={time}
             onChangeText={setTime}
             placeholder={t('rake.timePlaceholder')}
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholderTextColor={
+              focusedInput === 'time'
+                ? 'transparent'
+                : theme.colors.textSecondary
+            }
+            onFocus={() => setFocusedInput('time')}
+            onBlur={() => setFocusedInput(null)}
           />
         </View>
 

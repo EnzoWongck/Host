@@ -1,0 +1,37 @@
+/* Grok 風格深色主題樣式 */
+
+/* 1. 背景（必須精確） */
+body, #root, [data-theme="dark"] {
+  background-color: #121212 !important;
+  color: #FFFFFF;
+}
+
+/* 2. Grok 真正的聊天氣泡色（這才是讓背景看起來「亮一點」的關鍵） */
+.chat-bubble-user {
+  background: #1E2023;   /* 你自己的訊息（深灰） */
+}
+
+.chat-bubble-grok {
+  background: #2C3236;   /* Grok 回覆（稍亮深灰） */
+}
+
+.chat-bubble-system {
+  background: #25292E;
+}
+
+/* 3. 輸入框與頂欄（Grok 用的經典深藍灰） */
+.input-area, .top-bar, .sidebar {
+  background: #111113;   /* 比純 #121212 亮一點點 */
+  border-top: 1px solid #25272A;
+}
+
+/* 5. 讓背景「視覺變亮」的最重要技巧：加一點極淡的漸層或噪點 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(0,255,136,0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+

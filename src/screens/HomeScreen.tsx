@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { useNavigationContext } from '../context/NavigationContext';
 import Card from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
@@ -25,12 +26,27 @@ const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { state, selectCurrentGame, deleteGame } = useGame();
+  const { canCreateNewGame, forceTrialEnded } = useSubscription();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [pendingGameNavigation, setPendingGameNavigation] = useState<string | null>(null);
+
+  // 根據牌局狀態更新 trialEnded（在 useEffect 中，避免在渲染期間更新狀態）
+  useEffect(() => {
+    const canCreate = canCreateNewGame(state.games);
+    // 如果不能新增牌局，設置 trialEnded 為 true
+    // useEffect 會在渲染後執行，所以這裡更新狀態是安全的
+    if (!canCreate) {
+      forceTrialEnded(true);
+    } else {
+      // 如果可以新增，確保 trialEnded 為 false
+      forceTrialEnded(false);
+    }
+  }, [state.games, canCreateNewGame, forceTrialEnded]);
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -44,12 +60,13 @@ const HomeScreen: React.FC = () => {
     },
     content: {
       padding: theme.spacing.md,
-      paddingBottom: 100, // Space for tab bar
+      paddingTop: theme.spacing.xs, // 減少頂部間距，讓牌局列表貼近TopTabBar
+      paddingBottom: 80, // Space for tab bar (reduced)
     },
     header: {
       alignItems: 'center',
-      paddingVertical: theme.spacing.xl,
-      paddingTop: theme.spacing.xl + 8,
+      paddingVertical: theme.spacing.sm,
+      paddingTop: theme.spacing.sm,
     },
     title: {
       fontSize: theme.fontSize.xxl + 4,
@@ -91,15 +108,15 @@ const HomeScreen: React.FC = () => {
       gap: theme.spacing.sm,
     },
     addGameButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: 'transparent',
       justifyContent: 'center',
       alignItems: 'center',
     },
     addGameButtonText: {
-      fontSize: 20,
+      fontSize: 32,
       fontWeight: '600',
       color: colorMode === 'light' ? '#64748B' : '#FFFFFF',
     },
@@ -122,13 +139,15 @@ const HomeScreen: React.FC = () => {
       backgroundColor: 'transparent',
       borderWidth: 1,
       borderColor: colorMode === 'dark' ? theme.colors.border : '#10B981',
-      color: colorMode === 'dark' ? '#FFFFFF' : '#6B7280',
+      // 進行中：淺色模式改為綠色文字
+      color: colorMode === 'dark' ? '#FFFFFF' : '#10B981',
     },
     completedStatus: {
       backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: colorMode === 'dark' ? theme.colors.border : '#EF4444',
-      color: colorMode === 'dark' ? '#FFFFFF' : '#6B7280',
+      borderColor: colorMode === 'dark' ? '#EF4444' : '#EF4444',
+      // 已結束：深色模式改為紅色邊框和紅色文字
+      color: colorMode === 'dark' ? '#EF4444' : '#EF4444',
     },
     gameInfo: {
       fontSize: theme.fontSize.sm,
@@ -143,6 +162,7 @@ const HomeScreen: React.FC = () => {
       alignItems: 'center',
     },
     statValue: {
+      fontVariant: ['tabular-nums'], // 等寬數字
       fontSize: theme.fontSize.lg,
       fontWeight: 'bold',
       color: theme.colors.success,
@@ -195,7 +215,14 @@ const HomeScreen: React.FC = () => {
     },
   });
 
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`;
+  // 使用等寬數字（Tabular Numbers）格式化金額
+  const formatCurrency = (amount: number) => {
+    const formatted = amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    return `$${formatted}`;
+  };
   
   const formatTime = (date: any) => {
     const d = new Date(date);
@@ -232,6 +259,17 @@ const HomeScreen: React.FC = () => {
     setDeleteConfirmVisible(true);
   };
 
+  // 監聽 state 變化，當 currentGame 更新時自動導航
+  useEffect(() => {
+    if (pendingGameNavigation && state.currentGame?.id === pendingGameNavigation) {
+      setPendingGameNavigation(null);
+      // 使用 setTimeout 確保在下一幀導航
+      setTimeout(() => {
+        navigation.navigate('Game');
+      }, 50);
+    }
+  }, [pendingGameNavigation, state.currentGame, navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
       <TopTabBar />
@@ -248,9 +286,23 @@ const HomeScreen: React.FC = () => {
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>{t('home.gameList')}</Text>
             <TouchableOpacity
-              style={styles.addGameButton}
-              onPress={() => setNewGameModalVisible(true)}
+              style={[
+                styles.addGameButton,
+                !canCreateNewGame(state.games) && { opacity: 0.5 },
+              ]}
+              onPress={() => {
+                if (!canCreateNewGame(state.games)) {
+                  Alert.alert(
+                    '需要訂閱',
+                    '你現可免費記錄 1 個牌局；超過 24 小時或結束牌局後，需先完成訂閱。',
+                    [{ text: '確定' }]
+                  );
+                  return;
+                }
+                setNewGameModalVisible(true);
+              }}
               activeOpacity={0.7}
+              disabled={!canCreateNewGame(state.games)}
             >
               <Text style={styles.addGameButtonText}>+</Text>
             </TouchableOpacity>
@@ -261,11 +313,27 @@ const HomeScreen: React.FC = () => {
               <Text style={[styles.gameInfo, { textAlign: 'center' }]}>{t('home.noGames')}</Text>
             </Card>
           ) : (
-            state.games.map((game) => (
+            // 排序：先按狀態（active 在前），然後按時間（最新的在前）
+            [...state.games]
+              .sort((a, b) => {
+                // 先按狀態排序：active 在前，completed 在後
+                if (a.status !== b.status) {
+                  return a.status === 'active' ? -1 : 1;
+                }
+                // 相同狀態時，按時間排序：最新的在前
+                const timeA = new Date(a.startTime).getTime();
+                const timeB = new Date(b.startTime).getTime();
+                return timeB - timeA; // 降序：最新的在前
+              })
+              .map((game) => (
               <TouchableOpacity 
                 key={game.id} 
-                onPress={() => { selectCurrentGame(game.id); navigation.navigate('Game'); }}
-                activeOpacity={1}
+                onPress={() => { 
+                  selectCurrentGame(game.id);
+                  // 設置導航標記，等待 state 更新
+                  setPendingGameNavigation(game.id);
+                }}
+                activeOpacity={0.7}
               >
                 <Card style={styles.gameCard}>
                   <View style={styles.gameHeader}>

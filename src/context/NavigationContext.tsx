@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 interface NavigationContextType {
   navigateToWelcome: () => void;
@@ -30,8 +30,13 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     setNavigateCallback(() => callback);
   }, []);
 
+  const value = useMemo(() => ({
+    navigateToWelcome,
+    setNavigateToWelcomeCallback,
+  }), [navigateToWelcome, setNavigateToWelcomeCallback]);
+
   return (
-    <NavigationContext.Provider value={{ navigateToWelcome, setNavigateToWelcomeCallback }}>
+    <NavigationContext.Provider value={value}>
       {children}
     </NavigationContext.Provider>
   );

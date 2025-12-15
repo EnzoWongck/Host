@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -25,6 +26,11 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
   
   const [actualCollection, setActualCollection] = useState('');
   const [finalNotes, setFinalNotes] = useState('');
+
+  // 獲取螢幕尺寸
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const isMobile = screenWidth < 768; // 判斷是否為手機
 
   const currentGame = state.currentGame;
 
@@ -114,7 +120,7 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
       padding: theme.spacing.md,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
-      backgroundColor: theme.colors.background,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     textArea: {
       height: 80,
@@ -160,7 +166,14 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
 
   if (!currentGame) {
     return (
-      <Modal visible={visible} onClose={onClose} title={t('modals.endGame')}>
+      <Modal 
+        visible={visible} 
+        onClose={onClose} 
+        title={t('modals.endGame')}
+        maxWidth={isMobile ? screenWidth - 32 : undefined}
+        maxHeight={isMobile ? screenHeight * 0.9 : undefined}
+        containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : undefined}
+      >
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>{t('endGame.noGame')}</Text>
         </View>
@@ -223,6 +236,9 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
       visible={visible}
       onClose={onClose}
       title={t('modals.endGame')}
+      maxWidth={isMobile ? screenWidth - 32 : undefined}
+      maxHeight={isMobile ? screenHeight * 0.9 : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : undefined}
     >
       <View>
         {/* 確認訊息 */}
