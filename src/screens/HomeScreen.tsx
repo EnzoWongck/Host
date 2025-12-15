@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   ScrollView,
   Image,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -26,7 +27,7 @@ const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { state, selectCurrentGame, deleteGame } = useGame();
-  const { canCreateNewGame, forceTrialEnded } = useSubscription();
+  const { canCreateNewGame, forceTrialEnded, isSubscribed } = useSubscription();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
@@ -34,6 +35,7 @@ const HomeScreen: React.FC = () => {
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
   const [pendingGameNavigation, setPendingGameNavigation] = useState<string | null>(null);
+  const [showAddToHomeModal, setShowAddToHomeModal] = useState(false);
 
   // 根據牌局狀態更新 trialEnded（在 useEffect 中，避免在渲染期間更新狀態）
   useEffect(() => {
@@ -252,6 +254,53 @@ const HomeScreen: React.FC = () => {
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
+  };
+
+  // 檢查當前是否已安裝為 PWA（加入主畫面）
+  const isRunningStandalone = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const isStandaloneMedia =
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || false;
+    const isNavigatorStandalone = (window.navigator as any)?.standalone === true;
+    return isStandaloneMedia || isNavigatorStandalone;
+  }, []);
+
+  // 首次進入主頁／完成訂閱後，若尚未加入主畫面且未看過教學，顯示提示彈窗（僅 Web）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (Platform.OS !== 'web') return;
+    if (isRunningStandalone) return;
+
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
+    // 在 localhost 總是顯示彈窗，方便開發測試
+    if (isLocalhost) {
+      setShowAddToHomeModal(true);
+      return;
+    }
+
+    try {
+      const dismissed = window.localStorage?.getItem('lunchips_a2hs_dismissed') === '1';
+      if (!dismissed) {
+        setShowAddToHomeModal(true);
+      }
+    } catch {
+      // localStorage 失敗時，仍可顯示一次
+      setShowAddToHomeModal(true);
+    }
+  }, [isRunningStandalone, isSubscribed]);
+
+  const handleDismissAddToHome = () => {
+    setShowAddToHomeModal(false);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage?.setItem('lunchips_a2hs_dismissed', '1');
+      } catch {
+        // ignore
+      }
+    }
   };
 
   const handleDeleteGame = (gameId: string, gameName: string) => {
@@ -547,6 +596,126 @@ const HomeScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Add to Home Screen 教學彈窗（僅 Web 顯示） */}
+      {Platform.OS === 'web' && (
+        <Modal
+          visible={showAddToHomeModal}
+          transparent
+          animationType="fade"
+          onRequestClose={handleDismissAddToHome}
+        >
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: theme.spacing.lg,
+            }}
+            activeOpacity={1}
+            onPress={handleDismissAddToHome}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.borderRadius.lg,
+                padding: theme.spacing.lg,
+                maxWidth: 420,
+                width: '100%',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: theme.fontSize.lg,
+                  fontWeight: '700',
+                  color: theme.colors.text,
+                  marginBottom: theme.spacing.lg,
+                }}
+              >
+                將 LunChips 加到主畫面，以享受更佳體驗
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: theme.fontSize.sm,
+                  fontWeight: '600',
+                  color: theme.colors.text,
+                  marginBottom: theme.spacing.xs,
+                }}
+              >
+                Safari
+              </Text>
+              <Text
+                style={{
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.textSecondary,
+                  marginBottom: theme.spacing.md,
+                  lineHeight: 20,
+                }}
+              >
+                1. 點選瀏覽器下方的分享按鈕（〔□↑〕）{'\n'}
+                2. 向下滑找到「加入主畫面」並點選{'\n'}
+                3. 按右上「加入」即可
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: theme.fontSize.sm,
+                  fontWeight: '600',
+                  color: theme.colors.text,
+                  marginBottom: theme.spacing.xs,
+                }}
+              >
+                Chrome
+              </Text>
+              <Text
+                style={{
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.textSecondary,
+                  marginBottom: theme.spacing.lg,
+                  lineHeight: 20,
+                }}
+              >
+                1. 點選右上角「⋮」選單{'\n'}
+                2. 選擇「安裝應用程式」或「加入主畫面」{'\n'}
+                3. 按「加入」即可
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'flex-end',
+                  marginTop: theme.spacing.sm,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={handleDismissAddToHome}
+                  activeOpacity={0.7}
+                  style={{
+                    paddingVertical: theme.spacing.sm,
+                    paddingHorizontal: theme.spacing.lg,
+                    borderRadius: theme.borderRadius.sm,
+                    backgroundColor: theme.colors.primary,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: theme.fontSize.sm,
+                      fontWeight: '600',
+                      color: theme.colors.text,
+                    }}
+                  >
+                    我知道了
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
