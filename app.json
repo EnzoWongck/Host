@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Host27o",
-    "slug": "host27o",
+    "name": "LunChips",
+    "slug": "lunchips",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icons/host27o.icon.png",
+    "icon": "./assets/icons/coinfin.png",
     "userInterfaceStyle": "light",
-    "scheme": "host27o",
+    "scheme": "lunchips",
     "sdkVersion": "54.0.0",
     "splash": {
       "image": "./assets/splash.png",
@@ -31,24 +31,32 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/host27o.icon.png",
+        "foregroundImage": "./assets/icons/coinfin.png",
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.pokerhost.app"
     },
     "web": {
-      "favicon": "./assets/icons/host27o.icon.png",
+      "favicon": "./assets/icons/coinfin.png",
       "bundler": "metro",
-      "name": "Host27o",
-      "shortName": "Host27o",
+      "name": "LunChips",
+      "shortName": "LunChips",
       "lang": "zh-TW",
       "dir": "ltr",
       "scope": "/",
-      "themeColor": "#007AFF",
-      "backgroundColor": "#FFFFFF",
+      "themeColor": "#10B981",
+      "backgroundColor": "#1A1A1A",
       "startUrl": "/",
       "display": "standalone",
-      "orientation": "portrait"
+      "orientation": "portrait",
+      "dangerouslySetInnerHTML": true,
+      "build": {
+        "babel": {
+          "include": [
+            "@expo/vector-icons"
+          ]
+        }
+      }
     },
     "plugins": [
       "expo-web-browser"
@@ -57,7 +65,7 @@
       "eas": {
         "projectId": "0a3c34f2-33cc-4893-abdc-5c2159d3059b"
       },
-      "apiUrl": "https://host27o.com/api"
+      "apiUrl": "https://lunchips.com/api"
     }
   }
 }
