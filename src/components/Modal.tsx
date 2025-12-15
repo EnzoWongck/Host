@@ -268,17 +268,10 @@ const Modal: React.FC<ModalProps> = ({
         rootElement.style.height = 'auto';
       }
       
-      // 確保覆蓋整個視窗（即使滾動後）
+      // 確保覆蓋當前視窗高度；在 iOS Safari 鍵盤彈出時避免產生額外空白區域
       const updateHeight = () => {
-        const viewportHeight = window.innerHeight;
-        const scrollHeight = Math.max(
-          document.documentElement.scrollHeight,
-          document.body.scrollHeight,
-          viewportHeight
-        );
-        // 使用較大的值確保覆蓋整個視窗和滾動區域
-        const minHeight = Math.max(scrollHeight, viewportHeight * 2);
-        
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const minHeight = viewportHeight;
         htmlElement.style.minHeight = `${minHeight}px`;
         bodyElement.style.minHeight = `${minHeight}px`;
         if (rootElement) {
@@ -288,21 +281,17 @@ const Modal: React.FC<ModalProps> = ({
       
       updateHeight();
       
-      // 監聽滾動和視窗大小變化，更新最小高度
-      window.addEventListener('scroll', updateHeight, { passive: true });
+      // 僅在視窗尺寸變化時更新高度，避免因 scroll 導致頁面高度被放大
       window.addEventListener('resize', updateHeight, { passive: true });
       if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', updateHeight);
-        window.visualViewport.addEventListener('scroll', updateHeight);
       }
 
       return () => {
         // 清理事件監聽器
-        window.removeEventListener('scroll', updateHeight);
         window.removeEventListener('resize', updateHeight);
         if (window.visualViewport) {
           window.visualViewport.removeEventListener('resize', updateHeight);
-          window.visualViewport.removeEventListener('scroll', updateHeight);
         }
         
         // 恢復原始樣式

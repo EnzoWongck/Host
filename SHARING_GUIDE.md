@@ -11,9 +11,9 @@
 ### 1. **敏感資訊檢查**
 
 #### ✅ 已安全（可以分享）
-- **Firebase API Key**: `<YOUR_FIREBASE_WEB_API_KEY>`
-  - 請在 Firebase Console 中取得實際的 Web API key，**不要在公開文件或程式碼庫中寫出完整值**
-  - 可以分享此應用程式，但務必在 Firebase Console 設置適當的安全規則（網域限制、API 限制）
+- **Firebase API Key**: `AIzaSyDICvGUSjJBd0PGzU6H0ZfuhUKt1FuGB9I`
+  - 這是公開的 API Key，Firebase 有安全規則保護
+  - 可以分享，但建議在 Firebase Console 設置適當的安全規則
 
 - **Google OAuth Client IDs**: 
   - 這些是公開的 Client ID，可以分享
