@@ -48,9 +48,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     },
     content: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.xl * 7, // 再往下，大幅度
+      paddingBottom: theme.spacing.xl * 2,
     },
     logoContainer: {
       alignItems: 'center',
@@ -60,19 +62,19 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       width: 300,
       height: 300,
       marginBottom: theme.spacing.md, // 縮短與文字的距離
-      marginTop: theme.spacing.lg, // 向下移動
+      marginTop: theme.spacing.xl * 2, // 整體向下移動一些
     },
     hostTitle: {
       fontSize: 48,
       fontWeight: '700',
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
-      color: colorMode === 'dark' ? '#FFFFFF' : '#000000',
+      color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      transform: [{ translateY: -25 }], // 向上移動更多
+      marginTop: theme.spacing.xl * 3, // 僅 LunChips 再往下移一點
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
-      color: colorMode === 'dark' ? '#9CA3AF' : '#6B7280',
+      color: '#9CA3AF', // 灰色，兩種模式一致
       textAlign: 'center',
       marginTop: theme.spacing.md,
       marginBottom: theme.spacing.xl,
@@ -85,7 +87,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       maxWidth: 400,
       marginBottom: theme.spacing.xl,
       paddingHorizontal: theme.spacing.lg,
-      transform: [{ translateY: -15 }], // 向上移動 15px
     },
     featureItem: {
       flexDirection: 'row',
@@ -107,7 +108,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     },
     featureText: {
       fontSize: theme.fontSize.md,
-      color: colorMode === 'dark' ? '#D1D5DB' : '#4B5563',
+      color: '#9CA3AF', // 灰色，兩種模式一致
       fontWeight: '500',
       textAlign: 'left',
     },
@@ -118,7 +119,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       paddingHorizontal: theme.spacing.md,
     },
     getStartedButton: {
-      backgroundColor: colorMode === 'dark' ? '#FFFFFF' : '#fef8e8',
+      backgroundColor: '#FFFFFF', // 「免費試用」按鈕背景固定白色
       paddingVertical: theme.spacing.md + 4,
       paddingHorizontal: theme.spacing.xl + 8,
       borderRadius: 12,
@@ -246,7 +247,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
           <Text style={styles.hostTitle}>LunChips</Text>
         </View>
 
-        <View style={styles.featureList}>
+        {/* 其餘內容整體再往下移一段 */}
+        <View style={[styles.featureList, { marginTop: theme.spacing.xl * 2 }]}>
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>
               <Image 

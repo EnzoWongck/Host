@@ -104,6 +104,19 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
       minHeight: 48,
       marginBottom: 20,
     },
+    // 原生端訂閱按鈕樣式（恢復為藍底白字）
+    nativeSubscribeButton: {
+      backgroundColor: '#0070BA',
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    nativeSubscribeButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
   });
 
   // 「稍後再說」：關閉 1 小時（避免用戶一直點逃避）
@@ -208,13 +221,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
               )}
               {Platform.OS !== 'web' && (
                 <TouchableOpacity
-                  style={{
-                    backgroundColor: '#0070BA',
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                  }}
+                  style={styles.nativeSubscribeButton}
                   onPress={() => {
                     Alert.alert(
                       '訂閱',
@@ -223,7 +230,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
                     );
                   }}
                 >
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+                  <Text style={styles.nativeSubscribeButtonText}>
                     前往訂閱
                   </Text>
                 </TouchableOpacity>

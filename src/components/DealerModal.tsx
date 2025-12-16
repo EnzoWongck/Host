@@ -330,9 +330,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
     // 預設薪金估算：小費合計 × 佔成 + 基本時薪 × 工時
     const tipPortion = dealer.totalTips * (dealer.tipShare / 100);
     const hourlyPortion = dealer.hourlyRate * dealer.workHours;
-    return dealer.estimatedSalary && dealer.estimatedSalary > 0
-      ? dealer.estimatedSalary
-      : tipPortion + hourlyPortion;
+    return tipPortion + hourlyPortion;
   };
 
   // 將時間字符串轉換為標準格式 HH:MM
@@ -433,6 +431,17 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       minute: '2-digit',
       hour12: false 
     });
+  };
+
+  // 根據目前輸入的工時與小費，自動計算薪金預估並覆蓋編輯欄位
+  const recalculateEstimatedSalary = (baseDealer: Dealer, workHoursValue: string, tipsValue: string) => {
+    const hours = parseFloat(workHoursValue || '0') || 0;
+    const tips = parseFloat(tipsValue || '0') || 0;
+    const hourly = baseDealer.hourlyRate || 0;
+    const tipPortion = tips * (baseDealer.tipShare / 100);
+    const hourlyPortion = hourly * hours;
+    const salary = tipPortion + hourlyPortion;
+    setEditEstimatedSalary(salary > 0 ? String(salary) : '0');
   };
 
   const handleSaveEditDealer = (item: Dealer) => {
@@ -811,13 +820,9 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                                     const normalizedStart = normalizeTimeInput(timeStr);
                                     const normalizedEnd = normalizeTimeInput(editEndTime);
                                     if (normalizedStart && normalizedEnd) {
-                                      const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                      if (hours > 0) {
-                                        const currentHours = editWorkHours ? editWorkHours.trim() : '';
-                                        if (currentHours === '' || parseFloat(currentHours) === 0) {
-                                          setEditWorkHours(String(hours));
-                                        }
-                                      }
+                                  const hours = calculateWorkHours(normalizedStart, normalizedEnd);
+                                  setEditWorkHours(String(hours));
+                                  recalculateEstimatedSalary(item, String(hours), editTips || '0');
                                     }
                                   }
                                 }
@@ -838,12 +843,8 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                               const normalizedEnd = normalizeTimeInput(editEndTime);
                               if (normalizedStart && normalizedEnd) {
                                 const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                if (hours > 0) {
-                                  const currentHours = editWorkHours ? editWorkHours.trim() : '';
-                                  if (currentHours === '' || parseFloat(currentHours) === 0) {
-                                    setEditWorkHours(String(hours));
-                                  }
-                                }
+                                setEditWorkHours(String(hours));
+                                recalculateEstimatedSalary(item, String(hours), editTips || '0');
                               }
                             }
                           }}
@@ -891,13 +892,9 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                                     const normalizedStart = normalizeTimeInput(editStartTime);
                                     const normalizedEnd = normalizeTimeInput(timeStr);
                                     if (normalizedStart && normalizedEnd) {
-                                      const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                      if (hours > 0) {
-                                        const currentHours = editWorkHours ? editWorkHours.trim() : '';
-                                        if (currentHours === '' || parseFloat(currentHours) === 0) {
-                                          setEditWorkHours(String(hours));
-                                        }
-                                      }
+                                  const hours = calculateWorkHours(normalizedStart, normalizedEnd);
+                                  setEditWorkHours(String(hours));
+                                  recalculateEstimatedSalary(item, String(hours), editTips || '0');
                                     }
                                   }
                                 }
@@ -918,12 +915,8 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                               const normalizedEnd = normalizeTimeInput(text);
                               if (normalizedStart && normalizedEnd) {
                                 const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                if (hours > 0) {
-                                  const currentHours = editWorkHours ? editWorkHours.trim() : '';
-                                  if (currentHours === '' || parseFloat(currentHours) === 0) {
-                                    setEditWorkHours(String(hours));
-                                  }
-                                }
+                                setEditWorkHours(String(hours));
+                                recalculateEstimatedSalary(item, String(hours), editTips || '0');
                               }
                             }
                           }}
@@ -951,7 +944,10 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                   <TextInput
                     style={[styles.input, focusedInput === 'editWorkHours' && styles.inputFocused]}
                     value={editWorkHours}
-                    onChangeText={setEditWorkHours}
+                    onChangeText={(text) => {
+                      setEditWorkHours(text);
+                      recalculateEstimatedSalary(item, text, editTips || '0');
+                    }}
                     onFocus={() => setFocusedInput('editWorkHours')}
                     onBlur={() => {
                       setFocusedInput(null);
@@ -974,7 +970,10 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                   <TextInput
                     style={[styles.input, focusedInput === 'editTips' && styles.inputFocused]}
                     value={editTips}
-                    onChangeText={setEditTips}
+                    onChangeText={(text) => {
+                      setEditTips(text);
+                      recalculateEstimatedSalary(item, editWorkHours || '0', text || '0');
+                    }}
                     onFocus={() => {
                       setFocusedInput('editTips');
                       setEditTips(''); // 點擊時自動清空

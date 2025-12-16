@@ -302,8 +302,8 @@ export const zhCN: Translations = {
   insurance: {
     defaultPartners: '目前预设',
     setDefault: '设定预设分成',
-    partnerName: '名称',
-    namePlaceholder: '分成者名称',
+    partnerName: '分成者名称',
+    namePlaceholder: '名称',
     percentage: '百分比',
     addPartner: '新增',
     totalPercentage: '总分成比例：',

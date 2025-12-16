@@ -314,9 +314,9 @@ const SettingsScreen: React.FC = () => {
                   <Button
                     title={t('settings.logout')}
                     size="sm"
-                    onPress={() => {
+                    onPress={async () => {
                       // 登出後返回 Welcome 頁
-                      signOut();
+                      await signOut();
                       navigateToWelcome();
                     }}
                   />

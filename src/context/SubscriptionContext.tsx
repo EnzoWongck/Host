@@ -31,64 +31,72 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const [trialEnded, setTrialEnded] = useState<boolean>(false);
 
   // 檢查是否可以新增牌局（基於牌局數量和狀態）- 純函數，不更新狀態
-  const canCreateNewGame = useCallback((games: any[]) => {
-    if (isSubscribed) {
-      // 已訂閱，可以無限制新增
-      return true;
-    }
+  const canCreateNewGame = useCallback(
+    (games: any[]) => {
+      if (isSubscribed) {
+        // 已訂閱，可以無限制新增
+        return true;
+      }
 
-    const gamesList = games || [];
-    
-    // 如果沒有牌局，可以新增第一個
-    if (gamesList.length === 0) {
-      return true;
-    }
-
-    // 如果只有 1 個牌局
-    if (gamesList.length === 1) {
-      const game = gamesList[0];
-      
-      // 如果牌局還在進行中（active）
-      if (game.status === 'active') {
-        // 檢查是否超過 24 小時
-        const startTime = new Date(game.startTime).getTime();
-        const now = Date.now();
-        const elapsed = now - startTime;
-        const hours24 = 24 * 60 * 60 * 1000;
-        
-        if (elapsed > hours24) {
-          // 超過 24 小時，不能新增第二個
-          return false;
-        } else {
-          // 未超過 24 小時，可以新增
-          return true;
-        }
-      } else if (game.status === 'completed') {
-        // 牌局已結束，不能新增第二個
+      // 一旦試用已標記為結束，無論目前有沒有牌局，都不能再新增
+      if (trialEnded) {
         return false;
       }
-    }
 
-    // 如果有多個牌局，且未訂閱，檢查是否有超過 24 小時的 active 牌局或已結束的牌局
-    if (gamesList.length >= 1) {
-      const hasExpiredOrCompleted = gamesList.some(g => {
-        if (g.status === 'completed') return true;
-        if (g.status === 'active') {
-          const startTime = new Date(g.startTime).getTime();
+      const gamesList = games || [];
+
+      // 如果沒有牌局，且 trialEnded 還是 false，允許新增第一個
+      if (gamesList.length === 0) {
+        return true;
+      }
+
+      // 如果只有 1 個牌局
+      if (gamesList.length === 1) {
+        const game = gamesList[0];
+
+        // 如果牌局還在進行中（active）
+        if (game.status === 'active') {
+          // 檢查是否超過 24 小時
+          const startTime = new Date(game.startTime).getTime();
           const now = Date.now();
           const elapsed = now - startTime;
-          return elapsed > 24 * 60 * 60 * 1000;
+          const hours24 = 24 * 60 * 60 * 1000;
+
+          if (elapsed > hours24) {
+            // 超過 24 小時，不能新增第二個，並視為試用已結束
+            return false;
+          } else {
+            // 未超過 24 小時，可以新增
+            return true;
+          }
+        } else if (game.status === 'completed') {
+          // 牌局已結束，不能新增第二個
+          return false;
         }
-        return false;
-      });
-
-      if (hasExpiredOrCompleted) {
-        return false;
       }
-    }
 
-    return true;
-  }, [isSubscribed]);
+      // 如果有多個牌局，且未訂閱，檢查是否有超過 24 小時的 active 牌局或已結束的牌局
+      if (gamesList.length >= 1) {
+        const hasExpiredOrCompleted = gamesList.some((g) => {
+          if (g.status === 'completed') return true;
+          if (g.status === 'active') {
+            const startTime = new Date(g.startTime).getTime();
+            const now = Date.now();
+            const elapsed = now - startTime;
+            return elapsed > 24 * 60 * 60 * 1000;
+          }
+          return false;
+        });
+
+        if (hasExpiredOrCompleted) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    [isSubscribed, trialEnded],
+  );
 
   // 檢查試用狀態（可接後端 API）
   const checkTrialStatus = useCallback(async () => {
@@ -98,13 +106,17 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       return;
     }
 
-    // 特殊處理：test@test.com 帳號強制設置為未訂閱
+    // 特殊處理：test@test.com 帳號強制設置為「未訂閱 + 已超過免費時間」
     if (user.email === 'test@test.com') {
       setIsSubscribed(false);
-      setTrialEnded(false);
+      setTrialEnded(true);
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        // 清除該用戶的訂閱狀態
-        localStorage.setItem('subscription_status', JSON.stringify({ isSubscribed: false, trialEnded: false }));
+        // 將該用戶標記為：未訂閱且試用已到期，並清除關閉 paywall 的紀錄
+        localStorage.setItem(
+          'subscription_status',
+          JSON.stringify({ isSubscribed: false, trialEnded: true }),
+        );
+        localStorage.removeItem('paywall_closed_at');
       }
       return;
     }

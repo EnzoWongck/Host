@@ -302,8 +302,8 @@ export const zhTW: Translations = {
   insurance: {
     defaultPartners: '目前預設',
     setDefault: '設定預設分成',
-    partnerName: '名稱',
-    namePlaceholder: '分成者名稱',
+    partnerName: '分成者名稱',
+    namePlaceholder: '名稱',
     percentage: '百分比',
     addPartner: '新增',
     totalPercentage: '總分成比例：',

@@ -311,18 +311,13 @@ const AppNavigator: React.FC = () => {
   useEffect(() => {
     // 如果跳過登入，不設置導航回調，避免被導向登入頁
     if (!shouldSkipAuth) {
-      // 左上角 Logo 行為：
-      // - 若尚未登入：回到 Welcome 頁
-      // - 若已登入：回到主畫面（保持登入，不做登出）
+      // 無論當前是否登入，只要呼叫 navigateToWelcome，就一律回到 Welcome 畫面
+      //（用於設定頁登出後返回歡迎頁）
       setNavigateToWelcomeCallback(() => {
-        if (isSignedIn) {
-          setCurrentScreen('main');
-        } else {
-          setCurrentScreen('welcome');
-        }
+        setCurrentScreen('welcome');
       });
     }
-  }, [setNavigateToWelcomeCallback, shouldSkipAuth, isSignedIn]);
+  }, [setNavigateToWelcomeCallback, shouldSkipAuth]);
 
   // 如果跳過登入，直接顯示主頁面，忽略所有其他狀態
   if (shouldSkipAuth) {

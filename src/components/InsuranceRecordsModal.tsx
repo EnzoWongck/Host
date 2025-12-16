@@ -108,11 +108,11 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
     addPartnerButton: {
       paddingHorizontal: theme.spacing.lg,
       paddingVertical: theme.spacing.xs,
-      marginTop: theme.spacing.sm,
+      marginVertical: theme.spacing.sm,
     },
     addPartnerText: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: '800',
+      fontSize: theme.fontSize.md,
+      fontWeight: '600',
       color: theme.colors.textSecondary,
     },
     totalPercentage: {
@@ -122,7 +122,7 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
       borderWidth: 1,
       borderColor: selectionBorderColor,
       marginBottom: theme.spacing.lg,
-      marginTop: theme.spacing.md,
+      marginTop: theme.spacing.sm,
     },
     totalPercentageText: {
       fontSize: theme.fontSize.md,
@@ -359,9 +359,9 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
       visible={visible} 
       onClose={onClose} 
       title={showOnlyDefaultPartners ? (t('insurance.defaultPartners') || '預設分成') : t('modals.insurance')} 
-      maxWidth={isMobile ? screenWidth - 32 : 250} 
+      maxWidth={isMobile ? screenWidth - 32 : 400} 
       maxHeight={isMobile ? screenHeight * 0.9 : undefined}
-      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 250, minWidth: 250, maxWidth: 'none' }}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 400, minWidth: 400, maxWidth: 'none' }}
     >
       {!currentGame ? (
         <Text style={{ color: theme.colors.textSecondary }}>{t('insurance.errorNoGame')}</Text>
@@ -430,47 +430,51 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
                 {defaultPartnerInputs.map((input, index) => (
                   <View key={input.id} style={styles.partnerRow}>
                     <View style={styles.partnerInputRow}>
-                      <View style={styles.partnerNameInput}>
-                        <Text style={styles.label}>{t('insurance.partnerName') || '分成者名稱'}</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            focusedInput === `default-name-${input.id}` && styles.inputFocused,
-                          ]}
-                          value={input.name}
-                          onChangeText={(value) => updateDefaultPartnerName(input.id, value)}
-                          placeholder={t('insurance.namePlaceholder') || '輸入名稱'}
-                          placeholderTextColor={
-                            focusedInput === `default-name-${input.id}`
-                              ? 'transparent'
-                              : theme.colors.textSecondary
-                          }
-                          onFocus={() => setFocusedInput(`default-name-${input.id}`)}
-                          onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-                      <View style={styles.partnerPercentageInput}>
-                        <Text style={styles.label}>{t('insurance.percentage') || '百分比'}</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            focusedInput === `default-pct-${input.id}` && styles.inputFocused,
-                          ]}
-                          value={input.percentage}
-                          onChangeText={(value) => updateDefaultPartnerPercentage(input.id, value)}
-                          placeholder="%"
-                          placeholderTextColor={
-                            focusedInput === `default-pct-${input.id}`
-                              ? 'transparent'
-                              : theme.colors.textSecondary
-                          }
-                          onFocus={() => setFocusedInput(`default-pct-${input.id}`)}
-                          onBlur={() => setFocusedInput(null)}
-                          keyboardType="numeric"
-                          inputMode="decimal"
-                          {...(Platform.OS === 'web' ? { pattern: '[0-9.]*' } : {})}
-                        />
-                      </View>
+                    <View style={styles.partnerNameInput}>
+                      <Text style={styles.label}>
+                        {index === 0 ? (t('insurance.partnerName') || '分成者名稱') : ' '}
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          focusedInput === `default-name-${input.id}` && styles.inputFocused,
+                        ]}
+                        value={input.name}
+                        onChangeText={(value) => updateDefaultPartnerName(input.id, value)}
+                        placeholder={t('insurance.namePlaceholder') || '名稱'}
+                        placeholderTextColor={
+                          focusedInput === `default-name-${input.id}`
+                            ? 'transparent'
+                            : theme.colors.textSecondary
+                        }
+                        onFocus={() => setFocusedInput(`default-name-${input.id}`)}
+                        onBlur={() => setFocusedInput(null)}
+                      />
+                    </View>
+                    <View style={styles.partnerPercentageInput}>
+                      <Text style={styles.label}>
+                        {index === 0 ? (t('insurance.percentage') || '百分比') : ' '}
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          focusedInput === `default-pct-${input.id}` && styles.inputFocused,
+                        ]}
+                        value={input.percentage}
+                        onChangeText={(value) => updateDefaultPartnerPercentage(input.id, value)}
+                        placeholder="%"
+                        placeholderTextColor={
+                          focusedInput === `default-pct-${input.id}`
+                            ? 'transparent'
+                            : theme.colors.textSecondary
+                        }
+                        onFocus={() => setFocusedInput(`default-pct-${input.id}`)}
+                        onBlur={() => setFocusedInput(null)}
+                        keyboardType="numeric"
+                        inputMode="decimal"
+                        {...(Platform.OS === 'web' ? { pattern: '[0-9.]*' } : {})}
+                      />
+                    </View>
                       {defaultPartnerInputs.length > 1 && (
                         <TouchableOpacity
                           onPress={() => removeDefaultPartnerInput(input.id)}
@@ -490,7 +494,7 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
                   activeOpacity={0.7}
                   style={[styles.addPartnerButton, { alignItems: 'center', justifyContent: 'center' }]}
                 >
-                  <Text style={styles.addPartnerText}>+</Text>
+                  <Text style={styles.addPartnerText}>+分成者</Text>
                 </TouchableOpacity>
 
                 {/* 總分成比例顯示 */}
@@ -530,8 +534,8 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
             )}
           </View>
 
-          {/* 保險記錄列表 */}
-          {!showOnlyDefaultPartners && (
+          {/* 保險記錄列表（當正在編輯預設分成時也隱藏） */}
+          {!showOnlyDefaultPartners && !editingDefaultPartners && (
             <>
               <View style={[styles.section, styles.listContainer]}>
                 {currentGame.insurances
