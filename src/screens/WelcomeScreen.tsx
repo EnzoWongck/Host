@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
   const { theme, colorMode, toggleColorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  
+  // 檢測是否為手機設備（通過屏幕寬度判斷）
+  const isMobile = useMemo(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      return window.innerWidth < 768; // 小於 768px 視為手機
+    }
+    return Platform.OS !== 'web';
+  }, []);
 
   const styles = StyleSheet.create({
     container: {
@@ -48,29 +56,29 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     },
     content: {
       flex: 1,
-      justifyContent: 'flex-start',
+      justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: theme.spacing.xl * 7, // 再往下，大幅度
-      paddingBottom: theme.spacing.xl * 2,
+      paddingTop: isMobile ? theme.spacing.xl * 6 : theme.spacing.xl * 7, // 手機版：整塊再往下移幾格
+      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 2,
     },
     logoContainer: {
       alignItems: 'center',
-      marginBottom: theme.spacing.xl,
+      marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
     },
     logoImage: {
-      width: 300,
-      height: 300,
-      marginBottom: theme.spacing.md, // 縮短與文字的距離
-      marginTop: theme.spacing.xl * 2, // 整體向下移動一些
+      width: isMobile ? 140 : 300, // 手機版：Logo 再小一點
+      height: isMobile ? 140 : 300,
+      marginBottom: theme.spacing.xs, // 減少與文字的距離
+      marginTop: isMobile ? theme.spacing.xl * 1.5 : theme.spacing.xl * 2, // 手機版：Logo 微微上移，其它不變
     },
     hostTitle: {
-      fontSize: 48,
+      fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
       fontWeight: '700',
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      marginTop: theme.spacing.xl * 3, // 僅 LunChips 再往下移一點
+      marginTop: isMobile ? theme.spacing.xl * 1.6 : theme.spacing.xl * 3, // 手機版：再往下移一點點
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
@@ -85,13 +93,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     featureList: {
       width: '100%',
       maxWidth: 400,
-      marginBottom: theme.spacing.xl,
+      marginBottom: isMobile ? theme.spacing.lg : theme.spacing.xl, // 手機版：與按鈕之間距離縮小
       paddingHorizontal: theme.spacing.lg,
+      marginTop: isMobile ? theme.spacing.xs : theme.spacing.xl * 2, // 手機版：三行文字與按鈕再微微上移
     },
     featureItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: theme.spacing.md,
+      marginBottom: theme.spacing.sm, // 三行文字之間的間距縮小
       justifyContent: 'center',
     },
     featureIcon: {
@@ -111,6 +120,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       color: '#9CA3AF', // 灰色，兩種模式一致
       fontWeight: '500',
       textAlign: 'left',
+      lineHeight: theme.fontSize.md * 1.2, // 行距略小，讓三行說明更緊湊
     },
     buttonContainer: {
       alignItems: 'center',
@@ -186,10 +196,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
   const backgroundImage = BackgroundImage;
   const backgroundImageSource = Platform.OS === 'web' 
     ? (() => {
-        // 檢查是否為開發模式（通過檢查 URL 是否包含 localhost 或是否有 dev 參數）
+        // 檢查是否為開發模式（通過檢查 URL 是否包含 localhost、127.0.0.1 或 IP 地址）
         const isDev = typeof window !== 'undefined' && (
           window.location.hostname === 'localhost' || 
           window.location.hostname === '127.0.0.1' ||
+          /^192\.168\./.test(window.location.hostname) || // 本地 IP 地址（手機訪問時）
           window.location.search.includes('dev=true')
         );
         
@@ -247,8 +258,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
           <Text style={styles.hostTitle}>LunChips</Text>
         </View>
 
-        {/* 其餘內容整體再往下移一段 */}
-        <View style={[styles.featureList, { marginTop: theme.spacing.xl * 2 }]}>
+        {/* 特色說明列表 */}
+        <View style={styles.featureList}>
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>
               <Image 
