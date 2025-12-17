@@ -30,7 +30,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [trialEnded, setTrialEnded] = useState<boolean>(false);
 
-  // 檢查是否可以新增牌局（基於牌局數量和狀態）- 純函數，不更新狀態
+  // 檢查是否可以新增牌局（基於牌局數量和狀態）- 會自動更新 trialEnded 狀態
   const canCreateNewGame = useCallback(
     (games: any[]) => {
       if (isSubscribed) {
@@ -50,6 +50,9 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         return true;
       }
 
+      // 檢查是否有已完成或超過 24 小時的牌局
+      let shouldEndTrial = false;
+
       // 如果只有 1 個牌局
       if (gamesList.length === 1) {
         const game = gamesList[0];
@@ -64,14 +67,14 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
           if (elapsed > hours24) {
             // 超過 24 小時，不能新增第二個，並視為試用已結束
-            return false;
+            shouldEndTrial = true;
           } else {
             // 未超過 24 小時，可以新增
             return true;
           }
         } else if (game.status === 'completed') {
           // 牌局已結束，不能新增第二個
-          return false;
+          shouldEndTrial = true;
         }
       }
 
@@ -89,8 +92,27 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         });
 
         if (hasExpiredOrCompleted) {
-          return false;
+          shouldEndTrial = true;
         }
+      }
+
+      // 如果應該結束試用，立即設置並持久化
+      if (shouldEndTrial && !trialEnded) {
+        setTrialEnded(true);
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          try {
+            const currentStatus = localStorage.getItem('subscription_status');
+            const parsed = currentStatus ? JSON.parse(currentStatus) : {};
+            localStorage.setItem(
+              'subscription_status',
+              JSON.stringify({ ...parsed, isSubscribed: false, trialEnded: true }),
+            );
+            localStorage.removeItem('paywall_closed_at'); // 清除關閉記錄，確保 paywall 可以顯示
+          } catch (error) {
+            console.error('保存試用結束狀態失敗:', error);
+          }
+        }
+        return false;
       }
 
       return true;
@@ -155,6 +177,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         if (cachedStatus) {
           const parsed = JSON.parse(cachedStatus);
           setIsSubscribed(parsed.isSubscribed || false);
+          setTrialEnded(parsed.trialEnded || false); // 也要讀取 trialEnded 狀態
         }
 
         // 呼叫後端 API 檢查試用狀態（未來實作）
@@ -199,9 +222,19 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const forceTrialEnded = useCallback((ended: boolean) => {
     setTrialEnded(ended);
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      // 清除關閉記錄，確保 paywall 可以顯示
-      if (ended) {
-        localStorage.removeItem('paywall_closed_at');
+      try {
+        const currentStatus = localStorage.getItem('subscription_status');
+        const parsed = currentStatus ? JSON.parse(currentStatus) : {};
+        localStorage.setItem(
+          'subscription_status',
+          JSON.stringify({ ...parsed, isSubscribed: parsed.isSubscribed || false, trialEnded: ended }),
+        );
+        // 清除關閉記錄，確保 paywall 可以顯示
+        if (ended) {
+          localStorage.removeItem('paywall_closed_at');
+        }
+      } catch (error) {
+        console.error('保存試用結束狀態失敗:', error);
       }
     }
   }, []);
