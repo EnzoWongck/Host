@@ -106,6 +106,9 @@ import { ToastProvider } from './src/context/ToastContext';
 import { CollaborationProvider } from './src/context/CollaborationContext';
 import { NavigationProvider, useNavigationContext } from './src/context/NavigationContext';
 import { SubscriptionProvider, useSubscription } from './src/context/SubscriptionContext';
+import { ChipsProvider, useChips } from './src/context/ChipsContext';
+import ChipsPurchaseModal from './src/components/ChipsPurchaseModal';
+import ChipsExpiredModal from './src/components/ChipsExpiredModal';
 // Utils
 import { getFontFamily, getFontWeight } from './src/utils/fonts';
 // Config
@@ -625,6 +628,29 @@ const PaywallGuard: React.FC = () => {
   );
 };
 
+// Chips 購買和過期提醒組件
+const ChipsGuard: React.FC = () => {
+  const { showPurchaseModal, showExpiredModal, closePurchaseModal, closeExpiredModal, gameChipStatus } = useChips();
+  const { state } = useGame();
+  
+  // 獲取當前遊戲 ID
+  const currentGameId = state.currentGame?.id || '';
+
+  return (
+    <>
+      <ChipsPurchaseModal
+        visible={showPurchaseModal}
+        onClose={closePurchaseModal}
+      />
+      <ChipsExpiredModal
+        visible={showExpiredModal}
+        onClose={closeExpiredModal}
+        gameId={currentGameId}
+      />
+    </>
+  );
+};
+
 // StatusBar 組件：根據主題動態設置
 const AppStatusBar: React.FC = () => {
   const { colorMode } = useTheme();
@@ -678,12 +704,15 @@ export default function App() {
                 <ToastProvider>
                   <AuthProvider>
                     <SubscriptionProvider>
-                      <NavigationProvider>
-                        <AppWithFont />
-                        <SignupSuccessHandlerWrapper />
-                        <PaywallGuard />
-                        <AppStatusBar />
-                      </NavigationProvider>
+                      <ChipsProvider>
+                        <NavigationProvider>
+                          <AppWithFont />
+                          <SignupSuccessHandlerWrapper />
+                          <PaywallGuard />
+                          <ChipsGuard />
+                          <AppStatusBar />
+                        </NavigationProvider>
+                      </ChipsProvider>
                     </SubscriptionProvider>
                   </AuthProvider>
                 </ToastProvider>

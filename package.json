@@ -48,7 +48,9 @@
     "react-native-web": "^0.21.0",
     "react-native-webview": "^13.16.0",
     "react-native-worklets-core": "^1.6.2",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "stripe": "^14.10.0",
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
