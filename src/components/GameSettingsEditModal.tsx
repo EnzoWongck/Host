@@ -139,10 +139,11 @@ const GameSettingsEditModal: React.FC<GameSettingsEditModalProps> = ({
     blindsRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: theme.spacing.md,
+      gap: theme.spacing.sm,
     },
     blindInput: {
       flex: 1,
+      minWidth: 0,
     },
   });
 
@@ -226,7 +227,7 @@ const GameSettingsEditModal: React.FC<GameSettingsEditModalProps> = ({
       <Button
         title="儲存"
         onPress={handleSave}
-        size="lg"
+        size="md"
         variant="primary"
       />
     </Modal>

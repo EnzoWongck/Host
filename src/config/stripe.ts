@@ -33,15 +33,15 @@ export const STRIPE_PUBLISHABLE_KEY = isProduction
 // 測試環境價格 ID（使用相同的 Price ID，Stripe 會自動處理）
 export const STRIPE_TEST_PRICES = {
   CHIP_1: 'price_1SfAAfC059bhXtelaE5o55PK',   // 1 Chip - $30 HKD
-  CHIP_11: 'price_1SfOUnC059bhXtelb93CqfiC',  // 11 Chips - $300 HKD
-  CHIP_35: 'price_1SfOUnC059bhXtelEWD2CFtq',  // 35 Chips - $900 HKD
+  CHIP_11: 'price_1SfOUnC059bhXtelb93CqfiC',  // 11 Chips - $299 HKD
+  CHIP_36: 'price_1SfOUnC059bhXtelEWD2CFtq',  // 36 Chips - $899 HKD
 };
 
 // 正式環境價格 ID
 export const STRIPE_LIVE_PRICES = {
   CHIP_1: 'price_1SfAAfC059bhXtelaE5o55PK',   // 1 Chip - $30 HKD
-  CHIP_11: 'price_1SfOUnC059bhXtelb93CqfiC',  // 11 Chips - $300 HKD
-  CHIP_35: 'price_1SfOUnC059bhXtelEWD2CFtq',  // 35 Chips - $900 HKD
+  CHIP_11: 'price_1SfOUnC059bhXtelb93CqfiC',  // 11 Chips - $299 HKD
+  CHIP_36: 'price_1SfOUnC059bhXtelEWD2CFtq',  // 36 Chips - $899 HKD
 };
 
 // 根據環境自動選擇價格 ID
@@ -70,20 +70,20 @@ export const CHIPS_PACKAGES: ChipsPackage[] = [
   },
   {
     id: 'chip_11',
-    name: '11 Chips',
+    name: '買十送一',
     chips: 11,
-    priceHKD: 300,
+    priceHKD: 299,
     priceId: STRIPE_PRICES.CHIP_11,
     popular: true,
-    savings: '節省 $30',
+    savings: '$27/Chip',
   },
   {
-    id: 'chip_35',
-    name: '35 Chips',
-    chips: 35,
-    priceHKD: 900,
-    priceId: STRIPE_PRICES.CHIP_35,
-    savings: '節省 $150',
+    id: 'chip_36',
+    name: '超值套餐',
+    chips: 36,
+    priceHKD: 899,
+    priceId: STRIPE_PRICES.CHIP_36,
+    savings: '$25/Chip',
   },
 ];
 

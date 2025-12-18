@@ -243,7 +243,7 @@ export const zhTW: Translations = {
     updateExpense: '更新支出',
     records: '支出記錄',
     noRecords: '尚無支出紀錄',
-    editExpense: '編輯支出',
+    editExpense: '編輯',
     deleteExpense: '刪除支出',
     deleteConfirm: '確定要刪除這筆支出嗎？',
   },

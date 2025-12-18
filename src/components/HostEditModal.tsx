@@ -140,8 +140,8 @@ const HostEditModal: React.FC<HostEditModalProps> = ({
       marginBottom: theme.spacing.sm,
     },
     hostItem: {
-      marginBottom: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
+      marginBottom: 4,
+      paddingVertical: 2,
       paddingHorizontal: 0,
       backgroundColor: 'transparent',
       borderRadius: 0,
@@ -151,7 +151,7 @@ const HostEditModal: React.FC<HostEditModalProps> = ({
     hostRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: theme.spacing.sm,
+      marginBottom: 4,
     },
     hostNameInput: {
       flex: 1,
@@ -169,16 +169,16 @@ const HostEditModal: React.FC<HostEditModalProps> = ({
       borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.primary,
     },
     shareInput: {
-      width: 80,
+      width: 70,
       borderWidth: 1,
       borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.xs,
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
-      textAlign: 'right',
+      textAlign: 'center',
     },
     shareInputFocused: {
       borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.primary,
@@ -186,11 +186,13 @@ const HostEditModal: React.FC<HostEditModalProps> = ({
     shareSuffix: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
-      marginLeft: theme.spacing.xs,
+      marginLeft: 2,
+      marginRight: theme.spacing.xs,
     },
     removeButton: {
-      padding: theme.spacing.sm,
-      marginLeft: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      marginLeft: 4,
     },
     removeButtonText: {
       fontSize: theme.fontSize.sm,
@@ -259,7 +261,7 @@ const HostEditModal: React.FC<HostEditModalProps> = ({
                   const ratio = parseFloat(cleanValue) / 100;
                   handleUpdateHostShare(index, isNaN(ratio) ? 0 : ratio);
                 }}
-                placeholder="%"
+                placeholder="比例"
                 placeholderTextColor={focusedInput === `share-${index}` ? 'transparent' : theme.colors.textSecondary}
                 keyboardType="numeric"
                 inputMode="decimal"
@@ -292,9 +294,9 @@ const HostEditModal: React.FC<HostEditModalProps> = ({
         <Button
           title="儲存"
           onPress={handleSave}
-          size="lg"
+          size="md"
           variant="primary"
-          style={{ marginTop: theme.spacing.lg }}
+          style={{ marginTop: theme.spacing.md }}
         />
       </ScrollView>
     </Modal>

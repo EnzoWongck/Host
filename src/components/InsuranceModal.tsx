@@ -40,7 +40,6 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
   const [insuranceAmount, setInsuranceAmount] = useState('');
   const [editingCurrent, setEditingCurrent] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'default' | 'custom' | null>('default');
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 調整本次分成的狀態
   const [customPartnerInputs, setCustomPartnerInputs] = useState<DefaultPartnerInput[]>([]);
@@ -71,18 +70,13 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
       marginBottom: theme.spacing.sm,
     },
     input: {
-      borderWidth: 1,
+      borderWidth: colorMode === 'light' ? 0 : 1,
       borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
-      fontSize: theme.fontSize.md,
+      fontSize: 16,
       color: theme.colors.text,
-      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
-    },
-    inputFocused: {
-      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
-      borderWidth: 2,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     partnerRow: {
@@ -146,6 +140,54 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
     insuranceFormItem: {
       flex: 1,
       marginHorizontal: theme.spacing.xs,
+    },
+    // WhatsApp 風格輸入框 + 按鈕
+    inputWithButtonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      borderRadius: 24,
+      paddingLeft: theme.spacing.md,
+      paddingRight: 4,
+      marginBottom: theme.spacing.md,
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: theme.colors.border,
+    },
+    inputInline: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.colors.text,
+      paddingVertical: 12,
+      paddingLeft: 8,
+      backgroundColor: 'transparent',
+    },
+    inputIcon: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      opacity: 0.5,
+    },
+    sendButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: '#0891B2', // 湖水綠
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#0891B2',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    sendButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.md,
     },
   });
 
@@ -359,96 +401,68 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
         onClose();
       }}
       title={t('insurance.addInsurance') || '新增保險'}
-      maxWidth={isMobile ? screenWidth - 32 : 480}
-      maxHeight={isMobile ? screenHeight * 0.9 : undefined}
-      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 480, minWidth: 480, maxWidth: 'none' }}
+      maxWidth={isMobile ? screenWidth - 32 : 400}
+      maxHeight={isMobile ? screenHeight * 0.75 : undefined}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 400, minWidth: 400, maxWidth: 'none' }}
     >
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}
       >
-        {/* 保險金額 + 快捷按鈕 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('insurance.insuranceAmount')}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={[styles.insuranceFormItem, { marginHorizontal: 0 }]}>
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedInput === 'insuranceAmount' && styles.inputFocused,
-                ]}
-                value={insuranceAmount}
-                onChangeText={setInsuranceAmount}
-                placeholder="$"
-                placeholderTextColor={
-                  focusedInput === 'insuranceAmount'
-                    ? 'transparent'
-                    : theme.colors.textSecondary
-                }
-                onFocus={() => setFocusedInput('insuranceAmount')}
-                onBlur={() => setFocusedInput(null)}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-            <View style={{ width: theme.spacing.sm }} />
-            <Button
-              title="預設分成"
-              onPress={() => {
+        {/* 快捷按鈕 */}
+        <View style={styles.buttonRow}>
+          <Button
+            title="預設分成"
+            onPress={() => {
+              setPartners(state.currentGame?.defaultInsurancePartners || []);
+              setEditingCurrent(false);
+              setSelectedMethod('default');
+            }}
+            size="sm"
+            variant="primary"
+            textStyle={{ color: colorMode === 'dark' ? '#FFFFFF' : '#4B5563', fontSize: 13 }}
+            style={{
+              flex: 1,
+              paddingHorizontal: 8,
+              minWidth: 0,
+              backgroundColor:
+                selectedMethod === 'default'
+                  ? 'rgba(8, 145, 178, 0.1)' // 湖水綠淡色背景
+                  : colorMode === 'dark'
+                  ? '#121212'
+                  : theme.colors.background,
+              borderWidth: 1.5,
+              borderColor: selectedMethod === 'default' ? '#0891B2' : theme.colors.border, // 湖水綠
+            }}
+          />
+          <Button
+            title={editingCurrent ? '完成' : '調整本次分成'}
+            onPress={() => {
+              const next = !editingCurrent;
+              setEditingCurrent(next);
+              setSelectedMethod(next ? 'custom' : 'default');
+              if (!next) {
+                // 完成調整時，使用預設分成
                 setPartners(state.currentGame?.defaultInsurancePartners || []);
-                setEditingCurrent(false);
-                setSelectedMethod('default');
-              }}
-              size="sm"
-              variant="primary"
-              textStyle={{ color: colorMode === 'dark' ? '#FFFFFF' : '#4B5563', fontSize: 13 }}
-              style={{
-                flex: 1,
-                paddingHorizontal: 8,
-                minWidth: 0,
-                backgroundColor:
-                  selectedMethod === 'default'
-                    ? colorMode === 'dark'
-                      ? '#303134'
-                      : '#E2E8F0'
-                    : colorMode === 'dark'
-                    ? '#121212'
-                    : theme.colors.background,
-                borderWidth: selectedMethod === 'default' ? 2 : 0,
-                borderColor: colorMode === 'dark' ? '#FFFFFF' : '#E2E8F0',
-              }}
-            />
-            <View style={{ width: theme.spacing.sm }} />
-            <Button
-              title={editingCurrent ? '完成' : '調整本次分成'}
-              onPress={() => {
-                const next = !editingCurrent;
-                setEditingCurrent(next);
-                setSelectedMethod(next ? 'custom' : 'default');
-                if (!next) {
-                  // 完成調整時，使用預設分成
-                  setPartners(state.currentGame?.defaultInsurancePartners || []);
-                }
-              }}
-              size="sm"
-              variant="primary"
-              textStyle={{ color: colorMode === 'dark' ? '#FFFFFF' : '#4B5563', fontSize: 13 }}
-              style={{
-                flex: 1,
-                paddingHorizontal: 8,
-                minWidth: 0,
-                backgroundColor:
-                  selectedMethod === 'custom'
-                    ? colorMode === 'dark'
-                      ? '#303134'
-                      : '#E2E8F0'
-                    : colorMode === 'dark'
-                    ? '#121212'
-                    : theme.colors.background,
-                borderWidth: selectedMethod === 'custom' ? 2 : 0,
-                borderColor: colorMode === 'dark' ? '#FFFFFF' : '#E2E8F0',
-              }}
-            />
-          </View>
+              }
+            }}
+            size="sm"
+            variant="primary"
+            textStyle={{ color: colorMode === 'dark' ? '#FFFFFF' : '#4B5563', fontSize: 13 }}
+            style={{
+              flex: 1,
+              paddingHorizontal: 8,
+              minWidth: 0,
+              backgroundColor:
+                selectedMethod === 'custom'
+                  ? 'rgba(8, 145, 178, 0.1)' // 湖水綠淡色背景
+                  : colorMode === 'dark'
+                  ? '#121212'
+                  : theme.colors.background,
+              borderWidth: 1.5,
+              borderColor: selectedMethod === 'custom' ? '#0891B2' : theme.colors.border, // 湖水綠
+            }}
+          />
         </View>
 
         {/* 調整本次分成 */}
@@ -462,42 +476,22 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
                   <View style={styles.partnerNameInput}>
                     <Text style={styles.label}>{t('insurance.partnerName') || '分成者名稱'}</Text>
                     <TextInput
-                      style={[
-                        styles.input,
-                        focusedInput === `custom-name-${input.id}` && styles.inputFocused,
-                      ]}
+                      style={styles.input}
                       value={input.name}
                       onChangeText={(value) => updateCustomPartnerName(input.id, value)}
                       placeholder={t('insurance.namePlaceholder') || '輸入名稱'}
-                      placeholderTextColor={
-                        focusedInput === `custom-name-${input.id}`
-                          ? 'transparent'
-                          : theme.colors.textSecondary
-                      }
-                      onFocus={() => setFocusedInput(`custom-name-${input.id}`)}
-                      onBlur={() => setFocusedInput(null)}
+                      placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
                     />
                   </View>
                   <View style={styles.partnerPercentageInput}>
                     <Text style={styles.label}>{t('insurance.percentage') || '百分比'}</Text>
                     <TextInput
-                      style={[
-                        styles.input,
-                        focusedInput === `custom-pct-${input.id}` && styles.inputFocused,
-                      ]}
+                      style={styles.input}
                       value={input.percentage}
                       onChangeText={(value) => updateCustomPartnerPercentage(input.id, value)}
                       placeholder="%"
-                      placeholderTextColor={
-                        focusedInput === `custom-pct-${input.id}`
-                          ? 'transparent'
-                          : theme.colors.textSecondary
-                      }
-                      onFocus={() => setFocusedInput(`custom-pct-${input.id}`)}
-                      onBlur={() => setFocusedInput(null)}
-                      keyboardType="numeric"
-                      inputMode="decimal"
-                      {...(Platform.OS === 'web' ? { pattern: '[0-9.]*' } : {})}
+                      placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
+                      keyboardType="decimal-pad"
                     />
                   </View>
                   {customPartnerInputs.length > 1 && (
@@ -548,19 +542,26 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
           </View>
         )}
 
-        {/* 確認按鈕 */}
-        <View style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.md }}>
-          <Button
-            title={t('insurance.addInsurance') || '新增保險'}
-            onPress={handleAddInsurance}
-            size="lg"
-            variant="primary"
-            disabled={partners.length === 0}
-            style={{
-              backgroundColor: colorMode === 'light' ? '#E2E8F0' : '#303134',
-            }}
-            textStyle={colorMode === 'light' ? { color: '#64748B' } : { color: '#FFFFFF' }}
+        {/* 保險金額 + 確認按鈕（WhatsApp 風格） */}
+        <View style={styles.inputWithButtonRow}>
+          <Text style={styles.inputIcon}>$</Text>
+          <TextInput
+            style={styles.inputInline}
+            value={insuranceAmount}
+            onChangeText={setInsuranceAmount}
+            placeholder="輸入保險金額"
+            placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
+            keyboardType="decimal-pad"
           />
+          {insuranceAmount.trim() !== '' && partners.length > 0 && (
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleAddInsurance}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sendButtonText}>✓</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </Modal>

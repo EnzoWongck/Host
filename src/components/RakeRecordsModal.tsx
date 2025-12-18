@@ -7,6 +7,7 @@ import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Rake } from '../types/game';
 import { Swipeable } from 'react-native-gesture-handler';
+import SwipeHint from './SwipeHint';
 
 interface RakeRecordsModalProps {
   visible: boolean;
@@ -109,6 +110,10 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
         <Text style={{ color: theme.colors.textSecondary }}>{t('rake.errorNoGame')}</Text>
       ) : (
         <View style={styles.listContainer}>
+          {/* 滑動提示（首次顯示） */}
+          {currentGame.rakes && currentGame.rakes.length > 0 && Platform.OS !== 'web' && (
+            <SwipeHint storageKey="rakeRecords" />
+          )}
           <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
             {currentGame.rakes
               .slice()

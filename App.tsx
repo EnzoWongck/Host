@@ -113,7 +113,6 @@ import ChipsExpiredModal from './src/components/ChipsExpiredModal';
 import { getFontFamily, getFontWeight } from './src/utils/fonts';
 // Config
 import { SKIP_AUTH_ON_WEB, SHOW_GROK_PREVIEW } from './src/config/dev';
-import { auth } from './src/config/firebase';
 // Preview
 import GrokStylePreview from './src/preview/GrokStylePreview';
 // Screens
@@ -196,7 +195,7 @@ const AppNavigator: React.FC = () => {
     }
   }, [shouldSkipAuth, isSignedIn, signInWithEmail]);
 
-  // 檢查初始狀態：如果已登入但沒有電話號碼，重新載入時登出並回到歡迎頁面
+  // 檢查初始狀態：如果已登入，直接進入主畫面
   useEffect(() => {
     // 等待認證狀態載入完成
     if (loading) return;
@@ -207,39 +206,22 @@ const AppNavigator: React.FC = () => {
     // 只在初始載入時（currentScreen 為 'welcome'）檢查用戶狀態
     if (currentScreen === 'welcome') {
       if (isSignedIn) {
-        const user = auth.currentUser;
-        // 如果已登入但沒有電話號碼，登出並保持在歡迎頁面
-        if (user && !user.phoneNumber) {
-          console.log('已登入但沒有電話號碼，登出並回到歡迎頁面');
-          signOut().catch((error) => {
-            console.error('登出失敗', error);
-          });
-          // 保持在歡迎頁面，不需要設置 currentScreen，因為已經是 'welcome'
-        } else if (user && user.phoneNumber) {
-          // 已登入且有電話號碼，直接進入主畫面
-          console.log('已登入且有電話號碼，進入主畫面');
-          setCurrentScreen('main');
-        }
+        // 已登入，直接進入主畫面（Supabase 不強制電話驗證）
+        console.log('已登入，進入主畫面');
+        setCurrentScreen('main');
       } else {
         // 未登入，保持在歡迎頁面
         console.log('未登入，保持在歡迎頁面');
       }
     }
-  }, [loading, isSignedIn, shouldSkipAuth, currentScreen, signOut]);
+  }, [loading, isSignedIn, shouldSkipAuth, currentScreen]);
 
   const handleWelcomeGetStarted = () => {
     if (!shouldSkipAuth) {
       // 檢查用戶是否已登入
       if (isSignedIn) {
-        // 如果已登入，檢查是否已綁定電話號碼
-        const user = auth.currentUser;
-        if (user && user.phoneNumber) {
-          // 已登入且有電話號碼，直接進入主畫面
-          setCurrentScreen('main');
-        } else {
-          // 已登入但沒有電話號碼，導向電話驗證
-          setCurrentScreen('phoneVerify');
-        }
+        // 已登入，直接進入主畫面
+        setCurrentScreen('main');
       } else {
         // 未登入，導向登入頁面
         setCurrentScreen('login');
@@ -254,15 +236,8 @@ const AppNavigator: React.FC = () => {
   };
 
   const handleLoginSuccess = () => {
-    // 登入成功後，先檢查 Firebase 使用者是否已綁定電話
-    const user = auth.currentUser;
-    if (user && user.phoneNumber) {
-      // 已綁定電話，直接進入主畫面
-      setCurrentScreen('main');
-    } else {
-      // 尚未綁定電話，先進入電話驗證畫面
-      setCurrentScreen('phoneVerify');
-    }
+    // 登入成功後，直接進入主畫面（Supabase 不強制電話驗證）
+    setCurrentScreen('main');
   };
 
   const handleSignup = () => {
@@ -290,13 +265,8 @@ const AppNavigator: React.FC = () => {
     // 顯示新用戶歡迎模態框
     setShowNewUserWelcome(true);
     
-    // 註冊成功後同樣檢查是否已有電話（理論上新帳號沒有，但保留檢查以防特殊情況）
-    const user = auth.currentUser;
-    if (user && user.phoneNumber) {
-      setCurrentScreen('main');
-    } else {
-      setCurrentScreen('phoneVerify');
-    }
+    // 註冊成功後直接進入主畫面
+    setCurrentScreen('main');
   };
 
   const handleForgotPassword = () => {
@@ -338,10 +308,8 @@ const AppNavigator: React.FC = () => {
         onLoginSuccess={handleLoginSuccess}
         onSignup={handleSignup}
         onForgotPassword={handleForgotPassword}
-        onPhoneLogin={() => {
-          // 切換到電話驗證畫面（登入模式）
-          setCurrentScreen('phoneVerify');
-        }}
+        // 電話登入暫時禁用
+        // onPhoneLogin={() => setCurrentScreen('phoneVerify')}
       />
     );
   }
@@ -354,19 +322,15 @@ const AppNavigator: React.FC = () => {
     return <ForgetPasswordScreen onBack={handleForgotPasswordBack} />;
   }
 
-  if (currentScreen === 'phoneVerify') {
-    // 檢查是否為電話登入模式（用戶從登入頁選擇電話登入）
-    const isPhoneLoginMode = !auth.currentUser || !auth.currentUser.email;
-    return (
-      <PhoneVerifyScreen
-        isLoginMode={isPhoneLoginMode}
-        onVerified={() => {
-          // 電話驗證通過後才進入主畫面
-          setCurrentScreen('main');
-        }}
-      />
-    );
-  }
+  // 電話驗證暫時禁用（Supabase 電話驗證需要額外設置）
+  // if (currentScreen === 'phoneVerify') {
+  //   return (
+  //     <PhoneVerifyScreen
+  //       isLoginMode={true}
+  //       onVerified={() => setCurrentScreen('main')}
+  //     />
+  //   );
+  // }
 
   return (
     <>
@@ -694,15 +658,15 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <LanguageProvider>
-            <GameProvider>
-              {/* 啟用協作 Provider，暫時禁用 WebSocket 以測試 Web 版本 */}
-              <CollaborationProvider 
-                gameId="default-game" 
-                websocketUrl="ws://localhost:3001"
-                enableWebSocket={false}
-              >
-                <ToastProvider>
-                  <AuthProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <GameProvider>
+                  {/* 啟用協作 Provider，暫時禁用 WebSocket 以測試 Web 版本 */}
+                  <CollaborationProvider 
+                    gameId="default-game" 
+                    websocketUrl="ws://localhost:3001"
+                    enableWebSocket={false}
+                  >
                     <SubscriptionProvider>
                       <ChipsProvider>
                         <NavigationProvider>
@@ -714,10 +678,10 @@ export default function App() {
                         </NavigationProvider>
                       </ChipsProvider>
                     </SubscriptionProvider>
-                  </AuthProvider>
-                </ToastProvider>
-              </CollaborationProvider>
-            </GameProvider>
+                  </CollaborationProvider>
+                </GameProvider>
+              </AuthProvider>
+            </ToastProvider>
           </LanguageProvider>
         </ThemeProvider>
       </SafeAreaProvider>

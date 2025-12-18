@@ -35,7 +35,6 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
   const [chipAmount, setChipAmount] = useState('');
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
   const [entryFeeDeducted, setEntryFeeDeducted] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 獲取螢幕尺寸
   const screenWidth = Dimensions.get('window').width;
@@ -97,14 +96,9 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
-      fontSize: theme.fontSize.md,
+      fontSize: 16, // 必須 >= 16px 防止 iOS Safari 縮放
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
-    },
-    inputFocused: {
-      // 淺色模式選取時也不顯示邊框；深色模式保留原有聚焦邊框
-      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.primary,
-      borderWidth: colorMode === 'light' ? 0 : 1,
     },
     playersList: {
       maxHeight: 300, // 顯示5個玩家（約每個玩家60px高度）
@@ -123,7 +117,9 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
     },
     playerName: { fontSize: theme.fontSize.md, color: theme.colors.text },
     selected: { 
-      backgroundColor: colorMode === 'dark' ? '#202124' : '#E2E8F0',
+      backgroundColor: colorMode === 'dark' ? 'rgba(8, 145, 178, 0.3)' : 'rgba(8, 145, 178, 0.15)', // 湖水綠
+      borderWidth: 1,
+      borderColor: '#0891B2',
     },
     hint: {
       fontSize: theme.fontSize.sm,
@@ -141,25 +137,69 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
       justifyContent: 'space-between',
       marginTop: theme.spacing.md,
     },
-    entryFeeToggle: {
-      marginLeft: theme.spacing.md,
+    entryFeeRow: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: theme.spacing.sm,
     },
-    entryFeeToggleLabel: {
-      fontSize: theme.fontSize.sm,
-      color: theme.colors.textSecondary,
-      marginBottom: theme.spacing.xs,
+    entryFeeLabel: {
+      fontSize: theme.fontSize.md,
+      color: theme.colors.text,
     },
-    entryFeeToggleButton: {
-      paddingHorizontal: theme.spacing.xs,
-      paddingVertical: theme.spacing.xs,
-    },
-    entryFeeToggleText: {
-      fontSize: theme.fontSize.xl,
+    entryFeeCheckbox: {
+      fontSize: 24,
       color: '#999999',
     },
-    entryFeeToggleTextActive: {
+    entryFeeCheckboxActive: {
       color: '#0891b2',
+    },
+    // WhatsApp 風格輸入框 + 按鈕
+    inputWithButtonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      borderRadius: 24,
+      paddingLeft: theme.spacing.md,
+      paddingRight: 4,
+      marginBottom: theme.spacing.md,
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: theme.colors.border,
+    },
+    inputInline: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.colors.text,
+      paddingVertical: 12,
+      paddingLeft: 8,
+      backgroundColor: 'transparent',
+    },
+    inputIcon: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      opacity: 0.5,
+    },
+    placeholderColor: {
+      color: theme.colors.textSecondary,
+      opacity: 0.5,
+    },
+    sendButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: '#0891B2', // 湖水綠
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#0891B2',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    sendButtonText: {
+      color: '#FFFFFF',
+      fontSize: 20,
+      fontWeight: '600',
     },
   });
 
@@ -242,7 +282,12 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
       maxHeight={isMobile ? screenHeight * 0.9 : undefined}
       containerStyle={isMobile ? { width: screenWidth - 64, maxWidth: screenWidth - 64 } : { width: 600, minWidth: 600, maxWidth: 'none' }}
     >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: '100%', alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
+        contentContainerStyle={{ maxWidth: '100%', alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}
+      >
         {/* 選擇玩家（如果有預設玩家則隱藏） */}
         {!defaultPlayer && (
           <View style={styles.inputGroup}>
@@ -290,44 +335,6 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
           </View>
         )}
 
-        {/* 輸入兌現金額 + 入場費扣除 */}
-        <View style={styles.inputGroup}>
-          <View style={styles.amountRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>{t('cashOut.chipsAmount')}</Text>
-              <TextInput
-                style={[styles.input, focusedInput === 'chipAmount' && styles.inputFocused]}
-                value={chipAmount}
-                onChangeText={setChipAmount}
-                placeholder="$"
-                placeholderTextColor={
-                  focusedInput === 'chipAmount'
-                    ? 'transparent'
-                    : theme.colors.textSecondary
-                }
-                keyboardType="numeric"
-                onFocus={() => setFocusedInput('chipAmount')}
-                onBlur={() => setFocusedInput(null)}
-              />
-            </View>
-
-            {isNoRakeMode && selectedPlayer && (
-              <View style={styles.entryFeeToggle}>
-                <Text style={styles.entryFeeToggleLabel}>已扣入場費</Text>
-                <TouchableOpacity
-                  style={styles.entryFeeToggleButton}
-                  onPress={() => setEntryFeeDeducted((prev) => !prev)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.entryFeeToggleText, entryFeeDeducted && styles.entryFeeToggleTextActive]}>
-                    {entryFeeDeducted ? '✓' : '☐'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-
         {/* 選擇 Host（多 Host 顯示，單 Host 自動綁定不顯示） */}
         {!!currentGame && (currentGame.hosts?.length || 0) > 1 && (
           <View style={styles.inputGroup}>
@@ -352,14 +359,43 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
           </View>
         )}
 
-        <Button 
-          title={t('common.confirm') + t('modals.cashOut')} 
-          onPress={handleCashOut} 
-          size="lg" 
-          variant="primary"
-          leftIconName="cashout"
-          style={{ marginBottom: theme.spacing.md }}
-        />
+        {/* 入場費扣除（無抽水模式） */}
+        {isNoRakeMode && selectedPlayer && (
+          <View style={styles.inputGroup}>
+            <TouchableOpacity
+              style={styles.entryFeeRow}
+              onPress={() => setEntryFeeDeducted((prev) => !prev)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.entryFeeLabel}>已扣入場費</Text>
+              <Text style={[styles.entryFeeCheckbox, entryFeeDeducted && styles.entryFeeCheckboxActive]}>
+                {entryFeeDeducted ? '✓' : '☐'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 輸入兌現金額 + 確認按鈕（WhatsApp 風格） */}
+        <View style={styles.inputWithButtonRow}>
+          <Text style={styles.inputIcon}>$</Text>
+          <TextInput
+            style={styles.inputInline}
+            value={chipAmount}
+            onChangeText={setChipAmount}
+            placeholder="輸入兌現籌碼"
+            placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
+            keyboardType="decimal-pad"
+          />
+          {chipAmount.trim() !== '' && (
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleCashOut}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sendButtonText}>✓</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </Modal>
   );

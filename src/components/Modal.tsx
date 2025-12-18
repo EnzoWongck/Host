@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,24 @@ import {
   ScrollView,
   Platform,
   Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from './Icon';
+
+// 使用初始螢幕尺寸，防止鍵盤彈出時導致視窗跳動
+const getInitialDimensions = () => {
+  // 優先使用 screen 尺寸（不受鍵盤影響）
+  const screen = Dimensions.get('screen');
+  const window = Dimensions.get('window');
+  return {
+    width: screen.width || window.width,
+    height: screen.height || window.height,
+  };
+};
+
+const initialDimensions = getInitialDimensions();
 
 interface ModalProps {
   visible: boolean;
@@ -41,10 +56,28 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // 使用初始螢幕尺寸，不隨鍵盤變化
+  // 這樣可以防止鍵盤彈出時 Modal 跳動
+  const [dimensions] = useState(() => {
+    // 在 Web 平台上，使用 visualViewport 或 innerHeight 的最大值
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const vh = Math.max(
+        window.innerHeight || 0,
+        document.documentElement?.clientHeight || 0,
+        window.visualViewport?.height || 0
+      );
+      const vw = Math.max(
+        window.innerWidth || 0,
+        document.documentElement?.clientWidth || 0
+      );
+      return { width: vw, height: vh };
+    }
+    return initialDimensions;
+  });
 
-  // 獲取螢幕尺寸
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
+  const screenWidth = dimensions.width;
+  const screenHeight = dimensions.height;
   const isMobile = screenWidth < 768; // 判斷是否為手機
 
   // 計算響應式的 maxWidth 和 maxHeight
@@ -80,18 +113,17 @@ const Modal: React.FC<ModalProps> = ({
       backgroundColor: fullScreen ? theme.colors.background : 'rgba(0, 0, 0, 0.6)',
       justifyContent: fullScreen ? 'flex-start' : 'center',
       alignItems: 'center',
-      padding: fullScreen ? 0 : (isMobile ? 8 : theme.spacing.md), // 減少外部邊框寬度
-      zIndex: Platform.OS === 'web' ? 9999 : 1000, // Web 平台使用更高的 z-index
+      padding: fullScreen ? 0 : (isMobile ? 8 : theme.spacing.md),
+      zIndex: Platform.OS === 'web' ? 9999 : 1000,
       ...(Platform.OS === 'web' && {
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden', // 隱藏滾輪，不允許 overlay 滾動
-        overscrollBehavior: 'contain', // 防止滾動穿透
-        display: 'flex', // Web 維持 flex 置中以避免位移錯誤
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        overscrollBehavior: 'none',
+        display: 'flex',
         flexDirection: 'column',
         justifyContent: fullScreen ? 'flex-start' : 'center',
         alignItems: 'center',
-        // 確保背景顏色與頁面一致
         backgroundColor: fullScreen 
           ? (theme.colorMode === 'light' ? '#FFFFFF' : theme.colors.background)
           : 'rgba(0, 0, 0, 0.6)',
@@ -123,14 +155,18 @@ const Modal: React.FC<ModalProps> = ({
         overflow: 'hidden',
         zIndex: 1001,
       }),
+      // 多層柔和陰影
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
-        height: 4,
+        height: 8,
       },
-      shadowOpacity: fullScreen ? 0 : 0.25,
-      shadowRadius: fullScreen ? 0 : 8,
-      elevation: fullScreen ? 0 : 8,
+      shadowOpacity: fullScreen ? 0 : 0.15,
+      shadowRadius: fullScreen ? 0 : 24,
+      elevation: fullScreen ? 0 : 16,
+      ...(Platform.OS === 'web' && !fullScreen && {
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+      }),
     },
     header: {
       flexDirection: 'row',
@@ -268,30 +304,47 @@ const Modal: React.FC<ModalProps> = ({
         rootElement.style.height = 'auto';
       }
       
-      // 確保覆蓋當前視窗高度；在 iOS Safari 鍵盤彈出時避免產生額外空白區域
-      const updateHeight = () => {
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-        const minHeight = viewportHeight;
-        htmlElement.style.minHeight = `${minHeight}px`;
-        bodyElement.style.minHeight = `${minHeight}px`;
-        if (rootElement) {
-          rootElement.style.minHeight = `${minHeight}px`;
-        }
-      };
+      // 記錄初始視窗高度（使用 screen.height 來獲取真實螢幕高度，不受鍵盤影響）
+      const initialHeight = window.screen?.height || window.innerHeight || document.documentElement.clientHeight;
       
-      updateHeight();
-      
-      // 僅在視窗尺寸變化時更新高度，避免因 scroll 導致頁面高度被放大
-      window.addEventListener('resize', updateHeight, { passive: true });
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', updateHeight);
+      // 添加 CSS 樣式防止移動端鍵盤問題
+      const mobileStyleId = 'modal-mobile-style';
+      let mobileStyleElement = document.getElementById(mobileStyleId);
+      if (!mobileStyleElement) {
+        mobileStyleElement = document.createElement('style');
+        mobileStyleElement.id = mobileStyleId;
       }
+      
+      // 使用固定高度
+      mobileStyleElement.textContent = `
+        /* 防止 iOS Safari 輸入時自動縮放 - 必須 >= 16px */
+        input, textarea, select {
+          font-size: 16px !important;
+        }
+      `;
+      
+      if (!document.getElementById(mobileStyleId)) {
+        document.head.appendChild(mobileStyleElement);
+      }
+      
+      // 不再需要特殊處理，因為確認按鈕已經在輸入框旁邊了
+      const timeoutId: any = null;
+      
+      // 禁止背景滾動
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
 
       return () => {
-        // 清理事件監聽器
-        window.removeEventListener('resize', updateHeight);
-        if (window.visualViewport) {
-          window.visualViewport.removeEventListener('resize', updateHeight);
+        // 清除 timeout
+        clearTimeout(timeoutId);
+        
+        // 恢復滾動
+        document.body.style.overflow = originalOverflow || '';
+        
+        // 移除移動端樣式
+        const styleToRemove = document.getElementById(mobileStyleId);
+        if (styleToRemove) {
+          styleToRemove.remove();
         }
         
         // 恢復原始樣式
@@ -343,7 +396,7 @@ const Modal: React.FC<ModalProps> = ({
       supportedOrientations={["portrait", "landscape"]}
     >
       <Pressable onPress={handleBackdropPress}>
-        <View style={styles.overlay}>
+        <View style={styles.overlay} data-modal-overlay>
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View style={[styles.modalContainer, responsiveContainerStyle]} data-modal-container>
               <View style={styles.header}>
@@ -367,9 +420,9 @@ const Modal: React.FC<ModalProps> = ({
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 showsHorizontalScrollIndicator={false}
-                bounces={true}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
+                bounces={false}
+                keyboardShouldPersistTaps="always"
+                keyboardDismissMode="none"
                 nestedScrollEnabled={true}
                 scrollEnabled={true}
               >

@@ -10,7 +10,6 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
@@ -20,7 +19,7 @@ import Button from './Button';
 import { Expense } from '../types/game';
 import Icon from './Icon';
 import ExpenseEditModal from './ExpenseEditModal';
-import Card from './Card';
+import ExpenseRecordsModal from './ExpenseRecordsModal';
 
 interface ExpenseModalProps {
   visible: boolean;
@@ -42,7 +41,6 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
   const [recordsExpanded, setRecordsExpanded] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 編輯彈窗狀態
   const [editVisible, setEditVisible] = useState(false);
@@ -118,7 +116,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     },
     categoryButtonSelected: {
       borderWidth: 2,
-      borderColor: colorMode === 'dark' ? '#FFFFFF' : '#94A3B8',
+      borderColor: '#0891B2', // 湖水綠
       backgroundColor: categoryBackground,
     },
     categoryIcon: {
@@ -143,7 +141,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     descriptionGroup: {
       // 與上方類別區塊的間距更緊湊
       marginTop: 0,
-      marginBottom: theme.spacing.sm, // 縮短與下方元素的間距
+      marginBottom: theme.spacing.lg, // 與金額輸入欄保持一致間距
     },
     descriptionToggle: {
       flexDirection: 'row',
@@ -167,14 +165,9 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
-      fontSize: theme.fontSize.md,
+      fontSize: 16, // 必須 >= 16px 防止 iOS Safari 縮放
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
-    },
-    inputFocused: {
-      // 淺色模式選取時也不顯示邊框；深色模式保留原有聚焦邊框
-      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.primary,
-      borderWidth: colorMode === 'light' ? 0 : 1,
     },
     textArea: {
       height: 80,
@@ -264,6 +257,55 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 2, borderColor: colorMode === 'dark' ? theme.colors.border : '#F4F4F5', marginRight: theme.spacing.sm, backgroundColor: theme.colors.background },
     chipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : '#E2E8F0', backgroundColor: theme.colors.background },
     chipText: { color: colorMode === 'light' ? '#4B5563' : theme.colors.text, fontWeight: '600' },
+    // WhatsApp 風格輸入框 + 按鈕
+    inputWithButtonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      borderRadius: 24,
+      paddingLeft: theme.spacing.md,
+      paddingRight: 4,
+      marginBottom: theme.spacing.md,
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: theme.colors.border,
+    },
+    inputInline: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.colors.text,
+      paddingVertical: 12,
+      paddingLeft: 8,
+      backgroundColor: 'transparent',
+    },
+    inputIcon: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      opacity: 0.5,
+    },
+    viewRecordsLink: {
+      textAlign: 'center',
+      color: colorMode === 'dark' ? '#666666' : '#9CA3AF',
+      fontWeight: '600',
+      marginBottom: theme.spacing.md,
+    },
+    sendButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: '#0891B2', // 湖水綠
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#0891B2',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    sendButtonText: {
+      color: '#FFFFFF',
+      fontSize: 24,
+      fontWeight: '600',
+    },
   });
 
   const handleAddExpense = () => {
@@ -272,16 +314,14 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       return;
     }
 
-    if (!selectedCategory) {
-      Alert.alert('錯誤', '請選擇支出類別');
-      return;
-    }
-
     const expenseAmount = parseFloat(amount);
     if (isNaN(expenseAmount) || expenseAmount <= 0) {
       Alert.alert('錯誤', '請輸入有效的支出金額');
       return;
     }
+
+    // 如果沒有選擇類別，預設使用 'other'
+    const categoryToUse = selectedCategory || 'other';
 
     const hosts = currentGame.hosts || [];
     const firstHostName = hosts[0] ? (typeof hosts[0] === 'string' ? hosts[0] : hosts[0].name) : null;
@@ -296,7 +336,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       if (!original) return;
       const updated: Expense = {
         ...original,
-        category: selectedCategory,
+        category: categoryToUse,
         description: description.trim() || undefined,
         amount: expenseAmount,
         host: hostToUse || undefined,
@@ -306,14 +346,14 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
       showToast('已更新支出紀錄', 'success');
     } else {
       const newExpense: Omit<Expense, 'id' | 'timestamp'> = {
-        category: selectedCategory,
+        category: categoryToUse,
         description: description.trim() || undefined,
         amount: expenseAmount,
         host: hostToUse || undefined,
       };
       addExpense(currentGame.id, newExpense);
-      const categoryLabel = expenseCategories.find(cat => cat.id === selectedCategory)?.label;
-      showToast(`已新增 ${categoryLabel} 支出${description.trim() ? `：${description.trim()}` : ''} 金額：$${expenseAmount.toLocaleString()}`, 'success');
+      const categoryLabel = expenseCategories.find(cat => cat.id === categoryToUse)?.label;
+      showToast(`已新增 ${categoryLabel} 支出 金額：$${expenseAmount.toLocaleString()}`, 'success');
     }
 
     // 清空輸入但保留在本介面
@@ -329,65 +369,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   };
 
   const selectedCategoryInfo = expenseCategories.find(cat => cat.id === selectedCategory);
-  const categoryLabelMap: Record<string, string> = Object.fromEntries(expenseCategories.map(c => [c.id, c.label]));
   const totalExpenses = (currentGame?.expenses || []).reduce((sum, e) => sum + e.amount, 0);
-  const renderRecord = (expense: Expense) => (
-    <Swipeable
-      key={expense.id}
-      renderRightActions={() => (
-        <View style={{ flexDirection: 'row' }}>
-          <TouchableOpacity
-            style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: theme.colors.primary, marginRight: theme.spacing.xs, borderRadius: theme.borderRadius.sm }}
-            onPress={() => {
-              // 使用獨立彈窗編輯（已使用翻譯）
-              setEditExpenseId(expense.id);
-              setEditCategory(expense.category);
-              setEditDescription(expense.description || '');
-              setEditAmount(String(expense.amount));
-              setSelectedHost(expense.host || null);
-              setEditVisible(true);
-            }}
-          >
-            <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('expense.editExpense')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{ justifyContent: 'center', paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.error, borderRadius: theme.borderRadius.sm }}
-            onPress={() => {
-              if (!currentGame) return;
-              Alert.alert(t('expense.deleteExpense'), t('expense.deleteConfirm'), [
-                { text: t('common.cancel'), style: 'cancel' },
-                { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
-              ]);
-            }}
-          >
-            <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('common.delete')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    >
-      <View style={styles.expenseItemRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          {expense.category === 'venue' ? (
-            <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
-          ) : expense.category === 'miscellaneous' ? (
-            <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm }} />
-          ) : expense.category === 'taxi' ? (
-            <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm }} />
-          ) : expense.category === 'takeout' ? (
-            <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm }} />
-          ) : expense.category === 'other' ? (
-            <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm }} />
-          ) : null}
-          <Text style={styles.expenseItemLeft}>
-            {categoryLabelMap[expense.category]}
-            {expense.host ? ` · ${expense.host}` : ''}
-          </Text>
-        </View>
-        <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
-        <Text style={styles.expenseItemTime}>{new Date(expense.timestamp).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
-      </View>
-    </Swipeable>
-  );
 
   return (
     <Modal
@@ -400,8 +382,17 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         contentContainerStyle={{ maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}
       >
+        {/* 查看支出紀錄入口（置中暗字，像服務費記錄一樣） */}
+        <TouchableOpacity onPress={() => setRecordsExpanded(true)} activeOpacity={0.7}>
+          <Text style={styles.viewRecordsLink}>
+            查看支出紀錄 (${totalExpenses.toLocaleString()})
+          </Text>
+        </TouchableOpacity>
+
         {/* 支出類別選擇（按鈕樣式） */}
         <View style={[styles.inputGroup, styles.categoryGroup]}>
           <View style={styles.categoriesGrid}>
@@ -500,8 +491,6 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           </View>
         </View>
 
-        {/* 已選擇提示依需求移除，保持介面簡潔 */}
-
         {/* 支出描述（可展開） */}
         <View style={[styles.inputGroup, styles.descriptionGroup]}>
           <TouchableOpacity
@@ -514,42 +503,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           </TouchableOpacity>
           {descriptionExpanded && (
             <TextInput
-              style={[styles.input, focusedInput === 'description' && styles.inputFocused]}
+              style={styles.input}
               value={description}
               onChangeText={setDescription}
-              placeholder={t('expense.descriptionPlaceholder')}
-              placeholderTextColor={
-                focusedInput === 'description'
-                  ? 'transparent'
-                  : theme.colors.textSecondary
-              }
+              placeholder="輸入描述"
+              placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
               multiline={false}
               numberOfLines={1}
-              onFocus={() => setFocusedInput('description')}
-              onBlur={() => setFocusedInput(null)}
             />
           )}
-        </View>
-
-        {/* 支出金額 */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('expense.amount')}</Text>
-          <TextInput
-            style={[styles.input, focusedInput === 'amount' && styles.inputFocused]}
-            value={amount}
-            onChangeText={setAmount}
-            placeholder="$"
-            placeholderTextColor={
-              focusedInput === 'amount'
-                ? 'transparent'
-                : theme.colors.textSecondary
-            }
-            keyboardType="numeric"
-            inputMode="decimal"
-            {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-            onFocus={() => setFocusedInput('amount')}
-            onBlur={() => setFocusedInput(null)}
-          />
         </View>
 
         {/* 選擇 Host（多 Host 顯示，單 Host 自動綁定不顯示） */}
@@ -571,56 +533,28 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           </View>
         )}
 
-        {/* 新增按鈕 */}
-        <Button
-          title={editingExpenseId ? t('expense.updateExpense') : t('expense.addExpense')}
-          onPress={handleAddExpense}
-          size="lg"
-          variant="primary"
-          style={{ marginBottom: theme.spacing.md }} // 增加底部間距確保陰影顯示
-        />
-
-        {/* 支出記錄（可展開的卡片式設計） */}
-        <View style={[styles.inputGroup, styles.recordsGroup]}>
-          <Card>
-            <TouchableOpacity 
-              style={styles.recordsCardHeader}
-              onPress={() => setRecordsExpanded(!recordsExpanded)}
-              activeOpacity={1}
+        {/* 支出金額 + 新增按鈕（WhatsApp 風格） */}
+        <View style={styles.inputWithButtonRow}>
+          <Text style={styles.inputIcon}>$</Text>
+          <TextInput
+            style={styles.inputInline}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="輸入金額"
+            placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
+            keyboardType="decimal-pad"
+          />
+          {amount.trim() !== '' && (
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleAddExpense}
+              activeOpacity={0.8}
             >
-              <View style={styles.recordsHeaderLeft}>
-                <Icon name="cost" size={24} style={{ marginRight: theme.spacing.sm }} />
-                <Text style={styles.recordsTitle}>{t('expense.records')}</Text>
-              </View>
-              <View style={styles.recordsHeaderRight}>
-                <Text style={styles.recordsTotal}>$ {totalExpenses.toLocaleString()}</Text>
-                <Text style={styles.expandIcon}>{recordsExpanded ? '▲' : '▼'}</Text>
-              </View>
+              <Text style={styles.sendButtonText}>✓</Text>
             </TouchableOpacity>
-            {recordsExpanded && (
-              <View style={styles.expenseListContainer}>
-                <ScrollView 
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={true} 
-                  style={styles.expenseScrollView}
-                  scrollEnabled={true}
-                  bounces={true}
-                  decelerationRate="fast"
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ flexGrow: 1 }}
-                >
-                  {currentGame?.expenses
-                    .slice()
-                    .sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                    .map(renderRecord)}
-                  {currentGame?.expenses.length === 0 && (
-                    <Text style={styles.emptyMessage}>{t('expense.noRecords')}</Text>
-                  )}
-                </ScrollView>
-              </View>
-            )}
-          </Card>
+          )}
         </View>
+
         {/* 編輯彈窗 */}
         <ExpenseEditModal
           visible={editVisible}
@@ -645,7 +579,21 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
             setEditExpenseId(null);
             setSelectedHost(null);
           }}
-          />
+        />
+
+        {/* 支出記錄獨立視窗 */}
+        <ExpenseRecordsModal
+          visible={recordsExpanded}
+          onClose={() => setRecordsExpanded(false)}
+          onEdit={(expense) => {
+            setEditExpenseId(expense.id);
+            setEditCategory(expense.category);
+            setEditDescription(expense.description || '');
+            setEditAmount(String(expense.amount));
+            setSelectedHost(expense.host || null);
+            setEditVisible(true);
+          }}
+        />
       </ScrollView>
     </Modal>
   );

@@ -16,27 +16,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { useSubscription } from '../context/SubscriptionContext';
+import { useChips } from '../context/ChipsContext';
 import { useNavigation } from '@react-navigation/native';
 import { useNavigationContext } from '../context/NavigationContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
-import PayPalSubscriptionModal from '../components/PayPalSubscriptionModal';
 import { Language } from '../types/language';
 
 const SettingsScreen: React.FC = () => {
   const { theme, colorMode, setColorMode } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { user, isSignedIn, signInWithGoogle, signInWithEmail, signOut } = useAuth();
-  const { isSubscribed } = useSubscription();
+  const { chips, openPurchaseModal } = useChips();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [rememberLogin, setRememberLogin] = useState(true);
   const [allowAnalytics, setAllowAnalytics] = useState(false);
-  const [paypalModalVisible, setPaypalModalVisible] = useState(false);
 
   useEffect(() => {
     const loadPrivacy = async () => {
@@ -309,15 +307,25 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.authTitle}>{isSignedIn ? t('settings.loggedIn') : t('settings.login')}</Text>
             {isSignedIn ? (
               <>
-                <Text style={styles.authUserLine}>{user?.name}{user?.email ? ` ・ ${user.email}` : ''}</Text>
+                <Text style={styles.authUserLine}>
+                  {user?.displayName || user?.email?.split('@')[0] || '用戶'}
+                  {user?.email ? ` ・ ${user.email}` : ''}
+                </Text>
                 <View style={styles.authRow}>
                   <Button
                     title={t('settings.logout')}
                     size="sm"
                     onPress={async () => {
-                      // 登出後返回 Welcome 頁
-                      await signOut();
-                      navigateToWelcome();
+                      try {
+                        console.log('開始登出...');
+                        await signOut();
+                        console.log('登出成功，導航到歡迎頁');
+                        navigateToWelcome();
+                      } catch (error) {
+                        console.error('登出失敗:', error);
+                        // 即使登出失敗，也嘗試導航回歡迎頁
+                        navigateToWelcome();
+                      }
                     }}
                   />
                 </View>
@@ -329,11 +337,38 @@ const SettingsScreen: React.FC = () => {
                 </View>
                 <View style={styles.authEmailInputRow}>
                   <TextInput style={styles.authEmailInput} placeholder="name@example.com" placeholderTextColor={theme.colors.textSecondary} autoCapitalize="none" keyboardType="email-address" />
-                  <Button title={t('settings.loginWithEmail')} size="sm" onPress={() => signInWithEmail('name@example.com')} />
+                  <Button title={t('settings.loginWithEmail')} size="sm" onPress={() => signInWithEmail('name@example.com', '')} />
                 </View>
               </>
             )}
           </Card>
+          
+          {/* Chips 區塊 */}
+          {isSignedIn && (
+            <>
+              <Text style={styles.sectionTitle}>Chips 餘額</Text>
+              <Card padding="md">
+                <View style={styles.dataManagementItem}>
+                  <View style={styles.dataItemContent}>
+                    <Text style={[styles.dataItemTitle, { fontSize: 24, color: chips > 0 ? '#10B981' : theme.colors.error }]}>
+                      🎰 {chips} Chips
+                    </Text>
+                    <Text style={styles.dataItemSubtitle}>
+                      每 1 Chip 提供 12 小時牌局編輯時間
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm }}>
+                  <Button
+                    title="購買 Chips"
+                    size="md"
+                    variant="primary"
+                    onPress={openPurchaseModal}
+                  />
+                </View>
+              </Card>
+            </>
+          )}
           {/* General Settings */}
           <Text style={styles.sectionTitle}>{t('settings.general')}</Text>
           <Card>
@@ -369,52 +404,6 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.statusText}>
                 {t('settings.currentlyUsing')}{colorMode === 'light' ? t('settings.lightMode') : t('settings.darkMode')}
               </Text>
-            </View>
-          </Card>
-
-          {/* Subscription */}
-          <Text style={styles.sectionTitle}>訂閱狀態</Text>
-          <Card padding="sm">
-            <View style={styles.dataManagementItem}>
-              <View style={styles.dataItemContent}>
-                <Text style={[
-                  styles.dataItemTitle,
-                  { color: isSubscribed ? '#FBBF24' : theme.colors.error }
-                ]}>
-                  {isSubscribed ? '正在訂閱' : '未訂閱'}
-                </Text>
-                {!isSubscribed && (
-                  <Text style={styles.dataItemSubtitle}>
-                    你現可免費記錄 1 個牌局；超過 24 小時或結束牌局後，需先完成訂閱。
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {/* 「馬上訂閱 / 管理訂閱」主動 CTA */}
-            <View style={{ paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm }}>
-              <Button
-                title={isSubscribed ? '管理訂閱' : '馬上訂閱'}
-                size="md"
-                variant="primary"
-                onPress={() => {
-                  if (typeof window === 'undefined') {
-                    // eslint-disable-next-line no-alert
-                    alert('請在網頁版（lunchips.com）使用 PayPal 完成訂閱。');
-                    return;
-                  }
-
-                  if (isSubscribed) {
-                    // 已訂閱 → 開啟 PayPal 訂閱管理頁
-                    if (typeof window !== 'undefined') {
-                      window.open('https://www.paypal.com/myaccount/autopay/', '_blank');
-                    }
-                  } else {
-                    // 未訂閱 → 打開 PayPal 訂閱 Modal
-                    setPaypalModalVisible(true);
-                  }
-                }}
-              />
             </View>
           </Card>
 
@@ -586,16 +575,6 @@ const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* PayPal 訂閱 Modal */}
-      <PayPalSubscriptionModal
-        visible={paypalModalVisible}
-        onClose={() => setPaypalModalVisible(false)}
-        onSuccess={(subscriptionID) => {
-          console.log('訂閱成功:', subscriptionID);
-          // 更新訂閱狀態（事件會在 SubscriptionContext 中處理）
-          setPaypalModalVisible(false);
-        }}
-      />
     </SafeAreaView>
   );
 };

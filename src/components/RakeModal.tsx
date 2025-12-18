@@ -15,7 +15,6 @@ import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
-import Button from './Button';
 import { Rake } from '../types/game';
 import RakeRecordsModal from './RakeRecordsModal';
 
@@ -33,7 +32,6 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
   const [amount, setAmount] = useState('');
   const [time, setTime] = useState('');
   const [recordsVisible, setRecordsVisible] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 獲取螢幕尺寸
   const screenWidth = Dimensions.get('window').width;
@@ -59,13 +57,74 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
-      fontSize: theme.fontSize.md,
+      fontSize: 16,
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
-    textArea: {
-      height: 80,
-      textAlignVertical: 'top',
+    // WhatsApp 風格輸入框 + 按鈕
+    inputWithButtonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      borderRadius: 24,
+      paddingLeft: theme.spacing.md,
+      paddingRight: 4,
+      marginBottom: theme.spacing.md,
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: theme.colors.border,
+    },
+    inputInline: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.colors.text,
+      paddingVertical: 12,
+      paddingLeft: 8,
+      backgroundColor: 'transparent',
+    },
+    inputIcon: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      opacity: 0.5,
+    },
+    sendButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: '#0891B2', // 湖水綠
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#0891B2',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    sendButtonText: {
+      color: '#FFFFFF',
+      fontSize: 20,
+      fontWeight: '600',
+    },
+    timeInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: theme.spacing.md,
+    },
+    timeLabel: {
+      fontSize: theme.fontSize.md,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginRight: theme.spacing.sm,
+    },
+    timeInput: {
+      flex: 1,
+      fontSize: 16,
+      color: colorMode === 'light' ? '#4B5563' : theme.colors.text,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      borderRadius: theme.borderRadius.sm,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: theme.colors.border,
     },
     summaryCard: {
       backgroundColor: theme.colors.primary + '10',
@@ -201,51 +260,38 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
           </TouchableOpacity>
         )}
 
-        {/* 抽水金額 */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('rake.amount')}</Text>
+        {/* 時間輸入欄 */}
+        <View style={[styles.timeInputRow, { marginBottom: theme.spacing.lg }]}>
           <TextInput
-            style={[styles.input, focusedInput === 'amount' && styles.inputFocused]}
-            value={amount}
-            onChangeText={setAmount}
-            placeholder="$"
-            placeholderTextColor={
-              focusedInput === 'amount'
-                ? 'transparent'
-                : theme.colors.textSecondary
-            }
-            onFocus={() => setFocusedInput('amount')}
-            onBlur={() => setFocusedInput(null)}
-            keyboardType="numeric"
-            inputMode="decimal"
-            {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-          />
-        </View>
-
-        {/* 時間 */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('rake.time')}</Text>
-          <TextInput
-            style={[styles.input, focusedInput === 'time' && styles.inputFocused, { color: colorMode === 'light' ? '#4B5563' : theme.colors.text }]}
+            style={styles.timeInput}
             value={time}
             onChangeText={setTime}
-            placeholder={t('rake.timePlaceholder')}
-            placeholderTextColor={
-              focusedInput === 'time'
-                ? 'transparent'
-                : theme.colors.textSecondary
-            }
-            onFocus={() => setFocusedInput('time')}
-            onBlur={() => setFocusedInput(null)}
+            placeholder="時間"
+            placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
           />
         </View>
 
-        {/* 確認按鈕 */}
-        <Button
-          title={t('rake.recordRake')}
-          onPress={handleAddRake}
-          size="lg"
-        />
+        {/* 抽水金額 + 確認按鈕（WhatsApp 風格） */}
+        <View style={[styles.inputWithButtonRow, { marginBottom: theme.spacing.sm }]}>
+          <Text style={styles.inputIcon}>$</Text>
+          <TextInput
+            style={styles.inputInline}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="輸入服務費金額"
+            placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
+            keyboardType="decimal-pad"
+          />
+          {amount.trim() !== '' && (
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleAddRake}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sendButtonText}>✓</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* 抽水紀錄彈窗 */}
         <RakeRecordsModal visible={recordsVisible} onClose={() => setRecordsVisible(false)} />

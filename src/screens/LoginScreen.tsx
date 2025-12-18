@@ -20,7 +20,6 @@ import { useToast } from '../context/ToastContext';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
 import GoogleButton from '../components/GoogleButton';
-import { signInWithGoogle as firebaseGoogleSignIn, handleGoogleRedirect, signInWithEmailAndPasswordFirebase, sendPasswordReset } from '../services/firebaseAuth';
 import { Language } from '../types/language';
 // 靜態導入圖片
 import Phone2LowerImage from '../../assets/icons/phone2-lower.png';

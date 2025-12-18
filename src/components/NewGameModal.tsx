@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,10 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useNavigation } from '@react-navigation/native';
 import Modal from './Modal';
 import Button from './Button';
+
+// 獲取初始螢幕尺寸（避免鍵盤彈出時重新計算）
+const INITIAL_SCREEN_WIDTH = Dimensions.get('window').width;
+const INITIAL_SCREEN_HEIGHT = Dimensions.get('window').height;
 
 interface NewGameModalProps {
   visible: boolean;
@@ -37,12 +41,11 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const [smallBlindInput, setSmallBlindInput] = useState('5');
   const [bigBlindInput, setBigBlindInput] = useState('10');
   const [gameMode, setGameMode] = useState<'rake' | 'noRake'>('rake'); // 預設抽水
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState(false);
 
-  // 獲取螢幕尺寸
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
+  // 使用固定的螢幕尺寸，避免鍵盤彈出時重新計算
+  const screenWidth = INITIAL_SCREEN_WIDTH;
+  const screenHeight = INITIAL_SCREEN_HEIGHT;
   const isMobile = screenWidth < 768; // 判斷是否為手機
 
   // 監聽 state 變化，當有新遊戲創建時自動導航
@@ -58,67 +61,121 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
 
   const styles = StyleSheet.create({
     scrollContainer: {
-      maxHeight: isMobile ? screenHeight * 0.7 : 800, // 手機上使用螢幕高度的70%
+      maxHeight: isMobile ? screenHeight * 0.7 : 800,
     },
     scrollContent: {
       flexGrow: 1,
-      paddingBottom: theme.spacing.lg,
-      paddingHorizontal: 0, // 移除水平 padding，讓內容可以使用自己的 padding
+      paddingBottom: theme.spacing.md,
+      paddingHorizontal: 0,
     },
     inputGroup: {
-      marginBottom: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
+    },
+    // 標題區域：牌局名稱輸入欄
+    titleInput: {
+      width: 140,
+      borderWidth: 1,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      marginLeft: -theme.spacing.xs, // 向左移動對齊下方輸入欄
+    },
+    // 百分比輸入欄容器（包含輸入欄和%符號）
+    percentInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      marginLeft: theme.spacing.sm,
+      paddingRight: 8,
+    },
+    percentInput: {
+      width: 50,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      fontSize: 16,
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    percentSymbol: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+    },
+    // 同一行佈局：標籤 + 輸入欄
+    inlineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: theme.spacing.sm,
+    },
+    inlineLabel: {
+      fontSize: theme.fontSize.md,
+      fontWeight: '600',
+      color: theme.colors.text,
+      width: 70,
+    },
+    inlineInput: {
+      flex: 1,
+      maxWidth: 180,
+      borderWidth: 1,
+      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.sm,
+      fontSize: 16,
+      color: theme.colors.text,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     label: {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
       color: theme.colors.text,
-      marginBottom: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
     },
     input: {
       borderWidth: 1,
       borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-      paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.md,
-      fontSize: theme.fontSize.md,
+      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.sm,
+      fontSize: 16,
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
-    inputFocused: {
-      // 保留原有邊框顏色，但不改變背景，以維持「幾乎無視覺變化」
-      borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.primary,
-      borderWidth: 1,
-    },
     hostContainer: {
-      marginBottom: theme.spacing.sm,
+      marginBottom: 4,
     },
     hostRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: theme.spacing.sm,
     },
     hostInput: {
       flex: 1,
-      marginRight: theme.spacing.sm,
+      marginRight: theme.spacing.xs,
     },
     hostAddButton: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: 2,
     },
     hostAddText: {
-      fontSize: theme.fontSize.xxl, // 再放大與標題更接近
-      fontWeight: '800',
-      color: theme.colors.textSecondary,
+      fontSize: theme.fontSize.xl,
+      fontWeight: '700',
+      color: '#0891B2', // 湖水綠
     },
     hostRemoveButton: {
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
-      marginLeft: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: 2,
     },
     hostRemoveText: {
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
-      color: theme.colors.error, // 紅色「刪除」文字
+      color: theme.colors.error,
     },
     blindsContainer: {
       flexDirection: 'row',
@@ -126,87 +183,78 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
     },
     blindGroup: {
       flex: 1,
-      marginHorizontal: theme.spacing.xs,
+      marginHorizontal: 2,
     },
     blindRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: theme.spacing.sm,
+      justifyContent: 'center',
+      marginTop: 4,
     },
     blindButton: {
-      // 放大點擊區域，仍不使用背景色
       backgroundColor: 'transparent',
-      width: 56,
-      height: 56,
+      width: 40,
+      height: 40,
       justifyContent: 'center',
       alignItems: 'center',
     },
     blindButtonText: {
-      // 使用主題灰色作為文字顏色，字級再放大一階
       color: theme.colors.textSecondary,
-      fontSize: theme.fontSize.xxl,
+      fontSize: theme.fontSize.xl,
       fontWeight: 'bold',
     },
     blindValue: {
-      fontSize: theme.fontSize.lg,
+      fontSize: theme.fontSize.md,
       fontWeight: 'bold',
       color: theme.colors.text,
-      minWidth: 60,
+      minWidth: 50,
       textAlign: 'center',
     },
     blindInput: {
-      fontSize: theme.fontSize.lg,
+      fontSize: 16,
       fontWeight: 'bold',
       color: theme.colors.text,
-      minWidth: 60,
+      minWidth: 50,
       textAlign: 'center',
       borderWidth: 1,
       borderColor: colorMode === 'light' ? '#E5E7EB' : theme.colors.border,
       borderRadius: theme.borderRadius.sm,
-    },
-    blindInputFocused: {
-      borderColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
-      borderWidth: 1,
-      paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: 6,
+      paddingHorizontal: 4,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     createButtonContainer: {
-      marginTop: theme.spacing.sm,
-      marginBottom: theme.spacing.lg,
+      marginTop: theme.spacing.xs,
+      marginBottom: theme.spacing.md,
     },
     modeButtonContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginVertical: theme.spacing.lg,
+      marginVertical: theme.spacing.sm,
     },
     modeButton: {
       flex: 1,
-      paddingVertical: theme.spacing.md,
-      paddingHorizontal: theme.spacing.md,
-      borderRadius: theme.borderRadius.md,
-      borderWidth: 2,
+      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1.5,
       borderColor: theme.colors.border,
       alignItems: 'center',
-      marginHorizontal: theme.spacing.xs,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: colorMode === 'light' ? 0.08 : 0.15,
-      shadowRadius: 12,
-      elevation: 6,
+      marginHorizontal: 4,
     },
     activeMode: {
-      borderColor: colorMode === 'light' ? theme.colors.primary : theme.colors.textSecondary,
-      backgroundColor: theme.colors.primary + '10',
+      borderColor: '#0891B2', // 湖水綠
+      backgroundColor: 'rgba(8, 145, 178, 0.1)',
+    },
+    modeText: {
+      color: colorMode === 'light' ? '#64748B' : theme.colors.text,
+      fontWeight: '500',
+      fontSize: theme.fontSize.sm,
     },
     activeText: {
-      color: colorMode === 'light' ? '#64748B' : theme.colors.textSecondary,
+      color: theme.colors.text,
       fontWeight: '600',
-      fontSize: theme.fontSize.md,
+      fontSize: theme.fontSize.sm,
     },
     inactiveText: {
       color: colorMode === 'light' ? theme.colors.primary : theme.colors.text,
@@ -294,33 +342,30 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   };
 
   const handleBlindInputChange = (type: 'small' | 'big', value: string) => {
-    // 只允許數字輸入
+    // 只允許數字輸入，可以輸入任何數字
     const numericValue = value.replace(/[^0-9]/g, '');
     
     if (type === 'small') {
       setSmallBlindInput(numericValue);
       const numValue = parseInt(numericValue) || 0;
-      if (numValue >= 5) {
-        setSmallBlind(numValue);
-      }
+      setSmallBlind(numValue);
     } else {
       setBigBlindInput(numericValue);
       const numValue = parseInt(numericValue) || 0;
-      if (numValue >= 5) {
-        setBigBlind(numValue);
-      }
+      setBigBlind(numValue);
     }
   };
 
   const handleBlindInputBlur = (type: 'small' | 'big') => {
+    // 允許任何正整數，空值默認為 0
     if (type === 'small') {
-      const numValue = parseInt(smallBlindInput) || 5;
-      const validValue = Math.max(5, numValue);
+      const numValue = parseInt(smallBlindInput) || 0;
+      const validValue = Math.max(0, numValue);
       setSmallBlind(validValue);
       setSmallBlindInput(validValue.toString());
     } else {
-      const numValue = parseInt(bigBlindInput) || 5;
-      const validValue = Math.max(5, numValue);
+      const numValue = parseInt(bigBlindInput) || 0;
+      const validValue = Math.max(0, numValue);
       setBigBlind(validValue);
       setBigBlindInput(validValue.toString());
     }
@@ -444,6 +489,19 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
     setGameMode('rake');
   };
 
+  // 自定義標題：牌局名稱輸入欄（對齊下方 Host 輸入欄）
+  const customTitle = (
+    <View style={{ flexDirection: 'row', flex: 1 }}>
+      <TextInput
+        style={styles.titleInput}
+        value={gameName}
+        onChangeText={setGameName}
+        placeholder={t('newGame.gameNamePlaceholder')}
+        placeholderTextColor={theme.colors.textSecondary}
+      />
+    </View>
+  );
+
   return (
     <Modal
       visible={visible}
@@ -451,161 +509,106 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         resetForm();
         onClose();
       }}
-      title={t('modals.newGame')}
-      maxWidth={isMobile ? screenWidth - 32 : 800} // 手機上留出左右各16px的間距
-      maxHeight={isMobile ? screenHeight * 0.85 : Math.min(screenHeight * 0.85, 700)} // 限制最大高度，確保視窗不會超出螢幕
-      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : undefined}
+      title={customTitle}
+      maxWidth={isMobile ? screenWidth - 32 : 500}
+      maxHeight={isMobile ? screenHeight * 0.7 : Math.min(screenHeight * 0.8, 600)}
+      containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 500 }}
     >
       <View style={styles.scrollContent} data-new-game-modal-content>
-        {/* 牌局名稱 */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('newGame.gameName')}</Text>
-          <TextInput
-            style={[styles.input, focusedInput === 'gameName' && styles.inputFocused]}
-            value={gameName}
-            onChangeText={setGameName}
-            placeholder={t('newGame.gameNamePlaceholder')}
-            placeholderTextColor={
-              focusedInput === 'gameName'
-                ? 'transparent'
-                : theme.colors.textSecondary
-            }
-            onFocus={() => setFocusedInput('gameName')}
-            onBlur={() => setFocusedInput(null)}
-          />
+        {/* Host 區域標題 + 右上角「+」 */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xs }}>
+          <Text style={styles.label}>Host</Text>
+          <TouchableOpacity onPress={addHost} activeOpacity={0.7} style={styles.hostAddButton}>
+            <Text style={styles.hostAddText}>+</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Host */}
-        <View style={styles.inputGroup}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={styles.label}>Host</Text>
-            <TouchableOpacity
-              onPress={addHost}
-              activeOpacity={0.7}
-              style={styles.hostAddButton}
-            >
-              <Text style={styles.hostAddText}>+</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Host 列表 */}
+        <View style={[styles.inputGroup, { marginTop: 0 }]}>
           {hosts.map((host, index) => (
             <View key={index} style={styles.hostContainer}>
-              <View style={styles.hostRow}>
+              <View style={styles.inlineRow}>
+                {hosts.length > 1 && (
+                  <Text style={[styles.inlineLabel, { width: 30 }]}>{index + 1}</Text>
+                )}
                 <TextInput
-                  style={[styles.input, styles.hostInput, focusedInput === `host-${index}` && styles.inputFocused]}
+                  style={[styles.inlineInput, { maxWidth: 140 }]}
                   value={host}
                   onChangeText={(value) => updateHost(index, value)}
                   placeholder={t('newGame.hostNamePlaceholder').replace('{index}', String(index + 1))}
-                  placeholderTextColor={
-                    focusedInput === `host-${index}`
-                      ? 'transparent'
-                      : theme.colors.textSecondary
-                  }
-                  onFocus={() => setFocusedInput(`host-${index}`)}
-                  onBlur={() => setFocusedInput(null)}
+                  placeholderTextColor={theme.colors.textSecondary}
                 />
                 {hosts.length > 1 && (
                   <>
-                    <TextInput
-                      style={[styles.input, { width: 80, marginRight: theme.spacing.sm }, focusedInput === `ratio-${index}` && styles.inputFocused]}
-                      value={hostRatios[index] === 0 ? '' : (hostRatios[index]?.toString() || '')}
-                      onChangeText={(value) => updateHostRatio(index, value)}
-                      placeholder="比例"
-                      placeholderTextColor={
-                        focusedInput === `ratio-${index}`
-                          ? 'transparent'
-                          : theme.colors.textSecondary
-                      }
-                      onFocus={() => setFocusedInput(`ratio-${index}`)}
-                      onBlur={() => setFocusedInput(null)}
-                      keyboardType="numeric"
-                      inputMode="decimal"
-                      {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-                    />
+                    <View style={styles.percentInputContainer}>
+                      <TextInput
+                        style={styles.percentInput}
+                        value={hostRatios[index] === 0 ? '' : (hostRatios[index]?.toString() || '')}
+                        onChangeText={(value) => updateHostRatio(index, value)}
+                        placeholder="1"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        keyboardType="numeric"
+                        inputMode="decimal"
+                        {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                      />
+                      <Text style={styles.percentSymbol}>%</Text>
+                    </View>
                     <TouchableOpacity
                       onPress={() => removeHost(index)}
                       activeOpacity={0.7}
                       style={styles.hostRemoveButton}
                     >
-                      <Text style={styles.hostRemoveText}>{t('newGame.removeHost') || '刪除'}</Text>
+                      <Text style={styles.hostRemoveText}>✕</Text>
                     </TouchableOpacity>
                   </>
                 )}
               </View>
-              {hosts.length > 1 && (
-                <Text style={{ fontSize: theme.fontSize.xs, color: theme.colors.textSecondary, marginTop: theme.spacing.xs, marginLeft: theme.spacing.sm }}>
-                  可在牌局設定調整
-                </Text>
-              )}
             </View>
           ))}
         </View>
 
-        {/* 小盲/大盲 */}
-        <View style={styles.inputGroup}>
+        {/* 小盲/大盲 - 更緊湊 */}
+        <View style={[styles.inputGroup, { marginBottom: theme.spacing.sm }]}>
           <View style={styles.blindsContainer}>
             <View style={styles.blindGroup}>
-              <Text style={[styles.label, { textAlign: 'center' }]}>{t('newGame.smallBlind')}</Text>
+              <Text style={[styles.label, { textAlign: 'center', fontSize: theme.fontSize.sm }]}>{t('newGame.smallBlind')}</Text>
               <View style={styles.blindRow}>
-                <TouchableOpacity
-                  style={styles.blindButton}
-                  onPress={() => adjustBlind('small', -5)}
-                  activeOpacity={1}
-                >
+                <TouchableOpacity style={styles.blindButton} onPress={() => adjustBlind('small', -5)} activeOpacity={0.7}>
                   <Text style={styles.blindButtonText}>-</Text>
                 </TouchableOpacity>
                 <TextInput
-                  style={[styles.blindInput, focusedInput === 'smallBlind' && styles.blindInputFocused]}
+                  style={styles.blindInput}
                   value={smallBlindInput}
                   onChangeText={(value) => handleBlindInputChange('small', value)}
-                  onBlur={() => {
-                    handleBlindInputBlur('small');
-                    setFocusedInput(null);
-                  }}
-                  onFocus={() => setFocusedInput('smallBlind')}
+                  onBlur={() => handleBlindInputBlur('small')}
                   keyboardType="numeric"
                   inputMode="decimal"
                   {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
                   selectTextOnFocus
                 />
-                <TouchableOpacity
-                  style={styles.blindButton}
-                  onPress={() => adjustBlind('small', 5)}
-                  activeOpacity={1}
-                >
+                <TouchableOpacity style={styles.blindButton} onPress={() => adjustBlind('small', 5)} activeOpacity={0.7}>
                   <Text style={styles.blindButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.blindGroup}>
-              <Text style={[styles.label, { textAlign: 'center' }]}>{t('newGame.bigBlind')}</Text>
+              <Text style={[styles.label, { textAlign: 'center', fontSize: theme.fontSize.sm }]}>{t('newGame.bigBlind')}</Text>
               <View style={styles.blindRow}>
-                <TouchableOpacity
-                  style={styles.blindButton}
-                  onPress={() => adjustBlind('big', -5)}
-                  activeOpacity={1}
-                >
+                <TouchableOpacity style={styles.blindButton} onPress={() => adjustBlind('big', -5)} activeOpacity={0.7}>
                   <Text style={styles.blindButtonText}>-</Text>
                 </TouchableOpacity>
                 <TextInput
-                  style={[styles.blindInput, focusedInput === 'bigBlind' && styles.blindInputFocused]}
+                  style={styles.blindInput}
                   value={bigBlindInput}
                   onChangeText={(value) => handleBlindInputChange('big', value)}
-                  onBlur={() => {
-                    handleBlindInputBlur('big');
-                    setFocusedInput(null);
-                  }}
-                  onFocus={() => setFocusedInput('bigBlind')}
+                  onBlur={() => handleBlindInputBlur('big')}
                   keyboardType="numeric"
                   inputMode="decimal"
                   {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
                   selectTextOnFocus
                 />
-                <TouchableOpacity
-                  style={styles.blindButton}
-                  onPress={() => adjustBlind('big', 5)}
-                  activeOpacity={1}
-                >
+                <TouchableOpacity style={styles.blindButton} onPress={() => adjustBlind('big', 5)} activeOpacity={0.7}>
                   <Text style={styles.blindButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -620,7 +623,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
             style={[styles.modeButton, gameMode === 'rake' && styles.activeMode]}
             activeOpacity={0.7}
           >
-            <Text style={gameMode === 'rake' ? styles.activeText : styles.inactiveText}>
+            <Text style={styles.modeText}>
               {t('newGame.rakeMode')}
             </Text>
           </TouchableOpacity>
@@ -629,35 +632,25 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
             style={[styles.modeButton, gameMode === 'noRake' && styles.activeMode]}
             activeOpacity={0.7}
           >
-            <Text style={gameMode === 'noRake' ? styles.activeText : styles.inactiveText}>
+            <Text style={styles.modeText}>
               {t('newGame.noRakeMode')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* 抽水 / 入場費模式說明（僅保留說明文字，移除重複標題） */}
-        {gameMode === 'rake' && (
-          <View style={styles.inputGroup}>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm }}>
-              {t('newGame.rakeModeDescription')}
-            </Text>
-          </View>
-        )}
-
-        {gameMode === 'noRake' && (
-          <View style={styles.inputGroup}>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm }}>
-              {t('newGame.noRakeModeDescription')}
-            </Text>
-          </View>
-        )}
+        {/* 抽水 / 入場費模式說明 */}
+        <View style={{ marginBottom: theme.spacing.sm }}>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.xs, textAlign: 'center' }}>
+            {gameMode === 'rake' ? t('newGame.rakeModeDescription') : t('newGame.noRakeModeDescription')}
+          </Text>
+        </View>
 
         {/* 建立按鈕 */}
         <View style={styles.createButtonContainer}>
           <Button
             title={t('newGame.createGame')}
             onPress={handleCreateGame}
-            size="lg"
+            size="md"
           />
         </View>
       </View>

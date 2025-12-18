@@ -142,14 +142,14 @@ export const STRIPE_LIVE_PUBLISHABLE_KEY = 'pk_live_你的正式密鑰';
 export const STRIPE_TEST_PRICES = {
   CHIP_1: 'price_你的1chip測試價格ID',
   CHIP_15: 'price_你的15chips測試價格ID',
-  CHIP_35: 'price_你的35chips測試價格ID',
+  CHIP_36: 'price_你的36chips測試價格ID',
 };
 
 // 正式環境價格 ID
 export const STRIPE_LIVE_PRICES = {
   CHIP_1: 'price_你的1chip正式價格ID',
   CHIP_15: 'price_你的15chips正式價格ID',
-  CHIP_35: 'price_你的35chips正式價格ID',
+  CHIP_36: 'price_你的36chips正式價格ID',
 };
 ```
 

@@ -537,7 +537,7 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
           {/* 保險記錄列表（當正在編輯預設分成時也隱藏） */}
           {!showOnlyDefaultPartners && !editingDefaultPartners && (
             <>
-              <View style={[styles.section, styles.listContainer]}>
+              <View style={[styles.section, styles.listContainer, { marginTop: -theme.spacing.sm }]}>
                 {currentGame.insurances
                   .slice()
                   .sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -606,7 +606,7 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
               <Button 
                 title={t('insurance.addInsurance')} 
                 onPress={onAddInsurance} 
-                size="lg"
+                size="sm"
                 variant="primary"
                 style={{ marginBottom: theme.spacing.md }}
               />

@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
+import { supabase } from '../config/supabase';
 import { STRIPE_API_ENDPOINTS, CHIPS_CONFIG, CHIPS_PACKAGES, ChipsPackage } from '../config/stripe';
+
+// 檢測是否為本地開發環境
+const isLocalDev = () => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+};
 
 // ============================================
 // Types
@@ -103,6 +111,39 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
+      
+      // 本地開發環境：直接使用 Supabase
+      if (isLocalDev()) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('chips')
+          .eq('id', user.uid)
+          .single();
+        
+        if (error) {
+          // 如果用戶不存在，創建新用戶並給予 1 個免費 Chip
+          if (error.code === 'PGRST116') {
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert({ id: user.uid, chips: 1 })
+              .select('chips')
+              .single();
+            
+            if (!insertError && newProfile) {
+              setChips(newProfile.chips);
+              setIsNewUser(true);
+              console.log('新用戶已創建，獲得 1 個免費 Chip');
+              return;
+            }
+          }
+          throw error;
+        }
+        
+        setChips(profile?.chips || 0);
+        return;
+      }
+      
+      // 生產環境：使用 API
       const baseUrl = getApiBaseUrl();
       const response = await fetch(
         `${baseUrl}${STRIPE_API_ENDPOINTS.GET_BALANCE}?userId=${user.uid}`
@@ -144,6 +185,53 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
     }
 
     try {
+      // 本地開發環境：直接使用 Supabase
+      if (isLocalDev()) {
+        const { data: chipRecord, error } = await supabase
+          .from('game_chips')
+          .select('*')
+          .eq('user_id', user.uid)
+          .eq('game_id', gameId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (error || !chipRecord) {
+          // 沒有記錄，需要消耗 Chip
+          const status: GameChipStatus = { hasValidChip: false, needsChip: true, reason: 'no_chip_record' };
+          setGameChipStatus(status);
+          setIsGameLocked(true);
+          return status;
+        }
+        
+        const expiresAt = new Date(chipRecord.expires_at);
+        const now = new Date();
+        const hasValidChip = expiresAt > now;
+        const remainingMs = expiresAt.getTime() - now.getTime();
+        const remainingMinutes = Math.floor(remainingMs / 60000);
+        const remainingHours = Math.floor(remainingMinutes / 60);
+        
+        const status: GameChipStatus = {
+          hasValidChip,
+          needsChip: !hasValidChip,
+          expiresAt: chipRecord.expires_at,
+          remainingMinutes,
+          remainingHours,
+          shouldWarn: remainingMinutes < 30 && remainingMinutes > 0,
+          reason: hasValidChip ? 'valid' : 'expired',
+        };
+        
+        setGameChipStatus(status);
+        setIsGameLocked(!hasValidChip);
+        
+        if (hasValidChip && status.expiresAt) {
+          setupExpiryTimers(status.expiresAt, gameId);
+        }
+        
+        return status;
+      }
+      
+      // 生產環境：使用 API
       const baseUrl = getApiBaseUrl();
       const response = await fetch(
         `${baseUrl}/api/chips/game-status?userId=${user.uid}&gameId=${gameId}`
@@ -182,6 +270,43 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
     }
 
     try {
+      // 本地開發環境：直接使用 Supabase
+      if (isLocalDev()) {
+        // 1. 扣除用戶的 chips
+        const newChips = chips - 1;
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ chips: newChips })
+          .eq('id', user.uid);
+        
+        if (updateError) throw updateError;
+        
+        // 2. 創建 game_chips 記錄
+        const expiresAt = new Date(Date.now() + CHIPS_CONFIG.GAME_SESSION_DURATION);
+        const { error: insertError } = await supabase
+          .from('game_chips')
+          .insert({
+            user_id: user.uid,
+            game_id: gameId,
+            expires_at: expiresAt.toISOString(),
+            reason: reason || 'game_session',
+          });
+        
+        if (insertError) throw insertError;
+        
+        // 更新本地狀態
+        setChips(newChips);
+        setIsGameLocked(false);
+        setShowExpiredModal(false);
+        
+        // 設置過期計時器
+        setupExpiryTimers(expiresAt.toISOString(), gameId);
+        
+        console.log(`成功消耗 1 Chip，剩餘 ${newChips}，有效至 ${expiresAt.toISOString()}`);
+        return true;
+      }
+      
+      // 生產環境：使用 API
       const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}${STRIPE_API_ENDPOINTS.CONSUME_CHIP}`, {
         method: 'POST',
@@ -237,6 +362,30 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       return null;
     }
 
+    // 本地開發環境：模擬購買（直接增加 Chips）
+    if (isLocalDev()) {
+      console.log('本地開發模式：模擬購買 Chips');
+      const confirm = window.confirm(
+        `本地開發模式\n\n模擬購買 ${packageItem.chips} Chips（$${packageItem.priceHKD} HKD）？\n\n注意：實際付款功能需要部署到 Vercel 後才能使用。`
+      );
+      
+      if (confirm) {
+        // 直接更新 Supabase 中的 chips
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({ chips: chips + packageItem.chips })
+          .eq('id', user.uid)
+          .select('chips')
+          .single();
+        
+        if (!error && data) {
+          setChips(data.chips);
+          alert(`模擬購買成功！已增加 ${packageItem.chips} Chips，目前餘額：${data.chips} Chips`);
+        }
+      }
+      return null; // 不跳轉
+    }
+
     try {
       const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}${STRIPE_API_ENDPOINTS.CREATE_CHECKOUT}`, {
@@ -264,7 +413,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       console.error('創建 Checkout Session 失敗:', error);
       return null;
     }
-  }, [isSignedIn, user, getApiBaseUrl]);
+  }, [isSignedIn, user, chips, getApiBaseUrl]);
 
   // ============================================
   // 計時器

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../config/supabase';
+import { useAuth } from './AuthContext';
 import { Game, Player, Dealer, Expense, Rake, Insurance, InsurancePartner, BuyInEntry } from '../types/game';
 
 interface GameState {
@@ -125,7 +126,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const buyIns = [...(p.buyIns || []), action.payload.entry];
         const buyIn = buyIns.reduce((s, e) => s + e.amount, 0);
         const profit = p.status === 'active' ? -buyIn : p.profit;
-        // 如果還沒有 buyInTime，設置為第一筆買入的時間
         const buyInTime = p.buyInTime || action.payload.entry.timestamp;
         return { ...p, buyIns, buyIn, profit, buyInTime, updatedAt: new Date() };
       });
@@ -155,13 +155,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           .map(p => {
             if (p.id !== action.payload.playerId) return p;
             const buyIns = (p.buyIns || []).filter(e => e.id !== action.payload.entryId);
-            // 如果刪除後沒有任何買入記錄，返回 null 標記需要刪除
             if (buyIns.length === 0) return null;
             const buyIn = buyIns.reduce((s, e) => s + e.amount, 0);
             const profit = p.status === 'active' ? -buyIn : p.profit;
             return { ...p, buyIns, buyIn, profit, updatedAt: new Date() };
           })
-          .filter((p): p is Player => p !== null); // 過濾掉 null，即刪除沒有買入記錄的玩家
+          .filter((p): p is Player => p !== null);
       };
       return {
         ...state,
@@ -332,7 +331,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_GAME_SUMMARY_MODAL_VISIBLE':
       return { ...state, gameSummaryModalVisible: action.payload };
     case 'SYNC_GAME_STATE':
-      // 同步遠程遊戲狀態
       const syncedGame = action.payload;
       return {
         ...state,
@@ -342,22 +340,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         currentGame: state.currentGame?.id === syncedGame.id ? syncedGame : state.currentGame,
       };
     case 'MERGE_GAME_STATE':
-      // 合併本地和遠程遊戲狀態
       const { local, remote } = action.payload;
       const mergedGame = {
         ...local,
-        // 使用遠程的更新時間戳
         lastModified: Math.max(local.lastModified || 0, remote.lastModified || 0),
-        // 合併玩家數據（保留本地未保存的更改）
         players: local.players.map(localPlayer => {
           const remotePlayer = remote.players.find(p => p.id === localPlayer.id);
           if (remotePlayer) {
-            // 如果遠程玩家有更新，使用遠程數據
             return remotePlayer.lastModified > localPlayer.lastModified ? remotePlayer : localPlayer;
           }
           return localPlayer;
         }),
-        // 合併其他數據
         expenses: remote.expenses,
         rakes: remote.rakes,
         insurances: remote.insurances,
@@ -404,212 +397,802 @@ interface GameContextType {
   setGameSummaryModalVisible: (visible: boolean) => void;
   deleteGame: (gameId: string) => void;
   reorderGames: (orderedIds: string[]) => void;
-  clearAllGames: () => void; // 清除所有遊戲數據（用於新用戶）
+  clearAllGames: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+// ============================================
+// Supabase 數據轉換函數
+// ============================================
+
+// 從 Supabase 獲取完整的遊戲數據（包含關聯表）
+async function fetchGameWithRelations(gameId: string): Promise<Game | null> {
+  const { data: gameData, error: gameError } = await supabase
+    .from('games')
+    .select('*')
+    .eq('id', gameId)
+    .single();
+
+  if (gameError || !gameData) return null;
+
+  // 並行獲取所有關聯數據
+  const [playersRes, dealersRes, expensesRes, rakesRes, insurancesRes] = await Promise.all([
+    supabase.from('players').select('*').eq('game_id', gameId),
+    supabase.from('dealers').select('*').eq('game_id', gameId),
+    supabase.from('expenses').select('*').eq('game_id', gameId),
+    supabase.from('rakes').select('*').eq('game_id', gameId),
+    supabase.from('insurances').select('*').eq('game_id', gameId),
+  ]);
+
+  return transformSupabaseGame(
+    gameData,
+    playersRes.data || [],
+    dealersRes.data || [],
+    expensesRes.data || [],
+    rakesRes.data || [],
+    insurancesRes.data || []
+  );
+}
+
+// 將 Supabase 數據轉換為前端 Game 對象
+function transformSupabaseGame(
+  gameData: any,
+  players: any[],
+  dealers: any[],
+  expenses: any[],
+  rakes: any[],
+  insurances: any[]
+): Game {
+  return {
+    id: gameData.id,
+    name: gameData.name,
+    hosts: gameData.hosts || [],
+    smallBlind: gameData.small_blind || 0,
+    bigBlind: gameData.big_blind || 0,
+    startTime: new Date(gameData.start_time),
+    endTime: gameData.end_time ? new Date(gameData.end_time) : undefined,
+    status: gameData.status || 'active',
+    actualCollection: gameData.actual_collection,
+    finalNotes: gameData.final_notes,
+    gameMode: gameData.game_mode || 'rake',
+    entryFeeMode: gameData.entry_fee_mode,
+    fixedEntryFee: gameData.fixed_entry_fee,
+    hourlyRate: gameData.hourly_rate,
+    defaultInsurancePartners: gameData.default_insurance_partners || [],
+    players: players.map(p => ({
+      id: p.id,
+      name: p.name,
+      buyIn: p.buy_in || 0,
+      buyIns: p.buy_ins || [],
+      profit: p.profit || 0,
+      status: p.status || 'active',
+      buyInTime: p.buy_in_time ? new Date(p.buy_in_time) : undefined,
+      cashOutTime: p.cash_out_time ? new Date(p.cash_out_time) : undefined,
+      cashOutAmount: p.cash_out_amount,
+      entryFeeDeducted: p.entry_fee_deducted || false,
+      customEntryFee: p.custom_entry_fee,
+      createdAt: new Date(p.created_at),
+      updatedAt: new Date(p.updated_at),
+    })),
+    dealers: dealers.map(d => ({
+      id: d.id,
+      name: d.name,
+      tipShare: d.tip_share || 50,
+      hourlyRate: d.hourly_rate || 0,
+      workHours: d.work_hours || 0,
+      startTime: d.start_time ? new Date(d.start_time) : undefined,
+      endTime: d.end_time ? new Date(d.end_time) : undefined,
+      status: d.status || 'working',
+      totalTips: d.total_tips || 0,
+      estimatedSalary: d.estimated_salary || 0,
+      host: d.host,
+    })),
+    expenses: expenses.map(e => ({
+      id: e.id,
+      category: e.category,
+      description: e.description,
+      amount: e.amount,
+      host: e.host,
+      timestamp: new Date(e.timestamp),
+    })),
+    rakes: rakes.map(r => ({
+      id: r.id,
+      amount: r.amount,
+      note: r.note,
+      timestamp: new Date(r.timestamp),
+    })),
+    insurances: insurances.map(i => ({
+      id: i.id,
+      amount: i.amount,
+      partners: i.partners || [],
+      timestamp: new Date(i.timestamp),
+    })),
+    totalBuyIn: 0,
+    totalCashOut: 0,
+    totalRake: 0,
+    totalTips: 0,
+    totalExpenses: 0,
+    dealerSalaries: 0,
+    netProfit: 0,
+  };
+}
+
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const stateRef = useRef(state);
+  const { user } = useAuth();
   
-  // 保持 stateRef 與 state 同步
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  const saveToStorage = useCallback(async (games: Game[]) => {
-    try {
-      await AsyncStorage.setItem('pokerGames', JSON.stringify(games));
-    } catch (error) {
-      console.error('Error saving games:', error);
-    }
-  }, []);
-
+  // ============================================
+  // 從 Supabase 加載遊戲
+  // ============================================
   const loadGames = useCallback(async () => {
+    if (!user?.uid) {
+      dispatch({ type: 'SET_GAMES', payload: [] });
+      return;
+    }
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const stored = await AsyncStorage.getItem('pokerGames');
-      if (stored) {
-        const games = JSON.parse(stored);
-        dispatch({ type: 'SET_GAMES', payload: games });
-        const currentGameStored = await AsyncStorage.getItem('currentGame');
-        if (currentGameStored) {
-          dispatch({ type: 'SET_CURRENT_GAME', payload: JSON.parse(currentGameStored) });
-        }
+
+      // 獲取用戶的所有遊戲
+      const { data: gamesData, error: gamesError } = await supabase
+        .from('games')
+        .select('*')
+        .eq('user_id', user.uid)
+        .order('created_at', { ascending: false });
+
+      if (gamesError) throw gamesError;
+
+      if (!gamesData || gamesData.length === 0) {
+        dispatch({ type: 'SET_GAMES', payload: [] });
+        return;
       }
+
+      // 獲取所有遊戲的關聯數據
+      const gameIds = gamesData.map(g => g.id);
+      
+      const [playersRes, dealersRes, expensesRes, rakesRes, insurancesRes] = await Promise.all([
+        supabase.from('players').select('*').in('game_id', gameIds),
+        supabase.from('dealers').select('*').in('game_id', gameIds),
+        supabase.from('expenses').select('*').in('game_id', gameIds),
+        supabase.from('rakes').select('*').in('game_id', gameIds),
+        supabase.from('insurances').select('*').in('game_id', gameIds),
+      ]);
+
+      // 組裝完整的遊戲數據
+      const games: Game[] = gamesData.map(gameData => {
+        const gamePlayers = (playersRes.data || []).filter(p => p.game_id === gameData.id);
+        const gameDealers = (dealersRes.data || []).filter(d => d.game_id === gameData.id);
+        const gameExpenses = (expensesRes.data || []).filter(e => e.game_id === gameData.id);
+        const gameRakes = (rakesRes.data || []).filter(r => r.game_id === gameData.id);
+        const gameInsurances = (insurancesRes.data || []).filter(i => i.game_id === gameData.id);
+
+        return transformSupabaseGame(
+          gameData,
+          gamePlayers,
+          gameDealers,
+          gameExpenses,
+          gameRakes,
+          gameInsurances
+        );
+      });
+
+      dispatch({ type: 'SET_GAMES', payload: games });
+
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load games' });
+      console.error('加載遊戲失敗:', error);
+      dispatch({ type: 'SET_ERROR', payload: '載入遊戲失敗' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, []);
+  }, [user?.uid]);
 
-  const createGame = useCallback((gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => {
-    const newGame: Game = {
-      ...gameData,
-      id: Date.now().toString(),
-      players: [],
-      dealers: [],
-      expenses: [],
-      rakes: [],
-      insurances: [],
-      totalBuyIn: 0,
-      totalCashOut: 0,
-      totalRake: 0,
-      totalTips: 0,
-      totalExpenses: 0,
-      dealerSalaries: 0,
-      netProfit: 0,
-    };
-    
-    dispatch({ type: 'ADD_GAME', payload: newGame });
-    const updatedGames = [newGame, ...stateRef.current.games];
-    saveToStorage(updatedGames);
-    AsyncStorage.setItem('currentGame', JSON.stringify(newGame));
-  }, [saveToStorage]);
+  // ============================================
+  // 創建遊戲
+  // ============================================
+  const createGame = useCallback(async (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => {
+    if (!user?.uid) return;
 
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .insert({
+          user_id: user.uid,
+          name: gameData.name,
+          hosts: gameData.hosts || [],
+          small_blind: gameData.smallBlind || 0,
+          big_blind: gameData.bigBlind || 0,
+          start_time: gameData.startTime || new Date(),
+          status: 'active',
+          game_mode: gameData.gameMode || 'rake',
+          entry_fee_mode: gameData.entryFeeMode,
+          fixed_entry_fee: gameData.fixedEntryFee,
+          hourly_rate: gameData.hourlyRate,
+          default_insurance_partners: gameData.defaultInsurancePartners || [],
+        })
+        .select()
+        .single();
 
-  useEffect(() => {
-    loadGames();
-  }, []);
+      if (error) throw error;
 
-  // 使用 useCallback 包裝所有函數，避免每次渲染都創建新對象
+      const newGame: Game = {
+        ...gameData,
+        id: data.id,
+        players: [],
+        dealers: [],
+        expenses: [],
+        rakes: [],
+        insurances: [],
+        totalBuyIn: 0,
+        totalCashOut: 0,
+        totalRake: 0,
+        totalTips: 0,
+        totalExpenses: 0,
+        dealerSalaries: 0,
+        netProfit: 0,
+      };
+      
+      dispatch({ type: 'ADD_GAME', payload: newGame });
+    } catch (error) {
+      console.error('創建遊戲失敗:', error);
+      dispatch({ type: 'SET_ERROR', payload: '創建遊戲失敗' });
+    }
+  }, [user?.uid]);
+
+  // ============================================
+  // 更新遊戲
+  // ============================================
+  const updateGame = useCallback(async (game: Game) => {
+    if (!user?.uid) return;
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({
+          name: game.name,
+          hosts: game.hosts,
+          small_blind: game.smallBlind,
+          big_blind: game.bigBlind,
+          start_time: game.startTime,
+          end_time: game.endTime,
+          status: game.status,
+          actual_collection: game.actualCollection,
+          final_notes: game.finalNotes,
+          game_mode: game.gameMode,
+          entry_fee_mode: game.entryFeeMode,
+          fixed_entry_fee: game.fixedEntryFee,
+          hourly_rate: game.hourlyRate,
+          default_insurance_partners: game.defaultInsurancePartners,
+        })
+        .eq('id', game.id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_GAME', payload: game });
+    } catch (error) {
+      console.error('更新遊戲失敗:', error);
+    }
+  }, [user?.uid]);
+
+  // ============================================
+  // 選擇當前遊戲
+  // ============================================
   const selectCurrentGame = useCallback((gameId: string) => {
     const game = stateRef.current.games.find(g => g.id === gameId) || null;
     dispatch({ type: 'SET_CURRENT_GAME', payload: game });
-    if (game) AsyncStorage.setItem('currentGame', JSON.stringify(game));
   }, []);
-  const updateGame = useCallback((game: Game) => {
-    dispatch({ type: 'UPDATE_GAME', payload: game });
-    const updatedGames = stateRef.current.games.map(g => g.id === game.id ? game : g);
-    saveToStorage(updatedGames);
-    if (stateRef.current.currentGame?.id === game.id) {
-      AsyncStorage.setItem('currentGame', JSON.stringify(game));
+
+  // ============================================
+  // 玩家操作
+  // ============================================
+  const addPlayer = useCallback(async (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!user?.uid) return;
+
+    try {
+      const now = new Date();
+      const { data, error } = await supabase
+        .from('players')
+        .insert({
+          game_id: gameId,
+          name: playerData.name,
+          buy_in: playerData.buyIn || 0,
+          buy_ins: playerData.buyIns || (playerData.buyIn ? [{ id: crypto.randomUUID(), amount: playerData.buyIn, timestamp: now }] : []),
+          profit: playerData.profit || 0,
+          status: playerData.status || 'active',
+          buy_in_time: now,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newPlayer: Player = {
+        ...playerData,
+        id: data.id,
+        createdAt: now,
+        updatedAt: now,
+        buyInTime: now,
+        buyIns: data.buy_ins || [],
+      };
+
+      dispatch({ type: 'ADD_PLAYER', payload: { gameId, player: newPlayer } });
+    } catch (error) {
+      console.error('添加玩家失敗:', error);
     }
-  }, [saveToStorage]);
-  const addPlayer = useCallback((gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date();
-    const newPlayer: Player = {
-      ...playerData,
-      id: Date.now().toString(),
-      createdAt: now,
-      updatedAt: now,
-      buyInTime: now,
-      buyIns: playerData.buyIns || (playerData.buyIn ? [{ id: (Date.now()+1).toString(), amount: playerData.buyIn, timestamp: now }] : []),
-    };
-    dispatch({ type: 'ADD_PLAYER', payload: { gameId, player: newPlayer } });
+  }, [user?.uid]);
+
+  const updatePlayer = useCallback(async (gameId: string, player: Player) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          name: player.name,
+          buy_in: player.buyIn,
+          buy_ins: player.buyIns,
+          profit: player.profit,
+          status: player.status,
+          buy_in_time: player.buyInTime,
+          cash_out_time: player.cashOutTime,
+          cash_out_amount: player.cashOutAmount,
+          entry_fee_deducted: player.entryFeeDeducted,
+          custom_entry_fee: player.customEntryFee,
+        })
+        .eq('id', player.id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_PLAYER', payload: { gameId, player } });
+    } catch (error) {
+      console.error('更新玩家失敗:', error);
+    }
   }, []);
-  const updatePlayer = useCallback((gameId: string, player: Player) => {
-    dispatch({ type: 'UPDATE_PLAYER', payload: { gameId, player } });
+
+  const deletePlayer = useCallback(async (gameId: string, playerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
+    } catch (error) {
+      console.error('刪除玩家失敗:', error);
+    }
   }, []);
-  const deletePlayer = useCallback((gameId: string, playerId: string) => {
-    dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
+
+  // ============================================
+  // Buy-In 操作（更新玩家的 buyIns 數組）
+  // ============================================
+  const addBuyInEntry = useCallback(async (gameId: string, playerId: string, amount: number, timestamp?: Date) => {
+    const game = stateRef.current.games.find(g => g.id === gameId);
+    const player = game?.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    const entry: BuyInEntry = { id: crypto.randomUUID(), amount, timestamp: timestamp || new Date() };
+    const newBuyIns = [...(player.buyIns || []), entry];
+    const newBuyIn = newBuyIns.reduce((s, e) => s + e.amount, 0);
+
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          buy_ins: newBuyIns,
+          buy_in: newBuyIn,
+          buy_in_time: player.buyInTime || entry.timestamp,
+        })
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'ADD_BUYIN', payload: { gameId, playerId, entry } });
+    } catch (error) {
+      console.error('添加買入失敗:', error);
+    }
   }, []);
-  const addBuyInEntry = useCallback((gameId: string, playerId: string, amount: number, timestamp?: Date) => {
-    const entry: BuyInEntry = { id: Date.now().toString(), amount, timestamp: timestamp || new Date() };
-    dispatch({ type: 'ADD_BUYIN', payload: { gameId, playerId, entry } });
+
+  const updateBuyInEntry = useCallback(async (gameId: string, playerId: string, entry: BuyInEntry) => {
+    const game = stateRef.current.games.find(g => g.id === gameId);
+    const player = game?.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    const newBuyIns = (player.buyIns || []).map(e => e.id === entry.id ? entry : e);
+    const newBuyIn = newBuyIns.reduce((s, e) => s + e.amount, 0);
+
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          buy_ins: newBuyIns,
+          buy_in: newBuyIn,
+        })
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_BUYIN', payload: { gameId, playerId, entry } });
+    } catch (error) {
+      console.error('更新買入失敗:', error);
+    }
   }, []);
-  const updateBuyInEntry = useCallback((gameId: string, playerId: string, entry: BuyInEntry) => {
-    dispatch({ type: 'UPDATE_BUYIN', payload: { gameId, playerId, entry } });
+
+  const deleteBuyInEntry = useCallback(async (gameId: string, playerId: string, entryId: string) => {
+    const game = stateRef.current.games.find(g => g.id === gameId);
+    const player = game?.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    const newBuyIns = (player.buyIns || []).filter(e => e.id !== entryId);
+    
+    // 如果刪除後沒有任何買入記錄，刪除整個玩家
+    if (newBuyIns.length === 0) {
+      await deletePlayer(gameId, playerId);
+      return;
+    }
+
+    const newBuyIn = newBuyIns.reduce((s, e) => s + e.amount, 0);
+
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          buy_ins: newBuyIns,
+          buy_in: newBuyIn,
+        })
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_BUYIN', payload: { gameId, playerId, entryId } });
+    } catch (error) {
+      console.error('刪除買入失敗:', error);
+    }
+  }, [deletePlayer]);
+
+  // ============================================
+  // 發牌員操作
+  // ============================================
+  const addDealer = useCallback(async (gameId: string, dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('dealers')
+        .insert({
+          game_id: gameId,
+          name: dealerData.name,
+          tip_share: dealerData.tipShare || 50,
+          hourly_rate: dealerData.hourlyRate || 0,
+          work_hours: dealerData.workHours || 0,
+          start_time: dealerData.startTime,
+          status: dealerData.status || 'working',
+          host: dealerData.host,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newDealer: Dealer = {
+        ...dealerData,
+        id: data.id,
+        totalTips: 0,
+        estimatedSalary: 0,
+      };
+
+      dispatch({ type: 'ADD_DEALER', payload: { gameId, dealer: newDealer } });
+    } catch (error) {
+      console.error('添加發牌員失敗:', error);
+    }
   }, []);
-  const deleteBuyInEntry = useCallback((gameId: string, playerId: string, entryId: string) => {
-    dispatch({ type: 'DELETE_BUYIN', payload: { gameId, playerId, entryId } });
+
+  const updateDealer = useCallback(async (gameId: string, dealer: Dealer) => {
+    try {
+      const { error } = await supabase
+        .from('dealers')
+        .update({
+          name: dealer.name,
+          tip_share: dealer.tipShare,
+          hourly_rate: dealer.hourlyRate,
+          work_hours: dealer.workHours,
+          start_time: dealer.startTime,
+          end_time: dealer.endTime,
+          status: dealer.status,
+          total_tips: dealer.totalTips,
+          estimated_salary: dealer.estimatedSalary,
+          host: dealer.host,
+        })
+        .eq('id', dealer.id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_DEALER', payload: { gameId, dealer } });
+    } catch (error) {
+      console.error('更新發牌員失敗:', error);
+    }
   }, []);
-  const addDealer = useCallback((gameId: string, dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'>) => {
-    const newDealer: Dealer = {
-      ...dealerData,
-      id: Date.now().toString(),
-      totalTips: 0,
-      estimatedSalary: 0,
-    };
-    dispatch({ type: 'ADD_DEALER', payload: { gameId, dealer: newDealer } });
+
+  const deleteDealer = useCallback(async (gameId: string, dealerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('dealers')
+        .delete()
+        .eq('id', dealerId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_DEALER', payload: { gameId, dealerId } });
+    } catch (error) {
+      console.error('刪除發牌員失敗:', error);
+    }
   }, []);
-  const updateDealer = useCallback((gameId: string, dealer: Dealer) => {
-    dispatch({ type: 'UPDATE_DEALER', payload: { gameId, dealer } });
+
+  // ============================================
+  // 支出操作
+  // ============================================
+  const addExpense = useCallback(async (gameId: string, expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
+    try {
+      const now = new Date();
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({
+          game_id: gameId,
+          category: expenseData.category,
+          description: expenseData.description,
+          amount: expenseData.amount,
+          host: expenseData.host,
+          timestamp: now,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newExpense: Expense = {
+        ...expenseData,
+        id: data.id,
+        timestamp: now,
+      };
+
+      dispatch({ type: 'ADD_EXPENSE', payload: { gameId, expense: newExpense } });
+    } catch (error) {
+      console.error('添加支出失敗:', error);
+    }
   }, []);
-  const deleteDealer = useCallback((gameId: string, dealerId: string) => {
-    dispatch({ type: 'DELETE_DEALER', payload: { gameId, dealerId } });
+
+  const updateExpense = useCallback(async (gameId: string, expense: Expense) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({
+          category: expense.category,
+          description: expense.description,
+          amount: expense.amount,
+          host: expense.host,
+        })
+        .eq('id', expense.id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_EXPENSE', payload: { gameId, expense } });
+    } catch (error) {
+      console.error('更新支出失敗:', error);
+    }
   }, []);
-  const addExpense = useCallback((gameId: string, expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
-    const newExpense: Expense = {
-      ...expenseData,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-    };
-    dispatch({ type: 'ADD_EXPENSE', payload: { gameId, expense: newExpense } });
+
+  const deleteExpense = useCallback(async (gameId: string, expenseId: string) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_EXPENSE', payload: { gameId, expenseId } });
+    } catch (error) {
+      console.error('刪除支出失敗:', error);
+    }
   }, []);
-  const updateExpense = useCallback((gameId: string, expense: Expense) => {
-    dispatch({ type: 'UPDATE_EXPENSE', payload: { gameId, expense } });
+
+  // ============================================
+  // 抽水操作
+  // ============================================
+  const addRake = useCallback(async (gameId: string, rakeData: Omit<Rake, 'id' | 'timestamp'>) => {
+    try {
+      const now = new Date();
+      const { data, error } = await supabase
+        .from('rakes')
+        .insert({
+          game_id: gameId,
+          amount: rakeData.amount,
+          note: rakeData.note,
+          timestamp: now,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newRake: Rake = {
+        ...rakeData,
+        id: data.id,
+        timestamp: now,
+      };
+
+      dispatch({ type: 'ADD_RAKE', payload: { gameId, rake: newRake } });
+    } catch (error) {
+      console.error('添加抽水失敗:', error);
+    }
   }, []);
-  const deleteExpense = useCallback((gameId: string, expenseId: string) => {
-    dispatch({ type: 'DELETE_EXPENSE', payload: { gameId, expenseId } });
+
+  const updateRake = useCallback(async (gameId: string, rake: Rake) => {
+    try {
+      const { error } = await supabase
+        .from('rakes')
+        .update({
+          amount: rake.amount,
+          note: rake.note,
+        })
+        .eq('id', rake.id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_RAKE', payload: { gameId, rake } });
+    } catch (error) {
+      console.error('更新抽水失敗:', error);
+    }
   }, []);
-  const addRake = useCallback((gameId: string, rakeData: Omit<Rake, 'id' | 'timestamp'>) => {
-    const newRake: Rake = {
-      ...rakeData,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-    };
-    dispatch({ type: 'ADD_RAKE', payload: { gameId, rake: newRake } });
+
+  const deleteRake = useCallback(async (gameId: string, rakeId: string) => {
+    try {
+      const { error } = await supabase
+        .from('rakes')
+        .delete()
+        .eq('id', rakeId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_RAKE', payload: { gameId, rakeId } });
+    } catch (error) {
+      console.error('刪除抽水失敗:', error);
+    }
   }, []);
-  const updateRake = useCallback((gameId: string, rake: Rake) => {
-    dispatch({ type: 'UPDATE_RAKE', payload: { gameId, rake } });
+
+  // ============================================
+  // 保險操作
+  // ============================================
+  const addInsurance = useCallback(async (gameId: string, insuranceData: Omit<Insurance, 'id' | 'timestamp'>) => {
+    try {
+      const now = new Date();
+      const { data, error } = await supabase
+        .from('insurances')
+        .insert({
+          game_id: gameId,
+          amount: insuranceData.amount,
+          partners: insuranceData.partners || [],
+          timestamp: now,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newInsurance: Insurance = {
+        ...insuranceData,
+        id: data.id,
+        timestamp: now,
+      };
+
+      dispatch({ type: 'ADD_INSURANCE', payload: { gameId, insurance: newInsurance } });
+    } catch (error) {
+      console.error('添加保險失敗:', error);
+    }
   }, []);
-  const deleteRake = useCallback((gameId: string, rakeId: string) => {
-    dispatch({ type: 'DELETE_RAKE', payload: { gameId, rakeId } });
+
+  const updateInsurance = useCallback(async (gameId: string, insurance: Insurance) => {
+    try {
+      const { error } = await supabase
+        .from('insurances')
+        .update({
+          amount: insurance.amount,
+          partners: insurance.partners,
+        })
+        .eq('id', insurance.id);
+
+      if (error) throw error;
+
+      dispatch({ type: 'UPDATE_INSURANCE', payload: { gameId, insurance } });
+    } catch (error) {
+      console.error('更新保險失敗:', error);
+    }
   }, []);
-  const addInsurance = useCallback((gameId: string, insuranceData: Omit<Insurance, 'id' | 'timestamp'>) => {
-    const newInsurance: Insurance = {
-      ...insuranceData,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-    };
-    dispatch({ type: 'ADD_INSURANCE', payload: { gameId, insurance: newInsurance } });
+
+  const deleteInsurance = useCallback(async (gameId: string, insuranceId: string) => {
+    try {
+      const { error } = await supabase
+        .from('insurances')
+        .delete()
+        .eq('id', insuranceId);
+
+      if (error) throw error;
+
+      dispatch({ type: 'DELETE_INSURANCE', payload: { gameId, insuranceId } });
+    } catch (error) {
+      console.error('刪除保險失敗:', error);
+    }
   }, []);
-  const updateInsurance = useCallback((gameId: string, insurance: Insurance) => {
-    dispatch({ type: 'UPDATE_INSURANCE', payload: { gameId, insurance } });
-  }, []);
-  const deleteInsurance = useCallback((gameId: string, insuranceId: string) => {
-    dispatch({ type: 'DELETE_INSURANCE', payload: { gameId, insuranceId } });
-  }, []);
-  const setDefaultInsurancePartners = useCallback((gameId: string, partners: InsurancePartner[]) => {
+
+  // ============================================
+  // 其他操作
+  // ============================================
+  const setDefaultInsurancePartners = useCallback(async (gameId: string, partners: InsurancePartner[]) => {
     const game = stateRef.current.games.find(g => g.id === gameId);
     if (!game) return;
-    const updated: Game = { ...game, defaultInsurancePartners: partners };
-    dispatch({ type: 'UPDATE_GAME', payload: updated });
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ default_insurance_partners: partners })
+        .eq('id', gameId);
+
+      if (error) throw error;
+
+      const updated: Game = { ...game, defaultInsurancePartners: partners };
+      dispatch({ type: 'UPDATE_GAME', payload: updated });
+    } catch (error) {
+      console.error('更新默認保險夥伴失敗:', error);
+    }
   }, []);
+
   const setGameSummaryModalVisible = useCallback((visible: boolean) => {
     dispatch({ type: 'SET_GAME_SUMMARY_MODAL_VISIBLE', payload: visible });
   }, []);
-  const deleteGame = useCallback((gameId: string) => {
-    const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
-    const newCurrent =
-      stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
-        ? null
-        : stateRef.current.currentGame;
 
-    dispatch({ type: 'SET_GAMES', payload: updatedGames });
-    dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
-
-    saveToStorage(updatedGames);
-    if (newCurrent) {
-      AsyncStorage.setItem('currentGame', JSON.stringify(newCurrent));
-    } else {
-      AsyncStorage.removeItem('currentGame');
-    }
-  }, [saveToStorage]);
-  // 清除所有遊戲數據（用於新用戶）
-  const clearAllGames = useCallback(async () => {
+  const deleteGame = useCallback(async (gameId: string) => {
     try {
-      await AsyncStorage.removeItem('pokerGames');
-      await AsyncStorage.removeItem('currentGame');
+      // Supabase 會自動刪除關聯的子表數據（CASCADE）
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', gameId);
+
+      if (error) throw error;
+
+      const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
+      const newCurrent =
+        stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
+          ? null
+          : stateRef.current.currentGame;
+
+      dispatch({ type: 'SET_GAMES', payload: updatedGames });
+      dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
+    } catch (error) {
+      console.error('刪除遊戲失敗:', error);
+    }
+  }, []);
+
+  const clearAllGames = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      // 刪除用戶的所有遊戲（CASCADE 會自動刪除關聯數據）
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('user_id', user.uid);
+
+      if (error) throw error;
+
       dispatch({ type: 'SET_GAMES', payload: [] });
       dispatch({ type: 'SET_CURRENT_GAME', payload: null });
     } catch (error) {
-      console.error('Error clearing games:', error);
+      console.error('清除所有遊戲失敗:', error);
     }
-  }, []);
+  }, [user?.uid]);
 
   const reorderGames = useCallback((orderedIds: string[]) => {
     if (!orderedIds.length) return;
@@ -622,30 +1205,52 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ];
 
     dispatch({ type: 'SET_GAMES', payload: reordered });
-    saveToStorage(reordered);
-  }, [saveToStorage]);
-  const endGame = useCallback((gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => {
+    // 注意：遊戲順序不保存到 Supabase，只在本地維護
+  }, []);
+
+  const endGame = useCallback(async (gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => {
     const game = stateRef.current.games.find(g => g.id === gameId);
     if (!game) return;
 
-    const updatedGame: Game = {
-      ...game,
-      endTime: endData.endTime,
-      actualCollection: endData.actualCollection,
-      finalNotes: endData.finalNotes,
-      status: 'completed',
-    };
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({
+          end_time: endData.endTime,
+          actual_collection: endData.actualCollection,
+          final_notes: endData.finalNotes,
+          status: 'completed',
+        })
+        .eq('id', gameId);
 
-    dispatch({ type: 'UPDATE_GAME', payload: updatedGame });
-    
-    // 清除當前牌局
-    dispatch({ type: 'SET_CURRENT_GAME', payload: null });
-    AsyncStorage.removeItem('currentGame');
-    
-    // 保存更新後的牌局列表
-    const updatedGames = stateRef.current.games.map(g => g.id === gameId ? updatedGame : g);
-    saveToStorage(updatedGames);
-  }, [saveToStorage]);
+      if (error) throw error;
+
+      const updatedGame: Game = {
+        ...game,
+        endTime: endData.endTime,
+        actualCollection: endData.actualCollection,
+        finalNotes: endData.finalNotes,
+        status: 'completed',
+      };
+
+      dispatch({ type: 'UPDATE_GAME', payload: updatedGame });
+      dispatch({ type: 'SET_CURRENT_GAME', payload: null });
+    } catch (error) {
+      console.error('結束遊戲失敗:', error);
+    }
+  }, []);
+
+  // ============================================
+  // Effects
+  // ============================================
+  useEffect(() => {
+    if (user?.uid) {
+      loadGames();
+    } else {
+      dispatch({ type: 'SET_GAMES', payload: [] });
+      dispatch({ type: 'SET_CURRENT_GAME', payload: null });
+    }
+  }, [user?.uid, loadGames]);
 
   const contextValue: GameContextType = useMemo(() => ({
     state,

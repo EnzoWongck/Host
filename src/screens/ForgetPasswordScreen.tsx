@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { sendPasswordReset } from '../services/firebaseAuth';
+import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
 import { Language } from '../types/language';
@@ -23,6 +23,7 @@ interface ForgetPasswordScreenProps {
 const ForgetPasswordScreen: React.FC<ForgetPasswordScreenProps> = ({ onBack }) => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
+  const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -151,7 +152,7 @@ const ForgetPasswordScreen: React.FC<ForgetPasswordScreenProps> = ({ onBack }) =
     setIsLoading(true);
     try {
       console.log('Sending password reset email to:', email);
-      await sendPasswordReset(email);
+      await resetPassword(email);
       console.log('Password reset email sent successfully');
       Alert.alert(
         t('auth.passwordResetSent') || '密碼重置郵件已發送',

@@ -440,7 +440,7 @@ const HomeScreen: React.FC = () => {
                       <Text style={styles.statLabel}>{t('home.totalBuyIn')}</Text>
                     </View>
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{game.players.length} {t('summaryExport.people')}</Text>
+                      <Text style={styles.statValue}>{game.players.length}</Text>
                       <Text style={styles.statLabel}>{t('home.players')}</Text>
                     </View>
                     <View style={styles.statItem}>

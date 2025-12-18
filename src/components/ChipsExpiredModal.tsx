@@ -208,7 +208,7 @@ const ChipsExpiredModal: React.FC<ChipsExpiredModalProps> = ({
           {/* Title */}
           <Text style={styles.title}>Chip 時間已到</Text>
           <Text style={styles.subtitle}>
-            您的牌局已進行超過 12 小時{'\n'}
+            您的牌局編輯時間已用完{'\n'}
             需要消耗 1 個 Chip 才能繼續編輯
           </Text>
 
@@ -221,7 +221,7 @@ const ChipsExpiredModal: React.FC<ChipsExpiredModalProps> = ({
           {/* Info Box */}
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              💡 消耗 1 個 Chip 後可繼續編輯 12 小時{'\n'}
+              💡 每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
               您仍可查看數據，但無法進行編輯操作
             </Text>
           </View>

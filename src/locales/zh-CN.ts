@@ -243,7 +243,7 @@ export const zhCN: Translations = {
     updateExpense: '更新支出',
     records: '支出记录',
     noRecords: '尚无支出记录',
-    editExpense: '编辑支出',
+    editExpense: '编辑',
     deleteExpense: '删除支出',
     deleteConfirm: '确定要删除这笔支出吗？',
   },

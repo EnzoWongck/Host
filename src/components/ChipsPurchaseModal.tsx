@@ -7,30 +7,89 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  ScrollView,
+  Dimensions,
+  TextInput,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useChips } from '../context/ChipsContext';
 import { ChipsPackage } from '../config/stripe';
-import Icon from './Icon';
 
 interface ChipsPurchaseModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
   visible,
   onClose,
 }) => {
-  const { theme } = useTheme();
+  const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { chips, packages, createCheckoutSession } = useChips();
   
+  const [quantity, setQuantity] = useState(1);
   const [selectedPackage, setSelectedPackage] = useState<ChipsPackage | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handlePurchase = async (pkg: ChipsPackage) => {
+  // 計算價格
+  const unitPrice = 30; // $30/Chip
+  const calculatePrice = (qty: number) => {
+    // 檢查是否符合優惠套餐
+    if (qty >= 36) {
+      const bundles = Math.floor(qty / 36);
+      const remaining = qty % 36;
+      return bundles * 899 + remaining * unitPrice;
+    } else if (qty >= 11) {
+      const bundles = Math.floor(qty / 11);
+      const remaining = qty % 11;
+      return bundles * 299 + remaining * unitPrice;
+    }
+    return qty * unitPrice;
+  };
+
+  const totalPrice = calculatePrice(quantity);
+  const avgPrice = quantity > 0 ? Math.round(totalPrice / quantity) : 30;
+
+  const handleQuantityChange = (value: string) => {
+    const num = parseInt(value) || 0;
+    setQuantity(Math.max(1, Math.min(999, num)));
+  };
+
+  const handlePurchase = async (pkg?: ChipsPackage) => {
+    if (Platform.OS !== 'web') {
+      alert('目前只支援網頁版購買');
+      return;
+    }
+
+    const targetPkg = pkg || packages.find(p => p.chips === 1);
+    if (!targetPkg) return;
+
+    setSelectedPackage(targetPkg);
+    setLoading(true);
+
+    try {
+      // 如果是自定義數量，需要多次購買或使用自定義邏輯
+      const checkoutUrl = await createCheckoutSession(targetPkg);
+      
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        alert('創建結帳頁面失敗，請稍後再試');
+      }
+    } catch (error) {
+      console.error('購買失敗:', error);
+      alert('購買失敗，請稍後再試');
+    } finally {
+      setLoading(false);
+      setSelectedPackage(null);
+    }
+  };
+
+  const handleBundlePurchase = async (pkg: ChipsPackage) => {
     if (Platform.OS !== 'web') {
       alert('目前只支援網頁版購買');
       return;
@@ -43,7 +102,6 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
       const checkoutUrl = await createCheckoutSession(pkg);
       
       if (checkoutUrl) {
-        // 跳轉到 Stripe Checkout
         window.location.href = checkoutUrl;
       } else {
         alert('創建結帳頁面失敗，請稍後再試');
@@ -60,164 +118,223 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
   const styles = StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
       justifyContent: 'center',
       alignItems: 'center',
+      padding: 16,
     },
     modal: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.xl,
-      padding: theme.spacing.xl,
-      width: '90%',
-      maxWidth: 420,
-      maxHeight: '85%',
+      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      borderRadius: 20,
+      width: '100%',
+      maxWidth: 360,
+      maxHeight: SCREEN_HEIGHT * 0.85,
+      overflow: 'hidden',
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: theme.spacing.lg,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colorMode === 'dark' ? '#333' : '#F0F0F0',
     },
     title: {
-      fontSize: theme.fontSize.xl,
+      fontSize: 18,
       fontWeight: '700',
       color: theme.colors.text,
     },
     closeButton: {
-      padding: theme.spacing.xs,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colorMode === 'dark' ? '#333' : '#F0F0F0',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     closeButtonText: {
-      fontSize: 28,
+      fontSize: 16,
       color: theme.colors.textSecondary,
-      lineHeight: 28,
     },
-    balanceContainer: {
-      backgroundColor: theme.colors.background,
-      borderRadius: theme.borderRadius.md,
-      padding: theme.spacing.md,
-      marginBottom: theme.spacing.lg,
-      flexDirection: 'row',
+    scrollContent: {
+      padding: 16,
+    },
+    balanceCard: {
+      backgroundColor: colorMode === 'dark' ? '#252525' : '#F5F5F5',
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 16,
       alignItems: 'center',
-      justifyContent: 'center',
     },
     balanceLabel: {
-      fontSize: theme.fontSize.md,
+      fontSize: 12,
       color: theme.colors.textSecondary,
-      marginRight: theme.spacing.sm,
+      marginBottom: 4,
     },
     balanceValue: {
-      fontSize: theme.fontSize.xl,
+      fontSize: 24,
       fontWeight: '700',
-      color: theme.colors.primary,
+      color: chips > 0 ? '#10B981' : '#EF4444',
     },
-    packagesContainer: {
-      gap: theme.spacing.md,
-    },
-    packageCard: {
-      backgroundColor: theme.colors.background,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.lg,
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    packageCardPopular: {
-      borderColor: theme.colors.primary,
-    },
-    packageCardSelected: {
-      borderColor: theme.colors.success,
-    },
-    popularBadge: {
-      position: 'absolute',
-      top: -10,
-      right: 16,
-      backgroundColor: theme.colors.primary,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 2,
-      borderRadius: theme.borderRadius.sm,
-    },
-    popularText: {
-      fontSize: theme.fontSize.xs,
+    sectionTitle: {
+      fontSize: 14,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: theme.colors.text,
+      marginBottom: 12,
+      marginTop: 8,
     },
-    packageHeader: {
+    bundlesContainer: {
+      gap: 10,
+      marginBottom: 20,
+    },
+    bundleCard: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: theme.spacing.sm,
+      backgroundColor: colorMode === 'dark' ? '#252525' : '#F8F8F8',
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colorMode === 'dark' ? '#333' : '#E5E5E5',
     },
-    packageName: {
-      fontSize: theme.fontSize.lg,
+    bundleInfo: {
+      flex: 1,
+    },
+    bundleName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    bundlePrice: {
+      fontSize: 13,
+      color: theme.colors.textSecondary,
+    },
+    bundleSavings: {
+      fontSize: 12,
+      color: '#10B981',
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    bundleButton: {
+      backgroundColor: '#0891B2',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+    },
+    bundleButtonText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    customSection: {
+      marginTop: 8,
+    },
+    customCard: {
+      backgroundColor: colorMode === 'dark' ? '#252525' : '#F8F8F8',
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colorMode === 'dark' ? '#333' : '#E5E5E5',
+    },
+    quantityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    quantityButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colorMode === 'dark' ? '#333' : '#E5E5E5',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    quantityButtonText: {
+      fontSize: 20,
       fontWeight: '600',
       color: theme.colors.text,
     },
-    packagePrice: {
-      fontSize: theme.fontSize.xl,
+    quantityInput: {
+      width: 80,
+      height: 40,
+      marginHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: colorMode === 'dark' ? '#444' : '#DDD',
+      textAlign: 'center',
+      fontSize: 18,
       fontWeight: '700',
-      color: theme.colors.primary,
+      color: theme.colors.text,
     },
-    packageDetails: {
+    priceRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      marginBottom: 12,
     },
-    packageDescription: {
-      fontSize: theme.fontSize.sm,
+    priceLabel: {
+      fontSize: 14,
       color: theme.colors.textSecondary,
     },
-    savingsBadge: {
-      backgroundColor: 'rgba(76, 175, 80, 0.15)',
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 2,
-      borderRadius: theme.borderRadius.sm,
+    priceValue: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.colors.text,
     },
-    savingsText: {
-      fontSize: theme.fontSize.xs,
-      fontWeight: '600',
-      color: '#4CAF50',
+    avgPrice: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+      textAlign: 'right',
     },
-    buyButton: {
-      marginTop: theme.spacing.md,
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.borderRadius.md,
-      padding: theme.spacing.md,
+    customButton: {
+      backgroundColor: '#0891B2',
+      paddingVertical: 12,
+      borderRadius: 10,
       alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
     },
-    buyButtonDisabled: {
-      opacity: 0.6,
-    },
-    buyButtonText: {
-      fontSize: theme.fontSize.md,
-      fontWeight: '600',
+    customButtonText: {
       color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '600',
     },
     footer: {
-      marginTop: theme.spacing.lg,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderTopWidth: 1,
+      borderTopColor: colorMode === 'dark' ? '#333' : '#F0F0F0',
       alignItems: 'center',
     },
     footerText: {
-      fontSize: theme.fontSize.xs,
+      fontSize: 11,
       color: theme.colors.textSecondary,
       textAlign: 'center',
     },
     loadingOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: theme.borderRadius.xl,
+      borderRadius: 20,
+    },
+    loadingText: {
+      color: '#FFFFFF',
+      marginTop: 12,
+      fontSize: 14,
     },
   });
 
   if (Platform.OS !== 'web') {
     return null;
   }
+
+  // 優惠套餐（排除單個購買）
+  const bundlePackages = packages.filter(p => p.chips > 1);
+  const singleChipPackage = packages.find(p => p.chips === 1);
 
   return (
     <Modal
@@ -240,88 +357,112 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
           <View style={styles.header}>
             <Text style={styles.title}>🎰 購買 Chips</Text>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>×</Text>
+              <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Current Balance */}
-          <View style={styles.balanceContainer}>
-            <Text style={styles.balanceLabel}>目前餘額：</Text>
-            <Text style={styles.balanceValue}>{chips} Chips</Text>
-          </View>
+          <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Balance Card */}
+            <View style={styles.balanceCard}>
+              <Text style={styles.balanceLabel}>目前餘額</Text>
+              <Text style={styles.balanceValue}>{chips} Chips</Text>
+            </View>
 
-          {/* Packages */}
-          <View style={styles.packagesContainer}>
-            {packages.map((pkg) => (
-              <TouchableOpacity
-                key={pkg.id}
-                style={[
-                  styles.packageCard,
-                  pkg.popular && styles.packageCardPopular,
-                  selectedPackage?.id === pkg.id && styles.packageCardSelected,
-                ]}
-                onPress={() => handlePurchase(pkg)}
-                disabled={loading}
-                activeOpacity={0.8}
-              >
-                {pkg.popular && (
-                  <View style={styles.popularBadge}>
-                    <Text style={styles.popularText}>最受歡迎</Text>
+            {/* Bundle Packages */}
+            <Text style={styles.sectionTitle}>優惠套餐</Text>
+            <View style={styles.bundlesContainer}>
+              {bundlePackages.map((pkg) => {
+                const isLoading = loading && selectedPackage?.id === pkg.id;
+                return (
+                  <View key={pkg.id} style={styles.bundleCard}>
+                    <View style={styles.bundleInfo}>
+                      <Text style={styles.bundleName}>{pkg.name}</Text>
+                      <Text style={styles.bundlePrice}>${pkg.priceHKD}</Text>
+                      {pkg.savings && (
+                        <Text style={styles.bundleSavings}>{pkg.savings}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.bundleButton}
+                      onPress={() => handleBundlePurchase(pkg)}
+                      disabled={loading}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.bundleButtonText}>購買</Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                )}
-                
-                <View style={styles.packageHeader}>
-                  <Text style={styles.packageName}>{pkg.name}</Text>
-                  <Text style={styles.packagePrice}>${pkg.priceHKD}</Text>
+                );
+              })}
+            </View>
+
+            {/* Custom Quantity */}
+            <View style={styles.customSection}>
+              <Text style={styles.sectionTitle}>自選數量</Text>
+              <View style={styles.customCard}>
+                <View style={styles.quantityRow}>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                  >
+                    <Text style={styles.quantityButtonText}>−</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.quantityInput}
+                    value={String(quantity)}
+                    onChangeText={handleQuantityChange}
+                    keyboardType="number-pad"
+                    selectTextOnFocus
+                  />
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => setQuantity(Math.min(999, quantity + 1))}
+                  >
+                    <Text style={styles.quantityButtonText}>+</Text>
+                  </TouchableOpacity>
                 </View>
                 
-                <View style={styles.packageDetails}>
-                  <Text style={styles.packageDescription}>
-                    {pkg.chips === 1 
-                      ? '每個 Chip 可使用 12 小時'
-                      : `共 ${pkg.chips} 個 Chips`
-                    }
-                  </Text>
-                  {pkg.savings && (
-                    <View style={styles.savingsBadge}>
-                      <Text style={styles.savingsText}>{pkg.savings}</Text>
-                    </View>
-                  )}
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>總價</Text>
+                  <View>
+                    <Text style={styles.priceValue}>${totalPrice}</Text>
+                    <Text style={styles.avgPrice}>${avgPrice}/Chip</Text>
+                  </View>
                 </View>
 
                 <TouchableOpacity
-                  style={[
-                    styles.buyButton,
-                    loading && selectedPackage?.id === pkg.id && styles.buyButtonDisabled,
-                  ]}
-                  onPress={() => handlePurchase(pkg)}
-                  disabled={loading}
+                  style={styles.customButton}
+                  onPress={() => singleChipPackage && handlePurchase(singleChipPackage)}
+                  disabled={loading || !singleChipPackage}
                 >
-                  {loading && selectedPackage?.id === pkg.id ? (
+                  {loading && selectedPackage?.id === singleChipPackage?.id ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Text style={styles.buyButtonText}>立即購買</Text>
+                    <Text style={styles.customButtonText}>購買 {quantity} Chips</Text>
                   )}
                 </TouchableOpacity>
-              </TouchableOpacity>
-            ))}
-          </View>
+              </View>
+            </View>
+          </ScrollView>
 
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              付款由 Stripe 安全處理 🔒{'\n'}
-              支援信用卡、Apple Pay、Google Pay
+              🔒 付款由 Stripe 安全處理 • 支援 Visa・Mastercard
             </Text>
           </View>
 
           {/* Loading Overlay */}
           {loading && (
             <View style={styles.loadingOverlay}>
-              <ActivityIndicator color={theme.colors.primary} size="large" />
-              <Text style={{ color: '#FFFFFF', marginTop: theme.spacing.md }}>
-                正在跳轉至付款頁面...
-              </Text>
+              <ActivityIndicator color="#FFFFFF" size="large" />
+              <Text style={styles.loadingText}>正在跳轉至付款頁面...</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -331,4 +472,3 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
 };
 
 export default ChipsPurchaseModal;
-

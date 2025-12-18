@@ -1,200 +1,303 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
-import {
-  onAuthStateChanged,
-  User,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  signInWithEmailAndPassword,
-  signInWithPhoneNumber,
-  PhoneAuthProvider,
-  RecaptchaVerifier,
-  ConfirmationResult,
-} from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { supabase, SupabaseUser, UserProfile } from '../config/supabase';
+import { Session, User, AuthError } from '@supabase/supabase-js';
 
-type AuthUser = {
-  id: string;
-  name: string;
+// ============================================
+// Types
+// ============================================
+export type AuthUser = {
+  uid: string;
   email: string | null;
+  displayName: string | null;
   photoURL: string | null;
-  provider?: string | null;
+  phoneNumber: string | null;
+  chips: number;
 } | null;
 
 type AuthContextType = {
   user: AuthUser;
-  loading: boolean;
   isSignedIn: boolean;
-  hasPhoneNumber: boolean; // 檢查用戶是否已綁定電話號碼
-  signInWithGoogle: () => Promise<void>;
+  loading: boolean;
+  // 登入方法
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signInWithPhoneNumber: (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
+  signInWithPhone: (phone: string) => Promise<void>;
+  verifyPhoneOTP: (phone: string, token: string) => Promise<void>;
+  // 登出
   signOut: () => Promise<void>;
+  // 重設密碼
+  resetPassword: (email: string) => Promise<void>;
+  // 更新 Chips
+  updateChips: (newChips: number) => void;
+  // 刷新用戶資料
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ============================================
+// Hook
+// ============================================
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};
+
+// ============================================
+// Provider
+// ============================================
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    let redirectHandled = false;
+  // 將 Supabase User 轉換為 AuthUser
+  const transformUser = useCallback(async (supabaseUser: User | null): Promise<AuthUser> => {
+    if (!supabaseUser) return null;
 
-    // 處理重定向登入結果（只在頁面載入時執行一次）
-    const handleRedirectResult = async () => {
-      // 如果已經處理過重定向，不再處理
-      if (redirectHandled) {
-        return;
-      }
+    // 獲取用戶的 profile（包含 chips）
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', supabaseUser.id)
+      .single();
 
-      try {
-        // 檢查是否從重定向返回（檢查 URL 中是否有相關參數）
-        const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const hash = typeof window !== 'undefined' ? window.location.hash : '';
-        const hasRedirectParams = urlParams && (
-          urlParams.has('__firebase_request_key') || 
-          hash.includes('access_token') ||
-          hash.includes('id_token')
-        );
-        
-        if (hasRedirectParams) {
-          console.log('檢測到重定向返回，處理登入結果...');
-          setLoading(true);
-          redirectHandled = true;
-        }
-
-        const result = await getRedirectResult(auth);
-        if (result && isMounted) {
-          // 重定向登入成功
-          console.log('重定向登入成功', result.user);
-          redirectHandled = true;
-          // 清除 URL 中的重定向參數，避免重複處理
-          if (typeof window !== 'undefined') {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-          // onAuthStateChanged 會自動觸發並更新狀態
-        }
-      } catch (error: any) {
-        console.error('處理重定向結果失敗', error);
-        // 如果是因為沒有重定向結果而報錯，這是正常的，不需要處理
-        if (error?.code !== 'auth/no-auth-event') {
-          console.error('重定向處理錯誤', error);
-        }
-      }
-    };
-
-    // 先處理重定向結果（只在首次載入時）
-    handleRedirectResult();
-
-    // 監聽認證狀態變化
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
-      if (!isMounted) return;
-      
-      console.log('認證狀態變化', firebaseUser ? '已登入' : '未登入', firebaseUser?.email);
-      
-      if (firebaseUser) {
-        setUser({
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL,
-          provider: firebaseUser.providerData?.[0]?.providerId ?? null,
-        });
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-    
-    return () => {
-      isMounted = false;
-      unsubscribe();
+    return {
+      uid: supabaseUser.id,
+      email: supabaseUser.email || null,
+      displayName: supabaseUser.user_metadata?.full_name || 
+                   supabaseUser.user_metadata?.name || 
+                   supabaseUser.email?.split('@')[0] || null,
+      photoURL: supabaseUser.user_metadata?.avatar_url || null,
+      phoneNumber: supabaseUser.phone || null,
+      chips: profile?.chips || 0,
     };
   }, []);
 
-  const signInWithGoogle = async () => {
-    // 如果已經登入，不應該再次觸發登入流程
-    if (user) {
-      console.log('用戶已登入，跳過登入流程');
-      return;
-    }
+  // 刷新用戶資料
+  const refreshUser = useCallback(async () => {
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    const authUser = await transformUser(supabaseUser);
+    setUser(authUser);
+  }, [transformUser]);
 
-    const provider = new GoogleAuthProvider();
+  // 更新 Chips（本地狀態）
+  const updateChips = useCallback((newChips: number) => {
+    setUser(prev => prev ? { ...prev, chips: newChips } : null);
+  }, []);
+
+  // ============================================
+  // Auth 方法
+  // ============================================
+
+  // Email 登入
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    setLoading(true);
     try {
-      if (Platform.OS !== 'web') {
-        throw new Error('Google 登入僅支援 Web，行動端請改用其他登入方式');
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      const authUser = await transformUser(data.user);
+      setUser(authUser);
+    } finally {
+      setLoading(false);
+    }
+  }, [transformUser]);
+
+  // Email 註冊
+  const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
+            ? `${window.location.origin}/auth/callback`
+            : 'https://lunchips.com/auth/callback',
+        },
+      });
+      if (error) throw error;
       
-      // 使用 popup 方式登入（只負責登入，不跳頁）
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged 會自動更新狀態，Root 組件會根據狀態自動切換頁面
-    } catch (error: any) {
-      // 如果 popup 被阻止或關閉，fallback 到重定向方式
-      if (error?.code === 'auth/popup-blocked' || 
-          error?.code === 'auth/popup-closed-by-user' ||
-          error?.message?.includes('Cross-Origin-Opener-Policy')) {
-        console.warn('Popup 被阻止，改用重定向方式');
-        try {
-          await signInWithRedirect(auth, provider);
-        } catch (redirectError: any) {
-          console.error('Google 重定向登入失敗', redirectError);
-          alert('登入失敗：' + (redirectError?.message || 'Google Sign-In Error'));
-        }
+      // 如果需要確認郵件，data.user 會存在但 session 為 null
+      if (data.user && !data.session) {
+        console.log('請檢查郵箱確認註冊');
       } else {
-        console.error('Google 登入失敗', error);
-        alert('登入失敗：' + (error?.message || 'Google Sign-In Error'));
+        const authUser = await transformUser(data.user);
+        setUser(authUser);
       }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [transformUser]);
 
-  const signInWithEmail = async (email: string, password: string) => {
+  // Google 登入
+  const signInWithGoogle = useCallback(async () => {
+    setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      console.error('Email 登入失敗', error);
-      throw error;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
+            ? `${window.location.origin}/auth/callback`
+            : 'https://lunchips.com/auth/callback',
+        },
+      });
+      if (error) throw error;
+      // OAuth 登入會重定向，不需要在這裡處理 user
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+  // Apple 登入
+  const signInWithApple = useCallback(async () => {
+    setLoading(true);
     try {
-      if (Platform.OS !== 'web') {
-        throw new Error('電話號碼登入僅支援 Web，行動端請改用其他登入方式');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
+            ? `${window.location.origin}/auth/callback`
+            : 'https://lunchips.com/auth/callback',
+        },
+      });
+      if (error) throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 手機號碼登入（發送 OTP）
+  const signInWithPhone = useCallback(async (phone: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone,
+      });
+      if (error) throw error;
+      console.log('OTP 已發送');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 驗證手機 OTP
+  const verifyPhoneOTP = useCallback(async (phone: string, token: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        token,
+        type: 'sms',
+      });
+      if (error) throw error;
+      const authUser = await transformUser(data.user);
+      setUser(authUser);
+    } finally {
+      setLoading(false);
+    }
+  }, [transformUser]);
+
+  // 登出
+  const signOut = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 重設密碼
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/reset-password`
+        : 'https://lunchips.com/auth/reset-password',
+    });
+    if (error) throw error;
+  }, []);
+
+  // ============================================
+  // Effects
+  // ============================================
+
+  // 監聽認證狀態變化
+  useEffect(() => {
+    let isMounted = true;
+
+    // 獲取當前 session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isMounted && session?.user) {
+          const authUser = await transformUser(session.user);
+          setUser(authUser);
+        }
+      } catch (error) {
+        console.error('獲取 session 失敗:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      return await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-    } catch (error: any) {
-      console.error('電話號碼登入失敗', error);
-      throw error;
-    }
-  };
+    };
 
-  const signOut = async () => {
-    await firebaseSignOut(auth);
-  };
+    getInitialSession();
 
-  // 檢查用戶是否已綁定電話號碼
-  const hasPhoneNumber = useMemo(() => {
-    if (!user) return false;
-    // 從 Firebase User 對象檢查電話號碼
-    // 注意：這裡需要從 auth.currentUser 獲取，因為 user 是我們自定義的類型
-    return auth.currentUser?.phoneNumber ? true : false;
-  }, [user]);
+    // 監聽認證狀態變化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth 狀態變化:', event, session?.user?.email);
+        
+        if (!isMounted) return;
 
-  const value = useMemo<AuthContextType>(() => ({
+        if (event === 'SIGNED_IN' && session?.user) {
+          const authUser = await transformUser(session.user);
+          setUser(authUser);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          const authUser = await transformUser(session.user);
+          setUser(authUser);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [transformUser]);
+
+  // ============================================
+  // Context Value
+  // ============================================
+  const value: AuthContextType = {
     user,
-    loading,
     isSignedIn: !!user,
-    hasPhoneNumber,
-    signInWithGoogle,
+    loading,
     signInWithEmail,
-    signInWithPhoneNumber: signInWithPhone,
+    signUpWithEmail,
+    signInWithGoogle,
+    signInWithApple,
+    signInWithPhone,
+    verifyPhoneOTP,
     signOut,
-  }), [user, loading, hasPhoneNumber]);
+    resetPassword,
+    updateChips,
+    refreshUser,
+  };
 
   return (
     <AuthContext.Provider value={value}>
@@ -203,8 +306,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth 必須在 AuthProvider 內使用');
-  return context;
-};
+export default AuthContext;

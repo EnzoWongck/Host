@@ -16,7 +16,6 @@ import { useGame } from '../context/GameContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
-import Button from './Button';
 import { Player } from '../types/game';
 
 interface BuyInModalProps {
@@ -34,7 +33,6 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
   const [playerName, setPlayerName] = useState('');
   const [buyInAmount, setBuyInAmount] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // 獲取螢幕尺寸
   const screenWidth = Dimensions.get('window').width;
@@ -59,10 +57,14 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       alignItems: 'center',
     },
     typeButtonActive: {
-      backgroundColor: colorMode === 'light' ? '#E2E8F0' : '#303134',
+      backgroundColor: colorMode === 'dark' ? 'rgba(8, 145, 178, 0.3)' : 'rgba(8, 145, 178, 0.15)',
+      borderWidth: 2,
+      borderColor: '#0891B2',
     },
     typeButtonInactive: {
       backgroundColor: theme.colors.surface,
+      borderWidth: 2,
+      borderColor: 'transparent',
     },
     typeButtonText: {
       fontSize: theme.fontSize.md,
@@ -90,14 +92,52 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       borderRadius: theme.borderRadius.sm,
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
-      fontSize: theme.fontSize.md,
+      fontSize: 16,
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
-    inputFocused: {
-      // 淺色模式選取時也不顯示邊框；深色模式保留原有聚焦邊框
-      borderColor: colorMode === 'light' ? 'transparent' : theme.colors.primary,
+    // WhatsApp 風格輸入框 + 按鈕
+    inputWithButtonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      borderRadius: 24,
+      paddingLeft: theme.spacing.md,
+      paddingRight: 4,
+      marginBottom: theme.spacing.md,
       borderWidth: colorMode === 'light' ? 0 : 1,
+      borderColor: theme.colors.border,
+    },
+    inputInline: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.colors.text,
+      paddingVertical: 12,
+      paddingLeft: 8,
+      backgroundColor: 'transparent',
+    },
+    inputIcon: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      opacity: 0.5,
+    },
+    sendButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: '#0891B2', // 湖水綠
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#0891B2',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    sendButtonText: {
+      color: '#FFFFFF',
+      fontSize: 20,
+      fontWeight: '600',
     },
     playersList: {
       maxHeight: 280,
@@ -115,7 +155,9 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       borderRadius: 0,
     },
     selectedPlayerItem: {
-      backgroundColor: colorMode === 'dark' ? '#202124' : '#E2E8F0',
+      backgroundColor: colorMode === 'dark' ? 'rgba(8, 145, 178, 0.3)' : 'rgba(8, 145, 178, 0.15)', // 湖水綠
+      borderWidth: 1,
+      borderColor: '#0891B2',
     },
     playerName: {
       fontSize: theme.fontSize.md,
@@ -271,18 +313,11 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('buyIn.playerName')}</Text>
             <TextInput
-              style={[styles.input, focusedInput === 'playerName' && styles.inputFocused]}
+              style={styles.input}
               value={playerName}
               onChangeText={setPlayerName}
               placeholder={t('buyIn.playerNamePlaceholder')}
-              // 淺色模式下選取時隱藏提示文字，等待輸入
-              placeholderTextColor={
-                focusedInput === 'playerName'
-                  ? 'transparent'
-                  : theme.colors.textSecondary
-              }
-              onFocus={() => setFocusedInput('playerName')}
-              onBlur={() => setFocusedInput(null)}
+              placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
             />
           </View>
         )}
@@ -319,40 +354,26 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
           </View>
         )}
 
-        {/* 買入金額 */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('buyIn.amount')}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <TextInput
-                style={[styles.input, focusedInput === 'buyInAmount' && styles.inputFocused]}
-                value={buyInAmount}
-                onChangeText={setBuyInAmount}
-                returnKeyType="done"
-                onSubmitEditing={handleBuyIn}
-                placeholder="$"
-                onFocus={() => setFocusedInput('buyInAmount')}
-                onBlur={() => setFocusedInput(null)}
-                placeholderTextColor={
-                  focusedInput === 'buyInAmount'
-                    ? 'transparent'
-                    : theme.colors.textSecondary
-                }
-                keyboardType="numeric"
-                inputMode="decimal"
-                {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-              />
-            </View>
-            {/* 確認按鈕 - 與輸入欄對齊 */}
-            <Button
-              title={t('buyIn.confirmBuyIn')}
+        {/* 買入金額 + 確認按鈕（WhatsApp 風格） */}
+        <View style={styles.inputWithButtonRow}>
+          <Text style={styles.inputIcon}>$</Text>
+          <TextInput
+            style={styles.inputInline}
+            value={buyInAmount}
+            onChangeText={setBuyInAmount}
+            placeholder="輸入買入金額"
+            placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
+            keyboardType="decimal-pad"
+          />
+          {buyInAmount.trim() !== '' && (buyInType === 'existing' ? selectedPlayer : playerName.trim()) && (
+            <TouchableOpacity
+              style={styles.sendButton}
               onPress={handleBuyIn}
-              size="sm"
-              variant="primary"
-              style={{ marginBottom: 0, minWidth: 100 }} // 移除底部間距，添加最小寬度
-              textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
-            />
-          </View>
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sendButtonText}>✓</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </Modal>

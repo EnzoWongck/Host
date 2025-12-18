@@ -42,6 +42,7 @@ import GameCollaborationModal from '../components/GameCollaborationModal';
 import EntryFeeModal from '../components/EntryFeeModal';
 import GameProfitShareSettingModal from './GameProfitShareSettingScreen';
 import TopTabBar from '../components/TopTabBar';
+import SwipeHint from '../components/SwipeHint';
 
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
@@ -49,7 +50,7 @@ const GameScreen: React.FC = () => {
   const { trialEnded, isSubscribed } = useSubscription();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { state, setGameSummaryModalVisible } = useGame();
+  const { state, setGameSummaryModalVisible, deletePlayer } = useGame();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
   const handleLanguageSelect = (lang: Language) => {
@@ -75,6 +76,8 @@ const GameScreen: React.FC = () => {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [collaborationModalVisible, setCollaborationModalVisible] = useState(false);
   const [entryFeeModalVisible, setEntryFeeModalVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [playerToDelete, setPlayerToDelete] = useState<any>(null);
 
   const currentGame = state.currentGame;
   
@@ -811,6 +814,10 @@ const GameScreen: React.FC = () => {
 
             {playersExpanded && (
               <View style={[styles.playersListFullScreen, { maxHeight: availableHeight }]}>
+                {/* 滑動提示（首次顯示） */}
+                {currentGame.players && currentGame.players.length > 0 && Platform.OS !== 'web' && (
+                  <SwipeHint storageKey="playerList" />
+                )}
                 <ScrollView 
                   ref={playersScrollRef}
                   nestedScrollEnabled 
@@ -826,20 +833,24 @@ const GameScreen: React.FC = () => {
                     <Swipeable
                       key={player.id}
                       renderRightActions={() => (
-                        <TouchableOpacity
-                          style={{ justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.error, paddingHorizontal: theme.spacing.lg, borderRadius: theme.borderRadius.sm }}
-                            onPress={() => Alert.alert(t('game.deletePlayer'), `${t('game.confirmDelete')} ${player.name}？`, [
-                              { text: t('common.cancel'), style: 'cancel' },
-                              { text: t('common.delete'), style: 'destructive', onPress: () => {
-                                  // 接上 context 刪除玩家
-                                  try {
-                                    const { deletePlayer } = require('../context/GameContext');
-                                  } catch {}
-                                } },
-                            ])}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                          <TouchableOpacity
+                            style={{ justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.primary, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md, borderTopLeftRadius: theme.borderRadius.sm, borderBottomLeftRadius: theme.borderRadius.sm, height: 52 }}
+                            onPress={() => { setDetailsPlayer(player); setDetailsVisible(true); }}
                           >
-                            <Text style={{ color: '#FFF', fontWeight: '700' }}>{t('common.delete')}</Text>
-                        </TouchableOpacity>
+                            <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 13 }}>{t('common.edit')}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.error, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md, borderTopRightRadius: theme.borderRadius.sm, borderBottomRightRadius: theme.borderRadius.sm, height: 52 }}
+                            onPress={() => {
+                              // 顯示確認刪除視窗
+                              setPlayerToDelete(player);
+                              setDeleteConfirmVisible(true);
+                            }}
+                          >
+                            <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 13 }}>{t('common.delete')}</Text>
+                          </TouchableOpacity>
+                        </View>
                       )}
                     >
                     <TouchableOpacity 
@@ -1092,6 +1103,81 @@ const GameScreen: React.FC = () => {
             >
               <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.md, fontWeight: language === 'zh-CN' ? '700' : '400' }}>{t('settings.simplifiedChinese')}</Text>
             </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 確認刪除玩家 Modal */}
+      <Modal
+        visible={deleteConfirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteConfirmVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setDeleteConfirmVisible(false)}
+        >
+          <TouchableOpacity
+            style={{
+              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              borderRadius: 16,
+              padding: 24,
+              width: '85%',
+              maxWidth: 320,
+              alignItems: 'center',
+            }}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, marginBottom: 12 }}>
+              {t('game.deletePlayer')}
+            </Text>
+            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', marginBottom: 24 }}>
+              {t('game.confirmDelete')} {playerToDelete?.name}？
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  backgroundColor: colorMode === 'dark' ? '#333' : '#E5E5E5',
+                  alignItems: 'center',
+                }}
+                onPress={() => setDeleteConfirmVisible(false)}
+              >
+                <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 16 }}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  backgroundColor: theme.colors.error,
+                  alignItems: 'center',
+                }}
+                onPress={async () => {
+                  if (currentGame && playerToDelete) {
+                    try {
+                      await deletePlayer(currentGame.id, playerToDelete.id);
+                    } catch (error) {
+                      console.error('刪除玩家失敗:', error);
+                    }
+                  }
+                  setDeleteConfirmVisible(false);
+                  setPlayerToDelete(null);
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 16 }}>{t('common.delete')}</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

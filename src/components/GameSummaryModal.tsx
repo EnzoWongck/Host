@@ -379,7 +379,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       color: theme.colors.textSecondary,
     },
     positiveProfit: {
-      color: colorMode === 'dark' ? theme.colors.text : theme.colors.success,
+      color: theme.colors.success,
     },
     negativeProfit: {
       color: theme.colors.error,
@@ -1352,7 +1352,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
               ]}>
                 {isBalanced 
                   ? '' 
-                  : `${difference > 0 ? '+' : ''}$${Math.abs(difference).toLocaleString()}`
+                  : `${difference >= 0 ? '+' : '-'}$${Math.abs(difference).toLocaleString()}`
                 }
               </Text>
             </View>

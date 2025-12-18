@@ -20,7 +20,6 @@ import { useLanguage } from '../context/LanguageContext';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
 import GoogleButton from '../components/GoogleButton';
-import { signInWithGoogle as firebaseGoogleSignIn, signUpWithEmailAndPassword } from '../services/firebaseAuth';
 import { Language } from '../types/language';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -33,7 +32,7 @@ interface SignupScreenProps {
 const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSuccess }) => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, signUpWithEmail } = useAuth();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -335,10 +334,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
 
     setIsLoading(true);
     try {
-      await signUpWithEmailAndPassword(email, password);
+      await signUpWithEmail(email.trim(), password.trim());
       onSignupSuccess();
-    } catch (error) {
-      Alert.alert(t('auth.signupFailed'), t('auth.signupFailed'));
+    } catch (error: any) {
+      Alert.alert(t('auth.signupFailed'), error?.message || t('auth.signupFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -347,10 +346,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
   const handleGoogleSignup = async () => {
     setIsLoading(true);
     try {
-      await firebaseGoogleSignIn();
+      await signInWithGoogle();
       onSignupSuccess();
-    } catch (error) {
-      Alert.alert(t('auth.signupFailed'), t('auth.signupFailed') + ' - Google');
+    } catch (error: any) {
+      Alert.alert(t('auth.signupFailed'), error?.message || t('auth.signupFailed') + ' - Google');
     } finally {
       setIsLoading(false);
     }

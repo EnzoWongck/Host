@@ -13,8 +13,8 @@ const supabase = createClient(
 // 價格 ID 對應的 Chips 數量
 const PRICE_TO_CHIPS = {
   'price_1SfAAfC059bhXtelaE5o55PK': 1,   // 1 Chip - $30 HKD
-  'price_1SfOUnC059bhXtelb93CqfiC': 11,  // 11 Chips - $300 HKD
-  'price_1SfOUnC059bhXtelEWD2CFtq': 35,  // 35 Chips - $900 HKD
+  'price_1SfOUnC059bhXtelb93CqfiC': 11,  // 11 Chips - $299 HKD
+  'price_1SfOUnC059bhXtelEWD2CFtq': 36,  // 36 Chips - $899 HKD
 };
 
 // CORS headers
