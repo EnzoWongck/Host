@@ -96,7 +96,7 @@ import CostIconAsset from './assets/icons/cost.png';
 import DealerIconAsset from './assets/icons/dealer.png';
 import EarthIconAsset from './assets/icons/earth.png';
 import EarthWhiteIconAsset from './assets/icons/earth.white.png';
-import IconFrontAsset from './assets/icons/icon.front.png';
+// IconFrontAsset 將使用 require() 動態導入以避免大小寫問題
 // Context
 import { GameProvider, useGame } from './src/context/GameContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -438,27 +438,17 @@ const AppWithFont: React.FC = () => {
     if (Platform.OS === 'web') {
       // 使用 TypeScript 類型斷言來訪問 Web 平台的 DOM API
       if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-        // 設置瀏覽器標籤頁 favicon 為 icon.front.png（適用 localhost 與正式站）
+        // 設置瀏覽器標籤頁 favicon 為 icon-front-512.PNG（適用 localhost 與正式站）
         try {
-          // Web 平台上不使用 resolveAssetSource，直接從模塊中提取 URI
-          let iconHref: string | undefined;
-          if (typeof IconFrontAsset === 'string') {
-            iconHref = IconFrontAsset;
-          } else if (IconFrontAsset?.uri) {
-            iconHref = IconFrontAsset.uri;
-          } else if (IconFrontAsset?.default) {
-            iconHref = typeof IconFrontAsset.default === 'string' ? IconFrontAsset.default : IconFrontAsset.default?.uri;
+          // Web 平台直接使用 public 路徑
+          const iconHref = '/icons/icon-front-512.PNG';
+          let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+          if (!favicon) {
+            favicon = document.createElement('link');
+            favicon.rel = 'icon';
+            document.head.appendChild(favicon);
           }
-          
-          if (iconHref) {
-            let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-            if (!favicon) {
-              favicon = document.createElement('link');
-              favicon.rel = 'icon';
-              document.head.appendChild(favicon);
-            }
-            favicon.href = iconHref;
-          }
+          favicon.href = iconHref;
         } catch {
           // ignore favicon errors in dev
         }

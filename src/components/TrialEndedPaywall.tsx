@@ -6,6 +6,7 @@ import {
   Modal,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -81,6 +82,10 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
       alignItems: 'center',
     },
     chipIcon: {
+      width: 48,
+      height: 48,
+      resizeMode: 'contain',
+      marginBottom: 16,
       fontSize: 48,
       marginBottom: 12,
     },
@@ -150,7 +155,12 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
             </View>
             
             <View style={styles.content}>
-              <Text style={styles.chipIcon}>🎰</Text>
+              {Platform.OS === 'web' && (
+                <Image 
+                  source={{ uri: '/icons/chips3.PNG' }} 
+                  style={styles.chipIcon}
+                />
+              )}
               <Text style={styles.title}>Chips 不足</Text>
               <Text style={styles.balanceText}>
                 目前餘額：{chipsBalance} Chips

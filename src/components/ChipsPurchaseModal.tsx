@@ -10,6 +10,7 @@ import {
   ScrollView,
   Dimensions,
   TextInput,
+  Image,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -355,7 +356,15 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>🎰 購買 Chips</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {Platform.OS === 'web' && (
+                <Image 
+                  source={{ uri: '/icons/chips3.PNG' }} 
+                  style={{ width: 24, height: 24, resizeMode: 'contain' }}
+                />
+              )}
+              <Text style={styles.title}>購買 Chips</Text>
+            </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
@@ -368,8 +377,10 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
           >
             {/* Balance Card */}
             <View style={styles.balanceCard}>
-              <Text style={styles.balanceLabel}>目前餘額</Text>
-              <Text style={styles.balanceValue}>{chips} Chips</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={styles.balanceLabel}>目前餘額</Text>
+                <Text style={styles.balanceValue}>{chips} Chips</Text>
+              </View>
             </View>
 
             {/* Bundle Packages */}

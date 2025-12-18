@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Modal, Text, Pressable } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, Modal, Text, Pressable, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigationContext } from '../context/NavigationContext';
 import Icon from './Icon';
 import { Language } from '../types/language';
 // 靜態導入圖片
-import IconFrontImage from '../../assets/icons/icon.front.png';
 import ChangeIconImage from '../../assets/icons/change.png';
 
 interface TopTabBarProps {
@@ -188,11 +187,13 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
           onPress={navigateToWelcome}
           activeOpacity={0.7}
         >
-          <Image
-            source={IconFrontImage}
-            style={styles.logoIcon}
-            resizeMode="contain"
-          />
+          {Platform.OS === 'web' && (
+            <Image
+              source={{ uri: '/icons/icon-front-512.PNG' }}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
+          )}
         </TouchableOpacity>
         {title && (
           <View style={styles.titleContainer}>

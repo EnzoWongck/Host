@@ -11,6 +11,7 @@ import {
   Switch,
   Linking,
   Image,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
@@ -350,9 +351,17 @@ const SettingsScreen: React.FC = () => {
               <Card padding="md">
                 <View style={styles.dataManagementItem}>
                   <View style={styles.dataItemContent}>
-                    <Text style={[styles.dataItemTitle, { fontSize: 24, color: chips > 0 ? '#10B981' : theme.colors.error }]}>
-                      🎰 {chips} Chips
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {Platform.OS === 'web' && (
+                        <Image 
+                          source={{ uri: '/icons/chips3.PNG' }} 
+                          style={{ width: 24, height: 24, resizeMode: 'contain' }}
+                        />
+                      )}
+                      <Text style={[styles.dataItemTitle, { fontSize: 24, color: chips > 0 ? '#10B981' : theme.colors.error }]}>
+                        {chips} Chips
+                      </Text>
+                    </View>
                     <Text style={styles.dataItemSubtitle}>
                       每 1 Chip 提供 12 小時牌局編輯時間
                     </Text>
