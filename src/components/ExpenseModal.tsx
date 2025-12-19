@@ -308,7 +308,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
     },
   });
 
-  const handleAddExpense = () => {
+  const handleAddExpense = async () => {
     if (!currentGame) {
       Alert.alert('錯誤', '沒有進行中的牌局');
       return;
