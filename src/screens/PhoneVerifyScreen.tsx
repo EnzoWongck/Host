@@ -194,6 +194,12 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
     setError('');
 
     try {
+      // 添加超時處理（30 秒）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      console.log('發送驗證 OTP 請求:', { phoneNumber: cleanedPhoneNumber, code, userId: user?.uid });
+      
       const response = await fetch('/api/phone/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,7 +208,10 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
           code,
           userId: user?.uid,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       // 檢查響應狀態
       if (!response.ok) {
@@ -257,14 +266,24 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
     } catch (err: any) {
       console.error('驗證 OTP 失敗:', err);
       
+      // 處理超時錯誤
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        setError('請求超時，請檢查網絡連接後重試');
+      } 
+      // 處理網絡錯誤
+      else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+        setError('網絡連接失敗，請檢查網絡連接後重試');
+      }
       // 處理 JSON 解析錯誤
-      if (err.message?.includes('JSON') || err.message?.includes('Unexpected token')) {
+      else if (err.message?.includes('JSON') || err.message?.includes('Unexpected token')) {
         setError('API 服務不可用。請確保在生產環境（lunchips.com）測試，或檢查 API 路由配置。');
       } else {
         setError(err.message || '驗證失敗，請稍後再試');
       }
     } finally {
+      // 確保 loading 狀態被清除
       setLoading(false);
+      console.log('驗證 OTP 流程結束，loading 已清除');
     }
   };
 
