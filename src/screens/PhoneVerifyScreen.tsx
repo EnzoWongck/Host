@@ -80,7 +80,13 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
     }
   }, [countdown]);
 
-  const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+  // 清理並格式化電話號碼為 E.164 格式
+  const formatPhoneNumber = (code: string, number: string): string => {
+    // 移除所有非數字字符（保留開頭的 +）
+    const cleanedNumber = number.replace(/\D/g, '');
+    // 組合國家代碼和號碼，確保格式為 +國家代碼號碼
+    return `${code}${cleanedNumber}`;
+  };
 
   // 發送 OTP
   const handleSendOtp = async () => {
@@ -89,14 +95,24 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       return;
     }
 
+    // 清理並格式化電話號碼
+    const cleanedPhoneNumber = formatPhoneNumber(countryCode, phoneNumber);
+    
+    // 驗證電話號碼格式（E.164 格式：+國家代碼+號碼，總長度至少 10 位）
+    if (cleanedPhoneNumber.length < 10 || !cleanedPhoneNumber.startsWith('+')) {
+      setError('電話號碼格式不正確，請檢查後重試');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
+      console.log('發送 OTP 到:', cleanedPhoneNumber);
       const response = await fetch('/api/phone/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: fullPhoneNumber }),
+        body: JSON.stringify({ phoneNumber: cleanedPhoneNumber }),
       });
 
       const data = await response.json();
@@ -130,6 +146,9 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       return;
     }
 
+    // 清理並格式化電話號碼
+    const cleanedPhoneNumber = formatPhoneNumber(countryCode, phoneNumber);
+
     setLoading(true);
     setError('');
 
@@ -138,7 +157,7 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: fullPhoneNumber,
+          phoneNumber: cleanedPhoneNumber,
           code,
           userId: user?.uid,
         }),
