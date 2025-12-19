@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -55,12 +56,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       backgroundColor: 'rgba(0, 0, 0, 0.5)', // 半透明黑色遮罩，淡化背景
     },
     content: {
-      flex: 1,
+      flexGrow: 1,
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 6 : theme.spacing.xl * 7, // 手機版：整塊再往下移幾格
-      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 2,
+      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 5,
+      paddingBottom: isMobile ? theme.spacing.xl * 3 : theme.spacing.xl * 3,
     },
     logoContainer: {
       alignItems: 'center',
@@ -247,65 +248,69 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
               <View style={styles.dot} />
             </View>
           </TouchableOpacity>
-          <View style={styles.content}>
-        <View style={styles.logoContainer}>
-          <Image 
-            // 使用自訂的歡迎頁圖示（welcomeicon.png）
-            source={WelcomeIconImage}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.hostTitle}>LunChips</Text>
-        </View>
-
-        {/* 特色說明列表 */}
-        <View style={styles.featureList}>
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Image 
-                source={SpaceIconImage} 
-                style={styles.featureIconImage}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.featureText}>{t('welcome.feature1')}</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Image 
-                source={SpadeIconImage} 
-                style={styles.featureIconImage}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.featureText}>{t('welcome.feature2')}</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Image 
-                source={HeartIconImage} 
-                style={styles.featureIconImage}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.featureText}>{t('welcome.feature3')}</Text>
-          </View>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.getStartedButton}
-            onPress={onGetStarted}
-            activeOpacity={0.8}
+          <ScrollView 
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
           >
-            <Text style={styles.getStartedText}>{t('welcome.getStarted')}</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.logoContainer}>
+              <Image 
+                // 使用自訂的歡迎頁圖示（welcomeicon.png）
+                source={WelcomeIconImage}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.hostTitle}>LunChips</Text>
+            </View>
 
-        <View style={styles.bottomLinks}>
-          <Text style={styles.privacyText}>{t('welcome.privacy')}</Text>
-        </View>
-          </View>
+            {/* 特色說明列表 */}
+            <View style={styles.featureList}>
+              <View style={styles.featureItem}>
+                <View style={styles.featureIcon}>
+                  <Image 
+                    source={SpaceIconImage} 
+                    style={styles.featureIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.featureText}>{t('welcome.feature1')}</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <View style={styles.featureIcon}>
+                  <Image 
+                    source={SpadeIconImage} 
+                    style={styles.featureIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.featureText}>{t('welcome.feature2')}</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <View style={styles.featureIcon}>
+                  <Image 
+                    source={HeartIconImage} 
+                    style={styles.featureIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.featureText}>{t('welcome.feature3')}</Text>
+              </View>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={styles.getStartedButton}
+                onPress={onGetStarted}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.getStartedText}>{t('welcome.getStarted')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.bottomLinks}>
+              <Text style={styles.privacyText}>{t('welcome.privacy')}</Text>
+            </View>
+          </ScrollView>
         </View>
       </ImageBackground>
 
