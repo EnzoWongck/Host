@@ -12,6 +12,10 @@
       "destination": "/api/chips/:path*"
     },
     {
+      "source": "/api/phone/:path*",
+      "destination": "/api/phone/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

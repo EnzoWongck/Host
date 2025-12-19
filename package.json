@@ -50,7 +50,8 @@
     "react-native-worklets-core": "^1.6.2",
     "ws": "^8.18.3",
     "stripe": "^14.10.0",
-    "@supabase/supabase-js": "^2.45.0"
+    "@supabase/supabase-js": "^2.45.0",
+    "twilio": "^4.23.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

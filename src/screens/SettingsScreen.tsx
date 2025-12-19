@@ -24,6 +24,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
+import PhoneVerificationModal from '../components/PhoneVerificationModal';
 import { Language } from '../types/language';
 
 const SettingsScreen: React.FC = () => {
@@ -34,6 +35,7 @@ const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [phoneVerificationModalVisible, setPhoneVerificationModalVisible] = useState(false);
   const [rememberLogin, setRememberLogin] = useState(true);
   const [allowAnalytics, setAllowAnalytics] = useState(false);
 
@@ -376,6 +378,31 @@ const SettingsScreen: React.FC = () => {
                   />
                 </View>
               </Card>
+              
+              {/* 電話綁定區塊 */}
+              <Text style={styles.sectionTitle}>帳戶安全</Text>
+              <Card padding="md">
+                <View style={styles.dataManagementItem}>
+                  <View style={styles.dataItemContent}>
+                    <Text style={styles.dataItemTitle}>
+                      📱 電話綁定
+                    </Text>
+                    <Text style={styles.dataItemSubtitle}>
+                      {user?.phoneNumber 
+                        ? `已綁定：${user.phoneNumber}` 
+                        : '綁定手機號碼以提高帳戶安全性'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm }}>
+                  <Button
+                    title={user?.phoneNumber ? '更換電話' : '綁定電話'}
+                    size="md"
+                    variant={user?.phoneNumber ? 'secondary' : 'primary'}
+                    onPress={() => setPhoneVerificationModalVisible(true)}
+                  />
+                </View>
+              </Card>
             </>
           )}
           {/* General Settings */}
@@ -583,6 +610,17 @@ const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* 電話驗證 Modal */}
+      <PhoneVerificationModal
+        visible={phoneVerificationModalVisible}
+        onClose={() => setPhoneVerificationModalVisible(false)}
+        onVerified={(phoneNumber) => {
+          console.log('電話驗證成功:', phoneNumber);
+          // 這裡可以添加成功提示
+        }}
+        mode="bind"
+      />
 
     </SafeAreaView>
   );
