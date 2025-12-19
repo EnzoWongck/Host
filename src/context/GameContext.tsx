@@ -949,7 +949,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('添加支出失敗:', error);
+        throw new Error(error.message || '添加支出失敗');
+      }
 
       const newExpense: Expense = {
         ...expenseData,
@@ -958,8 +961,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       dispatch({ type: 'ADD_EXPENSE', payload: { gameId, expense: newExpense } });
-    } catch (error) {
+    } catch (error: any) {
       console.error('添加支出失敗:', error);
+      // 重新拋出錯誤，讓調用者處理（例如顯示 Alert）
+      throw error;
     }
   }, []);
 

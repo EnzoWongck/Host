@@ -351,9 +351,15 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
         amount: expenseAmount,
         host: hostToUse || undefined,
       };
-      addExpense(currentGame.id, newExpense);
-      const categoryLabel = expenseCategories.find(cat => cat.id === categoryToUse)?.label;
-      showToast(`已新增 ${categoryLabel} 支出 金額：$${expenseAmount.toLocaleString()}`, 'success');
+      try {
+        await addExpense(currentGame.id, newExpense);
+        const categoryLabel = expenseCategories.find(cat => cat.id === categoryToUse)?.label;
+        showToast(`已新增 ${categoryLabel} 支出 金額：$${expenseAmount.toLocaleString()}`, 'success');
+      } catch (error: any) {
+        console.error('添加支出失敗:', error);
+        Alert.alert('錯誤', error?.message || '添加支出失敗，請稍後再試');
+        return;
+      }
     }
 
     // 清空輸入但保留在本介面

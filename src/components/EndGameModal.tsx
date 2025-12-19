@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -26,6 +27,7 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
   
   const [actualCollection, setActualCollection] = useState('');
   const [finalNotes, setFinalNotes] = useState('');
+  const [formulaExpanded, setFormulaExpanded] = useState(false);
 
   // 獲取螢幕尺寸
   const screenWidth = Dimensions.get('window').width;
@@ -240,7 +242,82 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
       maxHeight={isMobile ? screenHeight * 0.9 : undefined}
       containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : undefined}
     >
-      <View>
+      <ScrollView>
+        {/* 財務摘要 */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>財務摘要</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>總買入</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalBuyIn)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>總兌現</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalCashOut)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>總支出</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalExpenses)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>發牌員薪金</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalDealerSalary)}</Text>
+          </View>
+          <View style={styles.highlightRow}>
+            <Text style={styles.highlightLabel}>預期淨收入</Text>
+            <Text style={styles.highlightValue}>{formatCurrency(expectedNetIncome)}</Text>
+          </View>
+        </View>
+
+        {/* 顯示詳細計算公式 */}
+        <TouchableOpacity
+          onPress={() => setFormulaExpanded(!formulaExpanded)}
+          activeOpacity={0.7}
+          style={{ marginBottom: theme.spacing.md }}
+        >
+          <Text style={{
+            fontSize: theme.fontSize.sm,
+            color: theme.colors.textSecondary,
+            textAlign: 'center',
+          }}>
+            {formulaExpanded ? '隱藏' : '顯示'}詳細計算公式
+          </Text>
+        </TouchableOpacity>
+
+        {formulaExpanded && (
+          <View style={{
+            marginBottom: theme.spacing.lg,
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.background,
+            borderRadius: theme.borderRadius.sm,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+          }}>
+            <Text style={{
+              fontSize: theme.fontSize.sm,
+              color: theme.colors.text,
+              lineHeight: 22,
+              marginBottom: theme.spacing.xs,
+            }}>
+              預期淨收入 = 總買入 - 總兌現 - 總支出 - 發牌員薪金
+            </Text>
+            <Text style={{
+              fontSize: theme.fontSize.sm,
+              color: theme.colors.textSecondary,
+              lineHeight: 22,
+            }}>
+              = {formatCurrency(totalBuyIn)} - {formatCurrency(totalCashOut)} - {formatCurrency(totalExpenses)} - {formatCurrency(totalDealerSalary)}
+            </Text>
+            <Text style={{
+              fontSize: theme.fontSize.sm,
+              color: theme.colors.textSecondary,
+              lineHeight: 22,
+              marginTop: theme.spacing.xs,
+            }}>
+              = {formatCurrency(expectedNetIncome)}
+            </Text>
+          </View>
+        )}
+
         {/* 確認訊息 */}
         <View style={styles.warningCard}>
           <Text style={styles.warningText}>
@@ -262,7 +339,7 @@ const EndGameModal: React.FC<EndGameModalProps> = ({ visible, onClose }) => {
             elevation: 6,
           }}
         />
-      </View>
+      </ScrollView>
     </Modal>
   );
 };
