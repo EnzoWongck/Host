@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/stripe/:path*",
