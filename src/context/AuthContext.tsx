@@ -126,12 +126,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // 確保 phone_verified 是布林值
-    // 如果字段不存在（undefined），檢查是否有 phone_verified_at（表示已驗證）
-    const phoneVerified = profile.phone_verified === true || 
-                          profile.phone_verified === 'true' ||
-                          profile.phone_verified === 1 ||
-                          String(profile.phone_verified).toLowerCase() === 'true' ||
-                          !!profile.phone_verified_at; // 如果有驗證時間，視為已驗證
+    // 優先檢查 phone_verified 字段，如果不存在或為 false，則檢查 phone_verified_at
+    let phoneVerified = false;
+    
+    if (profile.phone_verified !== undefined && profile.phone_verified !== null) {
+      // 如果 phone_verified 字段存在，使用它
+      phoneVerified = profile.phone_verified === true || 
+                      profile.phone_verified === 'true' ||
+                      profile.phone_verified === 1 ||
+                      String(profile.phone_verified).toLowerCase() === 'true';
+    } else if (profile.phone_verified_at) {
+      // 如果 phone_verified 不存在但 phone_verified_at 存在，視為已驗證
+      phoneVerified = true;
+      console.warn('phone_verified 字段不存在，但 phone_verified_at 存在，視為已驗證');
+    } else if (profile.phone_number) {
+      // 如果只有 phone_number 但沒有驗證標記，視為未驗證
+      phoneVerified = false;
+    }
 
     console.log('用戶電話驗證狀態:', {
       userId: supabaseUser.id,
@@ -145,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPhoneVerifiedField: 'phone_verified' in profile,
       hasPhoneVerifiedAtField: 'phone_verified_at' in profile,
       profileKeys: Object.keys(profile),
+      finalPhoneVerified: phoneVerified,
     });
 
     return {
