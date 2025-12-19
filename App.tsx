@@ -298,9 +298,9 @@ const AppNavigator: React.FC = () => {
         }
       } else {
         // 未驗證電話，必須進入電話驗證頁面
-        // 但如果正在驗證電話流程中，不要強制跳轉
-        if (isVerifyingPhone) {
-          console.log('正在驗證電話流程中，保持當前頁面');
+        // 但如果正在驗證電話流程中，或者已經在主畫面，不要強制跳轉
+        if (isVerifyingPhone || currentScreen === 'main') {
+          console.log('正在驗證電話流程中或已在主畫面，保持當前頁面');
           return;
         }
         
@@ -467,17 +467,24 @@ const AppNavigator: React.FC = () => {
           setIsSigningUp(false); // 清除註冊標記
           setIsVerifyingPhone(true); // 標記正在驗證電話，防止 useEffect 干擾
           
-          // 等待用戶狀態更新完成
-          await refreshUser();
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await refreshUser();
-          
-          // 清除驗證標記
-          setIsVerifyingPhone(false);
-          
-          // 直接進入主畫面，不依賴 useEffect 檢查
+          // 先直接進入主畫面，避免 useEffect 檢查
           console.log('電話驗證完成，直接進入主畫面');
           setCurrentScreenWithStorage('main');
+          
+          // 然後在背景更新用戶狀態
+          try {
+            await refreshUser();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await refreshUser();
+            console.log('用戶狀態已更新');
+          } catch (error) {
+            console.error('更新用戶狀態失敗:', error);
+          } finally {
+            // 清除驗證標記（延遲清除，確保狀態已更新）
+            setTimeout(() => {
+              setIsVerifyingPhone(false);
+            }, 1000);
+          }
         }}
         onLogout={() => {
           setIsSigningUp(false); // 清除註冊標記
