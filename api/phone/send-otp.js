@@ -7,7 +7,16 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-const client = twilio(accountSid, authToken);
+// 檢查環境變量
+if (!accountSid || !authToken || !verifyServiceSid) {
+  console.error('Twilio 環境變量未設置:', {
+    hasAccountSid: !!accountSid,
+    hasAuthToken: !!authToken,
+    hasVerifyServiceSid: !!verifyServiceSid,
+  });
+}
+
+const client = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
 // CORS headers
 const corsHeaders = {
@@ -31,12 +40,38 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // 檢查 Twilio 配置
+    if (!client || !verifyServiceSid) {
+      res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Twilio configuration missing',
+        message: 'Twilio 服務未正確配置，請檢查環境變量設置',
+      }));
+      return;
+    }
+
     // Parse request body
     let body = '';
     for await (const chunk of req) {
       body += chunk;
     }
-    const { phoneNumber } = JSON.parse(body);
+    
+    if (!body) {
+      res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing request body' }));
+      return;
+    }
+
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(body);
+    } catch (parseError) {
+      res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid JSON in request body' }));
+      return;
+    }
+
+    const { phoneNumber } = parsedBody;
 
     if (!phoneNumber) {
       res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });

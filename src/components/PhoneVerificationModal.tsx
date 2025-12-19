@@ -117,6 +117,16 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         body: JSON.stringify({ phoneNumber: cleanedPhoneNumber }),
       });
 
+      // 檢查響應內容類型
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        // 如果不是 JSON，可能是 HTML 錯誤頁面
+        const text = await response.text();
+        console.error('API 返回非 JSON 響應:', text.substring(0, 200));
+        setError('API 服務不可用。請確保在生產環境（lunchips.com）測試，或檢查 API 路由配置。');
+        return;
+      }
+
       const data = await response.json();
 
       if (response.ok && data.success) {
@@ -134,7 +144,13 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       }
     } catch (err: any) {
       console.error('發送 OTP 失敗:', err);
-      setError(err.message || '發送驗證碼失敗，請稍後再試');
+      
+      // 處理 JSON 解析錯誤
+      if (err.message?.includes('JSON') || err.message?.includes('Unexpected token')) {
+        setError('API 服務不可用。請確保在生產環境（lunchips.com）測試，或檢查 API 路由配置。');
+      } else {
+        setError(err.message || '發送驗證碼失敗，請稍後再試');
+      }
     } finally {
       setLoading(false);
     }
