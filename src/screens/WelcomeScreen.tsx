@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -55,22 +56,23 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       backgroundColor: 'rgba(0, 0, 0, 0.5)', // 半透明黑色遮罩，淡化背景
     },
     content: {
-      flex: 1,
+      flexGrow: 1,
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 6 : theme.spacing.xl * 7, // 手機版：整塊再往下移幾格
-      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 2,
+      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 3, // 電腦版減少 paddingTop
+      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3,
+      minHeight: isMobile ? undefined : '100%', // 電腦版確保最小高度
     },
     logoContainer: {
       alignItems: 'center',
       marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
     },
     logoImage: {
-      width: isMobile ? 140 : 300, // 手機版：Logo 再小一點
-      height: isMobile ? 140 : 300,
+      width: isMobile ? 140 : 280, // 電腦版稍微縮小
+      height: isMobile ? 140 : 280,
       marginBottom: theme.spacing.xs, // 減少與文字的距離
-      marginTop: isMobile ? theme.spacing.xl * 1.5 : theme.spacing.xl * 2, // 手機版：Logo 微微上移，其它不變
+      marginTop: isMobile ? theme.spacing.xl * 1.5 : theme.spacing.xl, // 電腦版減少 marginTop
     },
     hostTitle: {
       fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
@@ -78,7 +80,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.xl * 1.6 : theme.spacing.xl * 3, // 手機版：再往下移一點點
+      marginTop: isMobile ? theme.spacing.xl * 1.6 : theme.spacing.xl * 1.5, // 電腦版減少 marginTop
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
@@ -95,7 +97,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       maxWidth: 400,
       marginBottom: isMobile ? theme.spacing.lg : theme.spacing.xl, // 手機版：與按鈕之間距離縮小
       paddingHorizontal: theme.spacing.lg,
-      marginTop: isMobile ? theme.spacing.xs : theme.spacing.xl * 2, // 手機版：三行文字與按鈕再微微上移
+      marginTop: isMobile ? theme.spacing.xs : theme.spacing.md, // 電腦版減少 marginTop
     },
     featureItem: {
       flexDirection: 'row',
@@ -247,7 +249,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
               <View style={styles.dot} />
             </View>
           </TouchableOpacity>
-          <View style={styles.content}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            scrollEnabled={!isMobile} // 只在電腦版啟用滾動
+          >
             <View style={styles.logoContainer}>
               <Image 
                 // 使用自訂的歡迎頁圖示（welcomeicon.png）
@@ -305,7 +312,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
             <View style={styles.bottomLinks}>
               <Text style={styles.privacyText}>{t('welcome.privacy')}</Text>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </ImageBackground>
 
