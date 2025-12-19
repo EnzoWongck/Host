@@ -60,8 +60,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 5,
-      paddingBottom: isMobile ? theme.spacing.xl * 3 : theme.spacing.xl * 3,
+      paddingTop: isMobile ? theme.spacing.xl * 6 : theme.spacing.xl * 7, // 手機版：整塊再往下移幾格
+      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 2,
     },
     logoContainer: {
       alignItems: 'center',

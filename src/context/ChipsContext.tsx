@@ -11,6 +11,17 @@ const isLocalDev = () => {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 };
 
+// 開發者帳戶白名單（這些帳戶不消耗 Chips）
+const DEVELOPER_EMAILS = [
+  'pokerhostdeveloper@gmail.com',
+];
+
+// 檢查是否為開發者帳戶
+const isDeveloperAccount = (email?: string | null): boolean => {
+  if (!email) return false;
+  return DEVELOPER_EMAILS.includes(email.toLowerCase());
+};
+
 // ============================================
 // Types
 // ============================================
@@ -109,6 +120,14 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       return;
     }
 
+    // 開發者帳戶：無限 Chips
+    if (isDeveloperAccount(user.email)) {
+      console.log('🛠️ 開發者帳戶已登入，無限 Chips');
+      setChips(99999);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -182,6 +201,19 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
   const checkGameChipStatus = useCallback(async (gameId: string): Promise<GameChipStatus> => {
     if (!isSignedIn || !user?.uid) {
       return { hasValidChip: false, needsChip: true, reason: 'not_signed_in' };
+    }
+
+    // 開發者帳戶：永遠有效
+    if (isDeveloperAccount(user.email)) {
+      const status: GameChipStatus = {
+        hasValidChip: true,
+        needsChip: false,
+        remainingHours: 9999,
+        reason: 'developer_account',
+      };
+      setGameChipStatus(status);
+      setIsGameLocked(false);
+      return status;
     }
 
     try {
@@ -262,6 +294,14 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
     if (!isSignedIn || !user?.uid) {
       console.error('用戶未登入');
       return false;
+    }
+
+    // 開發者帳戶：不消耗 Chips
+    if (isDeveloperAccount(user.email)) {
+      console.log('🛠️ 開發者帳戶，跳過 Chip 消耗');
+      setIsGameLocked(false);
+      setShowExpiredModal(false);
+      return true;
     }
 
     if (chips < 1) {
