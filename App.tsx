@@ -290,10 +290,19 @@ const AppNavigator: React.FC = () => {
       }
       
       // 已登入，檢查是否需要電話驗證
+      // 添加日誌以便調試
+      console.log('檢查用戶電話驗證狀態:', {
+        userId: user?.uid,
+        email: user?.email,
+        phoneVerified: user?.phoneVerified,
+        phoneNumber: user?.phoneNumber,
+        currentScreen,
+      });
+      
       if (user?.phoneVerified) {
         // 已驗證電話，進入主畫面（除非當前在登入/註冊流程中）
         if (currentScreen === 'welcome' || currentScreen === 'phoneVerify' || currentScreen === 'login') {
-          console.log('已登入且已驗證電話，進入主畫面');
+          console.log('✅ 已登入且已驗證電話，進入主畫面');
           setCurrentScreenWithStorage('main');
         }
       } else {
@@ -307,7 +316,7 @@ const AppNavigator: React.FC = () => {
         // 特別處理 OAuth 回調情況：如果從 welcome/login 登入，強制進入電話驗證
         if (currentScreen === 'welcome' || currentScreen === 'login' || 
             (currentScreen !== 'phoneVerify' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword')) {
-          console.log('已登入但未驗證電話，進入電話驗證');
+          console.log('⚠️ 已登入但未驗證電話，進入電話驗證');
           setCurrentScreenWithStorage('phoneVerify');
         }
       }
@@ -340,7 +349,13 @@ const AppNavigator: React.FC = () => {
     }
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
+    // 先刷新用戶資料，確保狀態是最新的
+    console.log('登入成功，開始刷新用戶狀態...');
+    await refreshUser();
+    await new Promise(resolve => setTimeout(resolve, 300)); // 等待狀態更新
+    await refreshUser(); // 再次刷新確保狀態同步
+    
     // 開發者帳戶：跳過電話驗證
     if (isDeveloperAccount(user?.email)) {
       console.log('🛠️ 開發者帳戶登入，跳過電話驗證');
@@ -350,9 +365,17 @@ const AppNavigator: React.FC = () => {
     
     // 登入成功後，檢查是否需要電話驗證
     // 如果用戶已驗證電話，直接進入主畫面；否則進入電話驗證
+    console.log('檢查電話驗證狀態:', {
+      email: user?.email,
+      phoneVerified: user?.phoneVerified,
+      phoneNumber: user?.phoneNumber,
+    });
+    
     if (user?.phoneVerified) {
+      console.log('用戶已驗證電話，進入主畫面');
       setCurrentScreenWithStorage('main');
     } else {
+      console.log('用戶未驗證電話，進入電話驗證頁面');
       setCurrentScreenWithStorage('phoneVerify');
     }
   };

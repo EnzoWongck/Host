@@ -59,12 +59,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const transformUser = useCallback(async (supabaseUser: User | null): Promise<AuthUser> => {
     if (!supabaseUser) return null;
 
-    // 獲取用戶的 profile（包含 chips）
-    const { data: profile } = await supabase
+    // 獲取用戶的 profile（包含 chips 和 phone_verified）
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', supabaseUser.id)
       .single();
+
+    if (profileError) {
+      console.warn('獲取用戶 profile 失敗:', profileError);
+      // 如果 profile 不存在，嘗試從 user_metadata 獲取
+      const phoneVerified = supabaseUser.user_metadata?.phone_verified === true || 
+                           supabaseUser.user_metadata?.phone_verified === 'true';
+      
+      return {
+        uid: supabaseUser.id,
+        email: supabaseUser.email || null,
+        displayName: supabaseUser.user_metadata?.full_name || 
+                     supabaseUser.user_metadata?.name || 
+                     supabaseUser.email?.split('@')[0] || null,
+        photoURL: supabaseUser.user_metadata?.avatar_url || null,
+        phoneNumber: supabaseUser.phone || null,
+        phoneVerified: phoneVerified,
+        chips: 0,
+      };
+    }
+
+    // 確保 phone_verified 是布林值
+    const phoneVerified = profile.phone_verified === true || 
+                          profile.phone_verified === 'true' ||
+                          profile.phone_verified === 1;
+
+    console.log('用戶電話驗證狀態:', {
+      userId: supabaseUser.id,
+      phoneVerified: phoneVerified,
+      profilePhoneVerified: profile.phone_verified,
+      phoneNumber: profile.phone_number,
+    });
 
     return {
       uid: supabaseUser.id,
@@ -73,17 +104,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                    supabaseUser.user_metadata?.name || 
                    supabaseUser.email?.split('@')[0] || null,
       photoURL: supabaseUser.user_metadata?.avatar_url || null,
-      phoneNumber: profile?.phone_number || supabaseUser.phone || null,
-      phoneVerified: profile?.phone_verified || false,
-      chips: profile?.chips || 0,
+      phoneNumber: profile.phone_number || supabaseUser.phone || null,
+      phoneVerified: phoneVerified,
+      chips: profile.chips || 0,
     };
   }, []);
 
   // 刷新用戶資料
   const refreshUser = useCallback(async () => {
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-    const authUser = await transformUser(supabaseUser);
-    setUser(authUser);
+    try {
+      const { data: { user: supabaseUser }, error: getUserError } = await supabase.auth.getUser();
+      
+      if (getUserError) {
+        console.error('獲取用戶失敗:', getUserError);
+        setUser(null);
+        return;
+      }
+
+      if (!supabaseUser) {
+        console.log('沒有登入用戶');
+        setUser(null);
+        return;
+      }
+
+      const authUser = await transformUser(supabaseUser);
+      console.log('刷新用戶資料完成:', {
+        userId: authUser?.uid,
+        email: authUser?.email,
+        phoneVerified: authUser?.phoneVerified,
+        phoneNumber: authUser?.phoneNumber,
+      });
+      setUser(authUser);
+    } catch (error) {
+      console.error('刷新用戶資料失敗:', error);
+    }
   }, [transformUser]);
 
   // 更新 Chips（本地狀態）
