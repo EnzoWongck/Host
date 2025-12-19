@@ -483,7 +483,7 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
           <>
             <Text style={styles.title}>輸入驗證碼</Text>
             <Text style={styles.subtitle}>
-              驗證碼已發送至{'\n'}{fullPhoneNumber}
+              驗證碼已發送至{'\n'}{formatPhoneNumber(countryCode, phoneNumber)}
             </Text>
 
             <View style={styles.otpContainer}>
