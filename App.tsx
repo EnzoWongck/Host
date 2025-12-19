@@ -100,6 +100,7 @@ import EarthWhiteIconAsset from './assets/icons/earth.white.png';
 // Context
 import { GameProvider, useGame } from './src/context/GameContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { supabase } from './src/config/supabase';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { ToastProvider } from './src/context/ToastContext';
@@ -352,12 +353,60 @@ const AppNavigator: React.FC = () => {
   const handleLoginSuccess = async () => {
     // 先刷新用戶資料，確保狀態是最新的
     console.log('登入成功，開始刷新用戶狀態...');
+    
+    // 多次刷新並等待，確保狀態完全同步
     await refreshUser();
-    await new Promise(resolve => setTimeout(resolve, 300)); // 等待狀態更新
-    await refreshUser(); // 再次刷新確保狀態同步
+    await new Promise(resolve => setTimeout(resolve, 500)); // 等待狀態更新
+    await refreshUser();
+    await new Promise(resolve => setTimeout(resolve, 300)); // 再次等待
+    await refreshUser();
+    
+    // 等待一下讓 React 狀態更新完成
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // 再次獲取最新的用戶狀態（直接從 Supabase 查詢，不依賴 React 狀態）
+    let currentUser = user;
+    if (!currentUser || !currentUser.phoneVerified) {
+      // 如果 React 狀態還沒有更新，直接從 Supabase 查詢
+      try {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        if (supabaseUser) {
+          // 直接查詢 profile 獲取最新的 phone_verified 狀態
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('phone_verified, phone_verified_at, phone_number')
+            .eq('id', supabaseUser.id)
+            .single();
+          
+          if (profile) {
+            const phoneVerified = profile.phone_verified === true || 
+                                profile.phone_verified === 'true' ||
+                                profile.phone_verified === 1 ||
+                                !!profile.phone_verified_at;
+            
+            console.log('直接查詢 profile 獲取的電話驗證狀態:', {
+              userId: supabaseUser.id,
+              email: supabaseUser.email,
+              phoneVerified: phoneVerified,
+              profilePhoneVerified: profile.phone_verified,
+              phoneVerifiedAt: profile.phone_verified_at,
+            });
+            
+            // 如果已驗證，直接進入主畫面
+            if (phoneVerified) {
+              console.log('✅ 用戶已驗證電話（從數據庫確認），進入主畫面');
+              setCurrentScreenWithStorage('main');
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('查詢用戶狀態失敗:', error);
+      }
+    }
     
     // 開發者帳戶：跳過電話驗證
-    if (isDeveloperAccount(user?.email)) {
+    if (isDeveloperAccount(currentUser?.email)) {
       console.log('🛠️ 開發者帳戶登入，跳過電話驗證');
       setCurrentScreenWithStorage('main');
       return;
@@ -366,16 +415,16 @@ const AppNavigator: React.FC = () => {
     // 登入成功後，檢查是否需要電話驗證
     // 如果用戶已驗證電話，直接進入主畫面；否則進入電話驗證
     console.log('檢查電話驗證狀態:', {
-      email: user?.email,
-      phoneVerified: user?.phoneVerified,
-      phoneNumber: user?.phoneNumber,
+      email: currentUser?.email,
+      phoneVerified: currentUser?.phoneVerified,
+      phoneNumber: currentUser?.phoneNumber,
     });
     
-    if (user?.phoneVerified) {
-      console.log('用戶已驗證電話，進入主畫面');
+    if (currentUser?.phoneVerified) {
+      console.log('✅ 用戶已驗證電話，進入主畫面');
       setCurrentScreenWithStorage('main');
     } else {
-      console.log('用戶未驗證電話，進入電話驗證頁面');
+      console.log('⚠️ 用戶未驗證電話，進入電話驗證頁面');
       setCurrentScreenWithStorage('phoneVerify');
     }
   };
