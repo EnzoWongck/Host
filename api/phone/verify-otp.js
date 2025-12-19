@@ -63,18 +63,45 @@ module.exports = async (req, res) => {
 
     if (verificationCheck.status === 'approved') {
       // 如果提供了 userId，更新用戶的電話號碼
+      let profileUpdated = false;
       if (userId) {
-        const { error: updateError } = await supabase
+        const { data: profileData, error: updateError } = await supabase
           .from('profiles')
           .update({ 
             phone_number: phoneNumber,
             phone_verified: true,
             phone_verified_at: new Date().toISOString(),
           })
-          .eq('id', userId);
+          .eq('id', userId)
+          .select()
+          .single();
 
         if (updateError) {
           console.error('更新用戶電話失敗:', updateError);
+        } else {
+          profileUpdated = true;
+          console.log('用戶電話已更新:', profileData);
+        }
+
+        // 同時更新 auth.users 表的 user_metadata（如果可能）
+        try {
+          const { data: authData, error: authError } = await supabase.auth.admin.updateUserById(
+            userId,
+            {
+              phone: phoneNumber,
+              user_metadata: {
+                phone_verified: true,
+              },
+            }
+          );
+          if (authError) {
+            console.error('更新 auth.users 失敗:', authError);
+          } else {
+            console.log('auth.users 已更新:', authData);
+          }
+        } catch (adminError) {
+          // 如果沒有 admin 權限，忽略這個錯誤
+          console.warn('無法更新 auth.users（可能需要 admin 權限）:', adminError);
         }
       }
 
@@ -83,6 +110,7 @@ module.exports = async (req, res) => {
         success: true,
         status: 'approved',
         message: '電話驗證成功',
+        profileUpdated: profileUpdated,
       }));
     } else {
       res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });

@@ -201,19 +201,65 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         }),
       });
 
-      const data = await response.json();
+      // 檢查響應狀態
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          setError(errorData.message || errorData.error || `請求失敗 (${response.status})`);
+        } else {
+          const text = await response.text();
+          console.error('API 返回非 JSON 錯誤響應:', text.substring(0, 200));
+          setError(`請求失敗 (${response.status})。請檢查 API 配置。`);
+        }
+        setOtp(['', '', '', '', '', '']);
+        return;
+      }
 
-      if (response.ok && data.success) {
-        // 刷新用戶資料
+      // 檢查響應內容類型
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('API 返回非 JSON 響應:', text.substring(0, 200));
+        setError('API 服務不可用。請確保在生產環境（lunchips.com）測試，或檢查 API 路由配置。');
+        return;
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('JSON 解析失敗:', parseError);
+        setError('服務器響應格式錯誤，請稍後再試');
+        return;
+      }
+
+      if (data.success) {
+        // 刷新用戶資料，等待狀態更新
+        console.log('OTP 驗證成功，開始刷新用戶狀態...');
         await refreshUser();
+        
+        // 給一點時間確保 Supabase 狀態已更新
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 再次刷新確保狀態是最新的
+        await refreshUser();
+        
+        console.log('電話驗證成功，用戶狀態已更新，調用 onVerified');
         onVerified();
       } else {
         setError(data.message || '驗證碼錯誤');
         setOtp(['', '', '', '', '', '']);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('驗證 OTP 失敗:', err);
-      setError('驗證失敗，請稍後再試');
+      
+      // 處理 JSON 解析錯誤
+      if (err.message?.includes('JSON') || err.message?.includes('Unexpected token')) {
+        setError('API 服務不可用。請確保在生產環境（lunchips.com）測試，或檢查 API 路由配置。');
+      } else {
+        setError(err.message || '驗證失敗，請稍後再試');
+      }
     } finally {
       setLoading(false);
     }
