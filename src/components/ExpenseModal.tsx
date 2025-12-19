@@ -42,6 +42,20 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
   const [recordsExpanded, setRecordsExpanded] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
+  // 處理金額輸入，允許小數點和數字
+  const handleAmountChange = (value: string) => {
+    // 允許數字、小數點和空字符串
+    // 確保只有一個小數點
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      // 如果有多個小數點，只保留第一個
+      setAmount(parts[0] + '.' + parts.slice(1).join(''));
+    } else {
+      setAmount(cleaned);
+    }
+  };
+
   // 編輯彈窗狀態
   const [editVisible, setEditVisible] = useState(false);
   const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
@@ -545,10 +559,11 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({ visible, onClose }) => {
           <TextInput
             style={styles.inputInline}
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={handleAmountChange}
             placeholder="輸入金額"
             placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
-            keyboardType="decimal-pad"
+            keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+            inputMode={Platform.OS === 'web' ? 'decimal' : undefined}
           />
           {amount.trim() !== '' && (
             <TouchableOpacity
