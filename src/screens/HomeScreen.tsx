@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
   Platform,
+  Alert,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -26,7 +27,7 @@ import { Language } from '../types/language';
 const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const { state, selectCurrentGame, deleteGame } = useGame();
+  const { state, selectCurrentGame, deleteGame, updateGame } = useGame();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
@@ -355,10 +356,59 @@ const HomeScreen: React.FC = () => {
                   // 如果牌局狀態為 completed（已失效），檢查 chips 狀態
                   if (game.status === 'completed') {
                     const chipStatus = await checkGameChipStatus(game.id);
-                    if (!chipStatus.hasValidChip && chips < 1) {
-                      // 沒有有效的 chip 且 chips 餘額為 0，彈出購買視窗
-                      openPurchaseModal();
-                      return;
+                    if (!chipStatus.hasValidChip) {
+                      // 沒有有效的 chip
+                      if (chips < 1) {
+                        // chips 餘額為 0，彈出購買視窗
+                        openPurchaseModal();
+                        return;
+                      } else {
+                        // 有 chips 餘額，顯示確認視窗
+                        if (Platform.OS === 'web') {
+                          const confirmed = window.confirm('是否消耗 1 Chip 繼續編輯牌局？');
+                          if (!confirmed) return;
+                          // 消耗 chip
+                          const success = await consumeChip(game.id, 'restore_game');
+                          if (success) {
+                            // 將遊戲狀態改回 active
+                            const updatedGame = { ...game, status: 'active' as const };
+                            await updateGame(updatedGame);
+                            // 進入遊戲
+                            selectCurrentGame(game.id);
+                            setPendingGameNavigation(game.id);
+                          }
+                          return;
+                        } else {
+                          // 原生平台使用 Alert
+                          Alert.alert(
+                            '消耗 Chip',
+                            '是否消耗 1 Chip 繼續編輯牌局？',
+                            [
+                              {
+                                text: '取消',
+                                style: 'cancel',
+                              },
+                              {
+                                text: '確認',
+                                onPress: async () => {
+                                  // 消耗 chip
+                                  const success = await consumeChip(game.id, 'restore_game');
+                                  if (success) {
+                                    // 將遊戲狀態改回 active
+                                    const updatedGame = { ...game, status: 'active' as const };
+                                    await updateGame(updatedGame);
+                                    // 進入遊戲
+                                    selectCurrentGame(game.id);
+                                    setPendingGameNavigation(game.id);
+                                  }
+                                },
+                              },
+                            ],
+                            { cancelable: true }
+                          );
+                          return;
+                        }
+                      }
                     }
                   }
                   selectCurrentGame(game.id);
