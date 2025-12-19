@@ -177,11 +177,44 @@ const AppNavigator: React.FC = () => {
   
   // 強制跳過登入：如果配置為 true，直接返回主頁面（在渲染前檢查）
   
-  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'login' | 'signup' | 'forgotPassword' | 'phoneVerify' | 'main'>(
-    shouldSkipAuth ? 'main' : 'welcome'
-  );
-  const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
   const { user, isSignedIn, signInWithEmail, loading, signOut } = useAuth();
+  
+  // 從 sessionStorage 恢復頁面狀態（僅 Web 平台）
+  const getInitialScreenFromStorage = (): 'welcome' | 'login' | 'signup' | 'forgotPassword' | 'phoneVerify' | 'main' => {
+    if (shouldSkipAuth) return 'main';
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('currentScreen');
+      // 只有在用戶已登入時才恢復 phoneVerify 或 main
+      // 如果用戶未登入但 sessionStorage 中有這些狀態，清除它們
+      if (saved && ['welcome', 'login', 'signup', 'forgotPassword'].includes(saved)) {
+        return saved as any;
+      }
+      // 如果保存的是 phoneVerify 或 main，需要檢查用戶是否真的登入
+      // 這個檢查會在 useEffect 中進行，這裡先返回 saved
+      if (saved && ['phoneVerify', 'main'].includes(saved)) {
+        return saved as any;
+      }
+    }
+    return 'welcome';
+  };
+
+  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'login' | 'signup' | 'forgotPassword' | 'phoneVerify' | 'main'>(
+    getInitialScreenFromStorage()
+  );
+  
+  // 保存頁面狀態到 sessionStorage（僅 Web 平台）
+  const saveScreenToStorage = (screen: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      sessionStorage.setItem('currentScreen', screen);
+    }
+  };
+  
+  // 包裝 setCurrentScreen，同時保存到 sessionStorage
+  const setCurrentScreenWithStorage = (screen: 'welcome' | 'login' | 'signup' | 'forgotPassword' | 'phoneVerify' | 'main') => {
+    setCurrentScreen(screen);
+    saveScreenToStorage(screen);
+  };
+  const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
   const { setNavigateToWelcomeCallback } = useNavigationContext();
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
@@ -203,20 +236,26 @@ const AppNavigator: React.FC = () => {
     // 如果跳過登入，不執行此邏輯
     if (shouldSkipAuth) return;
     
-    // 只在初始載入時（currentScreen 為 'welcome'）檢查用戶狀態
-    if (currentScreen === 'welcome') {
-      if (isSignedIn) {
-        // 已登入，檢查是否需要電話驗證
-        if (user?.phoneVerified) {
+    if (isSignedIn) {
+      // 已登入，檢查是否需要電話驗證
+      if (user?.phoneVerified) {
+        // 已驗證電話，進入主畫面（除非當前在登入/註冊流程中）
+        if (currentScreen === 'welcome' || currentScreen === 'phoneVerify') {
           console.log('已登入且已驗證電話，進入主畫面');
-          setCurrentScreen('main');
-        } else {
-          console.log('已登入但未驗證電話，進入電話驗證');
-          setCurrentScreen('phoneVerify');
+          setCurrentScreenWithStorage('main');
         }
       } else {
-        // 未登入，保持在歡迎頁面
-        console.log('未登入，保持在歡迎頁面');
+        // 未驗證電話，必須進入電話驗證頁面
+        if (currentScreen !== 'phoneVerify' && currentScreen !== 'login' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword') {
+          console.log('已登入但未驗證電話，進入電話驗證');
+          setCurrentScreenWithStorage('phoneVerify');
+        }
+      }
+    } else {
+      // 未登入，如果在 phoneVerify 頁面，返回 welcome
+      if (currentScreen === 'phoneVerify') {
+        console.log('未登入，從電話驗證頁面返回歡迎頁面');
+        setCurrentScreenWithStorage('welcome');
       }
     }
   }, [loading, isSignedIn, user?.phoneVerified, shouldSkipAuth, currentScreen]);
@@ -226,17 +265,17 @@ const AppNavigator: React.FC = () => {
       // 檢查用戶是否已登入
       if (isSignedIn) {
         // 已登入，直接進入主畫面
-        setCurrentScreen('main');
+        setCurrentScreenWithStorage('main');
       } else {
         // 未登入，導向登入頁面
-        setCurrentScreen('login');
+        setCurrentScreenWithStorage('login');
       }
     }
   };
 
   const handleLoginBack = () => {
     if (!shouldSkipAuth) {
-      setCurrentScreen('welcome');
+      setCurrentScreenWithStorage('welcome');
     }
   };
 
@@ -244,21 +283,21 @@ const AppNavigator: React.FC = () => {
     // 登入成功後，檢查是否需要電話驗證
     // 如果用戶已驗證電話，直接進入主畫面；否則進入電話驗證
     if (user?.phoneVerified) {
-      setCurrentScreen('main');
+      setCurrentScreenWithStorage('main');
     } else {
-      setCurrentScreen('phoneVerify');
+      setCurrentScreenWithStorage('phoneVerify');
     }
   };
 
   const handleSignup = () => {
     if (!shouldSkipAuth) {
-      setCurrentScreen('signup');
+      setCurrentScreenWithStorage('signup');
     }
   };
 
   const handleSignupBack = () => {
     if (!shouldSkipAuth) {
-      setCurrentScreen('login');
+      setCurrentScreenWithStorage('login');
     }
   };
 
@@ -276,18 +315,18 @@ const AppNavigator: React.FC = () => {
     setShowNewUserWelcome(true);
     
     // 新用戶註冊後強制進行電話驗證
-    setCurrentScreen('phoneVerify');
+    setCurrentScreenWithStorage('phoneVerify');
   };
 
   const handleForgotPassword = () => {
     if (!shouldSkipAuth) {
-      setCurrentScreen('forgotPassword');
+      setCurrentScreenWithStorage('forgotPassword');
     }
   };
 
   const handleForgotPasswordBack = () => {
     if (!shouldSkipAuth) {
-      setCurrentScreen('login');
+      setCurrentScreenWithStorage('login');
     }
   };
 
@@ -297,7 +336,7 @@ const AppNavigator: React.FC = () => {
       // 無論當前是否登入，只要呼叫 navigateToWelcome，就一律回到 Welcome 畫面
       //（用於設定頁登出後返回歡迎頁）
       setNavigateToWelcomeCallback(() => {
-        setCurrentScreen('welcome');
+        setCurrentScreenWithStorage('welcome');
       });
     }
   }, [setNavigateToWelcomeCallback, shouldSkipAuth]);
@@ -325,7 +364,7 @@ const AppNavigator: React.FC = () => {
   }
 
   if (currentScreen === 'signup') {
-    return <SignupScreen onBack={handleSignupBack} onLogin={() => setCurrentScreen('login')} onSignupSuccess={handleSignupSuccess} />;
+    return <SignupScreen onBack={handleSignupBack} onLogin={() => setCurrentScreenWithStorage('login')} onSignupSuccess={handleSignupSuccess} />;
   }
 
   if (currentScreen === 'forgotPassword') {
@@ -336,7 +375,7 @@ const AppNavigator: React.FC = () => {
   if (currentScreen === 'phoneVerify') {
     return (
       <PhoneVerifyScreen
-        onVerified={() => setCurrentScreen('main')}
+        onVerified={() => setCurrentScreenWithStorage('main')}
       />
     );
   }
