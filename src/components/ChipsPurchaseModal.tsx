@@ -231,7 +231,7 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
       fontWeight: '600',
     },
     customSection: {
-      marginTop: 8,
+      marginTop: 4,
     },
     customCard: {
       backgroundColor: colorMode === 'dark' ? '#252525' : '#F8F8F8',

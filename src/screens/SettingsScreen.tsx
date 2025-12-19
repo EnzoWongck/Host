@@ -390,31 +390,6 @@ const SettingsScreen: React.FC = () => {
                   />
                 </View>
               </Card>
-              
-              {/* 電話綁定區塊 */}
-              <Text style={styles.sectionTitle}>帳戶安全</Text>
-              <Card padding="md">
-                <View style={styles.dataManagementItem}>
-                  <View style={styles.dataItemContent}>
-                    <Text style={styles.dataItemTitle}>
-                      📱 電話綁定
-                    </Text>
-                    <Text style={styles.dataItemSubtitle}>
-                      {user?.phoneNumber 
-                        ? `已綁定：${user.phoneNumber}` 
-                        : '綁定手機號碼以提高帳戶安全性'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={{ paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm }}>
-                  <Button
-                    title={user?.phoneNumber ? '更換電話' : '綁定電話'}
-                    size="md"
-                    variant={user?.phoneNumber ? 'secondary' : 'primary'}
-                    onPress={() => setPhoneVerificationModalVisible(true)}
-                  />
-                </View>
-              </Card>
             </>
           )}
           {/* General Settings */}

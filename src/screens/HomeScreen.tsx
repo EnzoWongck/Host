@@ -13,8 +13,8 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSubscription } from '../context/SubscriptionContext';
 import { useNavigationContext } from '../context/NavigationContext';
+import { useChips } from '../context/ChipsContext';
 import Card from '../components/Card';
 import { useNavigation } from '@react-navigation/native';
 import Button from '../components/Button';
@@ -22,19 +22,11 @@ import Icon from '../components/Icon';
 import NewGameModal from '../components/NewGameModal';
 import TopTabBar from '../components/TopTabBar';
 import { Language } from '../types/language';
-import { PAYPAL_CLIENT_ID, PAYPAL_SUBSCRIPTION_PLAN_ID, PAYPAL_SDK_URL } from '../config/dev';
-
-declare global {
-  interface Window {
-    paypal?: any;
-  }
-}
 
 const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { state, selectCurrentGame, deleteGame } = useGame();
-  const { canCreateNewGame, forceTrialEnded, isSubscribed, trialEnded } = useSubscription();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
@@ -43,38 +35,6 @@ const HomeScreen: React.FC = () => {
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
   const [pendingGameNavigation, setPendingGameNavigation] = useState<string | null>(null);
   const [showAddToHomeModal, setShowAddToHomeModal] = useState(false);
-  const [showSubscriptionIntroModal, setShowSubscriptionIntroModal] = useState(false);
-  const [showSubscriptionRequiredModal, setShowSubscriptionRequiredModal] = useState(false);
-  const [hasShownTrialEndModal, setHasShownTrialEndModal] = useState(false);
-
-  // 根據牌局狀態更新 trialEnded（在 useEffect 中，避免在渲染期間更新狀態）
-  useEffect(() => {
-    const canCreate = canCreateNewGame(state.games);
-    if (!canCreate) {
-      // 超過 24 小時或已結束 → 視為試用已到期
-      forceTrialEnded(true);
-      // 首次偵測到無法新增時，對未訂閱用戶顯示一次「試用已結束」彈窗
-      if (!isSubscribed && !hasShownTrialEndModal) {
-        setShowSubscriptionRequiredModal(true);
-        setHasShownTrialEndModal(true);
-      }
-    }
-  }, [state.games, canCreateNewGame, forceTrialEnded, isSubscribed, hasShownTrialEndModal]);
-
-  // 首次進入主頁時，對未訂閱用戶顯示一次訂閱說明（仍在免費試用內）
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (isSubscribed) return;
-
-    try {
-      const seen = window.localStorage?.getItem('subscription_intro_seen') === '1';
-      if (!seen) {
-        setShowSubscriptionIntroModal(true);
-      }
-    } catch {
-      setShowSubscriptionIntroModal(true);
-    }
-  }, [isSubscribed]);
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -316,7 +276,7 @@ const HomeScreen: React.FC = () => {
       // localStorage 失敗時，仍可顯示一次
       setShowAddToHomeModal(true);
     }
-  }, [isRunningStandalone, isSubscribed]);
+  }, [isRunningStandalone]);
 
   const handleDismissAddToHome = () => {
     setShowAddToHomeModal(false);
@@ -361,25 +321,11 @@ const HomeScreen: React.FC = () => {
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>{t('home.gameList')}</Text>
             <TouchableOpacity
-              style={[
-                styles.addGameButton,
-                !canCreateNewGame(state.games) && { opacity: 0.5 },
-              ]}
+              style={styles.addGameButton}
               onPress={() => {
-                if (!canCreateNewGame(state.games)) {
-                  // 無法新增 → 顯示強制訂閱彈窗
-                  setShowSubscriptionRequiredModal(true);
-                  return;
-                }
-                // 若是未訂閱但仍在免費期，且尚未顯示過說明，先顯示說明彈窗
-                if (!isSubscribed && !trialEnded) {
-                  setShowSubscriptionIntroModal(true);
-                } else {
-                  setNewGameModalVisible(true);
-                }
+                setNewGameModalVisible(true);
               }}
               activeOpacity={0.7}
-              disabled={!canCreateNewGame(state.games)}
             >
               <Text style={styles.addGameButtonText}>+</Text>
             </TouchableOpacity>
@@ -405,7 +351,16 @@ const HomeScreen: React.FC = () => {
               .map((game) => (
               <TouchableOpacity 
                 key={game.id} 
-                onPress={() => { 
+                onPress={async () => {
+                  // 如果牌局狀態為 completed（已失效），檢查 chips 狀態
+                  if (game.status === 'completed') {
+                    const chipStatus = await checkGameChipStatus(game.id);
+                    if (!chipStatus.hasValidChip && chips < 1) {
+                      // 沒有有效的 chip 且 chips 餘額為 0，彈出購買視窗
+                      openPurchaseModal();
+                      return;
+                    }
+                  }
                   selectCurrentGame(game.id);
                   // 設置導航標記，等待 state 更新
                   setPendingGameNavigation(game.id);
@@ -575,9 +530,7 @@ const HomeScreen: React.FC = () => {
               }}
             >
               {gameToDelete
-                ? isSubscribed
-                  ? `確定要刪除牌局「${gameToDelete.name}」嗎？`
-                  : `確定要刪除牌局「${gameToDelete.name}」嗎？即將失去免費額度。`
+                ? `確定要刪除牌局「${gameToDelete.name}」嗎？`
                 : '確定要刪除這個牌局嗎？'}
             </Text>
 
@@ -608,12 +561,6 @@ const HomeScreen: React.FC = () => {
                     const remainingGames = state.games.filter(g => g.id !== gameToDelete.id);
                     deleteGame(gameToDelete.id);
                     // 刪除後檢查是否可以新增牌局
-                    if (!isSubscribed && !canCreateNewGame(remainingGames)) {
-                      // 無法新增牌局，顯示訂閱彈窗
-                      setTimeout(() => {
-                        setShowSubscriptionRequiredModal(true);
-                      }, 100);
-                    }
                   }
                   setDeleteConfirmVisible(false);
                   setGameToDelete(null);
@@ -635,232 +582,6 @@ const HomeScreen: React.FC = () => {
         </View>
       </Modal>
 
-      {/* 訂閱說明彈窗（免費試用期間的友善提示） */}
-      <Modal
-        visible={showSubscriptionIntroModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowSubscriptionIntroModal(false);
-          if (typeof window !== 'undefined') {
-            try {
-              window.localStorage?.setItem('subscription_intro_seen', '1');
-            } catch {
-              // ignore
-            }
-          }
-        }}
-      >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: theme.spacing.lg,
-          }}
-          activeOpacity={1}
-          onPress={() => {
-            setShowSubscriptionIntroModal(false);
-            if (typeof window !== 'undefined') {
-              try {
-                window.localStorage?.setItem('subscription_intro_seen', '1');
-              } catch {
-                // ignore
-              }
-            }
-          }}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: theme.colors.surface,
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.lg,
-              maxWidth: 420,
-              width: '100%',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: theme.fontSize.lg,
-                fontWeight: '700',
-                color: theme.colors.text,
-                marginBottom: theme.spacing.md,
-              }}
-            >
-              需要訂閱以繼續使用
-            </Text>
-            <Text
-              style={{
-                fontSize: theme.fontSize.sm,
-                color: theme.colors.textSecondary,
-                marginBottom: theme.spacing.md,
-                lineHeight: 20,
-              }}
-            >
-              你現可免費記錄 1 個牌局；超過 24 小時或結束牌局後，需進行訂閱。{'\n'}
-              立刻訂閱月費計劃，無上限記錄、編輯牌局！
-            </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: theme.spacing.md,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSubscriptionIntroModal(false);
-                  if (typeof window !== 'undefined') {
-                    try {
-                      window.localStorage?.setItem('subscription_intro_seen', '1');
-                    } catch {
-                      // ignore
-                    }
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.colors.textSecondary,
-                    fontWeight: '600',
-                  }}
-                >
-                  我知道了
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSubscriptionIntroModal(false);
-                  navigation.navigate('Settings');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.colors.primary,
-                    fontWeight: '700',
-                  }}
-                >
-                  前往訂閱
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* 訂閱必要彈窗（試用已結束或牌局已結束） */}
-      <Modal
-        visible={showSubscriptionRequiredModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSubscriptionRequiredModal(false)}
-      >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: theme.spacing.lg,
-          }}
-          activeOpacity={1}
-          onPress={() => setShowSubscriptionRequiredModal(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: theme.colors.surface,
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.lg,
-              maxWidth: 420,
-              width: '100%',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: theme.fontSize.lg,
-                fontWeight: '700',
-                color: theme.colors.text,
-                marginBottom: theme.spacing.md,
-              }}
-            >
-              需要訂閱以繼續使用
-            </Text>
-            <Text
-              style={{
-                fontSize: theme.fontSize.sm,
-                color: theme.colors.textSecondary,
-                marginBottom: theme.spacing.md,
-                lineHeight: 20,
-              }}
-            >
-              你已超過 24 小時免費試用時間或牌局已結束，立刻訂閱月費計劃，無上限記錄、編輯牌局！
-            </Text>
-            
-            {/* PayPal 訂閱按鈕容器 */}
-            {Platform.OS === 'web' && (
-              <View style={{ width: '100%', minHeight: 48, marginBottom: theme.spacing.md }}>
-                <PayPalSubscriptionButton
-                  onSuccess={() => {
-                    setShowSubscriptionRequiredModal(false);
-                    if (typeof window !== 'undefined') {
-                      window.dispatchEvent(new Event('paypal-subscription-success'));
-                    }
-                  }}
-                />
-              </View>
-            )}
-            
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: theme.spacing.md,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => setShowSubscriptionRequiredModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.colors.primary,
-                    fontWeight: '700',
-                  }}
-                >
-                  先不要
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSubscriptionRequiredModal(false);
-                  navigation.navigate('Settings');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.colors.textSecondary,
-                    fontWeight: '600',
-                  }}
-                >
-                  前往訂閱
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Add to Home Screen 教學彈窗（僅 Web 顯示） */}
       {Platform.OS === 'web' && (
@@ -985,204 +706,5 @@ const HomeScreen: React.FC = () => {
   );
 };
 
-// PayPal 訂閱按鈕組件（黃色按鈕，用於「需要訂閱以繼續使用」視窗）
-const PayPalSubscriptionButton: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const buttonsInstanceRef = useRef<any>(null);
-  const isMountedRef = useRef(true);
-  const [isRendered, setIsRendered] = useState(false);
-  const PAYPAL_PLAN_ID = PAYPAL_SUBSCRIPTION_PLAN_ID;
-  const CONTAINER_ID = `paypal-subscription-button-${PAYPAL_PLAN_ID}-${Date.now()}`;
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-
-    let retryTimeout: NodeJS.Timeout;
-    let mounted = true;
-
-    const checkAndRender = () => {
-      if (!isMountedRef.current || !mounted) {
-        return;
-      }
-
-      let container = document.getElementById(CONTAINER_ID);
-      if (!container) {
-        container = document.querySelector(`[data-native-id="${CONTAINER_ID}"]`) as HTMLElement;
-      }
-      if (!container && containerRef.current) {
-        // @ts-ignore
-        const node = containerRef.current._nativeNode || containerRef.current;
-        if (node && node.nodeType === 1 && document.body.contains(node)) {
-          container = node;
-        }
-      }
-
-      if (!container || !document.body.contains(container)) {
-        const retryCount = parseInt(sessionStorage.getItem('paypal-subscription-retry-count') || '0', 10);
-        if (retryCount < 50 && isMountedRef.current && mounted) {
-          sessionStorage.setItem('paypal-subscription-retry-count', (retryCount + 1).toString());
-          retryTimeout = setTimeout(checkAndRender, 100);
-        } else {
-          sessionStorage.removeItem('paypal-subscription-retry-count');
-          console.warn('PayPal 容器未找到，停止重試');
-        }
-        return;
-      }
-
-      sessionStorage.removeItem('paypal-subscription-retry-count');
-
-      const loadPayPalScript = () =>
-        new Promise<void>((resolve, reject) => {
-          if (window.paypal) {
-            resolve();
-            return;
-          }
-          const existing = document.querySelector<HTMLScriptElement>(
-            `script[src^="${PAYPAL_SDK_URL}"]`
-          );
-          if (existing) {
-            existing.addEventListener('load', () => resolve(), { once: true });
-            existing.addEventListener('error', reject, { once: true });
-            return;
-          }
-
-          const script = document.createElement('script');
-          script.src = `${PAYPAL_SDK_URL}?client-id=${PAYPAL_CLIENT_ID}&vault=true&intent=subscription`;
-          script.setAttribute('data-sdk-integration-source', 'button-factory');
-          script.async = true;
-          script.onload = () => resolve();
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-
-      loadPayPalScript()
-        .then(() => {
-          if (!isMountedRef.current || !mounted) {
-            return;
-          }
-
-          if (!window.paypal) {
-            console.error('PayPal SDK 未載入');
-            return;
-          }
-
-          const containerElement = document.getElementById(CONTAINER_ID);
-          if (!containerElement || !document.body.contains(containerElement)) {
-            console.error('PayPal 容器不存在或已被移除');
-            return;
-          }
-
-          containerElement.innerHTML = '';
-
-          if (buttonsInstanceRef.current) {
-            try {
-              buttonsInstanceRef.current = null;
-            } catch (e) {
-              // 忽略清理錯誤
-            }
-          }
-
-          try {
-            const buttons = window.paypal.Buttons({
-              style: {
-                shape: 'pill',
-                color: 'gold', // 黃色 PayPal 按鈕
-                layout: 'vertical',
-                label: 'paypal',
-              },
-              createSubscription: function(data: any, actions: any) {
-                console.log('創建 PayPal 訂閱，計劃 ID:', PAYPAL_PLAN_ID);
-                return actions.subscription.create({
-                  plan_id: PAYPAL_PLAN_ID
-                });
-              },
-              onApprove: function(data: any, actions: any) {
-                console.log('PayPal 訂閱成功:', data.subscriptionID);
-                onSuccess();
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new Event('paypal-subscription-success'));
-                }
-              },
-              onError: function(err: any) {
-                console.error('PayPal 訂閱錯誤:', err);
-                if (err?.name === 'RESOURCE_NOT_FOUND' || err?.message?.includes('RESOURCE_NOT_FOUND')) {
-                  const errorMsg = `訂閱計劃未找到。請確認 Plan ID "${PAYPAL_PLAN_ID}" 在 PayPal Live 環境中存在。`;
-                  alert(errorMsg);
-                } else {
-                  alert(`PayPal 訂閱錯誤：${err?.message || JSON.stringify(err)}`);
-                }
-              },
-            });
-
-            buttonsInstanceRef.current = buttons;
-
-            const finalContainer = document.getElementById(CONTAINER_ID);
-            if (!finalContainer || !document.body.contains(finalContainer)) {
-              console.error('PayPal 容器在渲染前被移除');
-              return;
-            }
-
-            buttons
-              .render(`#${CONTAINER_ID}`)
-              .then(() => {
-                if (isMountedRef.current && mounted) {
-                  setIsRendered(true);
-                  console.log('PayPal 按鈕渲染成功');
-                }
-              })
-              .catch((err: any) => {
-                if (err.message && err.message.includes('removed from DOM')) {
-                  console.warn('PayPal 容器在渲染過程中被移除');
-                } else {
-                  console.error('渲染 PayPal 按鈕失敗', err);
-                }
-              });
-          } catch (error: any) {
-            console.error('創建 PayPal 按鈕失敗', error);
-          }
-        })
-        .catch((err) => {
-          console.error('載入 PayPal SDK 失敗', err);
-        });
-    };
-
-    checkAndRender();
-
-    return () => {
-      mounted = false;
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
-      const container = document.getElementById(CONTAINER_ID);
-      if (container) {
-        container.innerHTML = '';
-      }
-      buttonsInstanceRef.current = null;
-      sessionStorage.removeItem('paypal-subscription-retry-count');
-    };
-  }, [onSuccess]);
-
-  if (Platform.OS !== 'web') {
-    return null;
-  }
-
-  return (
-    <View style={{ width: '100%', minHeight: 48 }}>
-      {/* @ts-ignore - Web 平台使用原生 HTML 元素 */}
-      <div
-        ref={containerRef}
-        id={CONTAINER_ID}
-        style={{ width: '100%', minHeight: 48 }}
-      />
-    </View>
-  );
-};
 
 export default HomeScreen;

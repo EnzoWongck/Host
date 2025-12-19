@@ -76,7 +76,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import { Asset } from 'expo-asset';
 import { Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';

@@ -163,7 +163,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
               )}
               <Text style={styles.title}>Chips 不足</Text>
               <Text style={styles.balanceText}>
-                目前餘額：{chips} Chips
+                目前餘額：{chips ?? 0} Chips
               </Text>
               <Text style={styles.desc}>
                 每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
