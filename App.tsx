@@ -240,6 +240,37 @@ const AppNavigator: React.FC = () => {
     }
   }, [shouldSkipAuth, isSignedIn, signInWithEmail]);
 
+  // 處理 OAuth 回調並清理 URL（僅 Web 平台）
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    
+    const cleanupOAuthUrl = () => {
+      const hash = window.location.hash;
+      const hasOAuthParams = hash.includes('access_token') || 
+                            hash.includes('refresh_token') || 
+                            hash.includes('provider_token');
+      
+      if (hasOAuthParams) {
+        console.log('檢測到 OAuth 回調參數，清理 URL...');
+        // 清理 URL hash，保留路徑和查詢參數（如果有的話）
+        const url = new URL(window.location.href);
+        url.hash = ''; // 清除 hash
+        window.history.replaceState({}, '', url.toString());
+        console.log('已清理 OAuth 回調參數');
+      }
+    };
+    
+    // 立即檢查一次（處理已經存在的回調）
+    cleanupOAuthUrl();
+    
+    // 當登入狀態變化時也檢查（處理剛完成的登入）
+    if (isSignedIn && !loading) {
+      // 給一點延遲確保 Supabase 已經處理完 session
+      const timer = setTimeout(cleanupOAuthUrl, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isSignedIn, loading]); // 當登入狀態變化時檢查
+
   // 檢查初始狀態：如果已登入，直接進入主畫面
   useEffect(() => {
     // 等待認證狀態載入完成
