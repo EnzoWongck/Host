@@ -28,7 +28,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
 }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
-  const { chipsBalance } = useChips();
+  const { chips } = useChips();
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
 
   const styles = StyleSheet.create({
@@ -163,7 +163,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
               )}
               <Text style={styles.title}>Chips 不足</Text>
               <Text style={styles.balanceText}>
-                目前餘額：{chipsBalance} Chips
+                目前餘額：{chips} Chips
               </Text>
               <Text style={styles.desc}>
                 每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
@@ -189,7 +189,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
         onClose={() => {
           setPurchaseModalVisible(false);
           // 購買成功後刷新
-          if (chipsBalance > 0) {
+          if (chips > 0) {
             onSubscribeSuccess?.();
           }
         }}

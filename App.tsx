@@ -74,7 +74,7 @@ if (typeof window !== 'undefined') {
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Asset } from 'expo-asset';
@@ -779,14 +779,17 @@ const AppWithFont: React.FC = () => {
   return <AppNavigator />;
 };
 
-// 試用到期 Paywall 檢查組件
+// Chips 不足 Paywall 檢查組件
 const PaywallGuard: React.FC = () => {
-  const { trialEnded, isSubscribed, setSubscriptionStatus } = useSubscription();
+  const { chips, loading } = useChips();
   const [paywallVisible, setPaywallVisible] = React.useState(false);
 
   useEffect(() => {
-    // 如果試用到期且未訂閱，顯示 paywall
-    if (trialEnded && !isSubscribed) {
+    // 只有在沒有 chips（chips === 0）時才顯示 paywall
+    // 等待 loading 完成後再檢查
+    if (loading) return;
+    
+    if (chips === 0) {
       // 檢查是否在 1 小時內關閉過
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         const closedAt = localStorage.getItem('paywall_closed_at');
@@ -801,17 +804,28 @@ const PaywallGuard: React.FC = () => {
     } else {
       setPaywallVisible(false);
     }
-  }, [trialEnded, isSubscribed]);
+  }, [chips, loading]);
+
+  const handleClose = () => {
+    setPaywallVisible(false);
+    // 記錄關閉時間
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      localStorage.setItem('paywall_closed_at', Date.now().toString());
+    }
+  };
 
   const handleSubscribeSuccess = () => {
-    setSubscriptionStatus(true);
     setPaywallVisible(false);
+    // 清除關閉時間記錄
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      localStorage.removeItem('paywall_closed_at');
+    }
   };
 
   return (
     <TrialEndedPaywall
       visible={paywallVisible}
-      onClose={() => setPaywallVisible(false)}
+      onClose={handleClose}
       onSubscribeSuccess={handleSubscribeSuccess}
     />
   );

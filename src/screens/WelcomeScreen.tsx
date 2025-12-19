@@ -60,7 +60,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 3, // 電腦版減少 paddingTop
+      paddingTop: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3, // 手機版減少 paddingTop
       paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3,
       minHeight: isMobile ? undefined : '100%', // 電腦版確保最小高度
     },
@@ -72,7 +72,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       width: isMobile ? 140 : 280, // 電腦版稍微縮小
       height: isMobile ? 140 : 280,
       marginBottom: theme.spacing.xs, // 減少與文字的距離
-      marginTop: isMobile ? theme.spacing.xl * 1.5 : theme.spacing.xl, // 電腦版減少 marginTop
+      marginTop: isMobile ? 0 : theme.spacing.xl, // 手機版移除 marginTop
     },
     hostTitle: {
       fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
@@ -80,7 +80,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.xl * 1.6 : theme.spacing.xl * 1.5, // 電腦版減少 marginTop
+      marginTop: isMobile ? theme.spacing.xl : theme.spacing.xl * 1.5, // 手機版減少 marginTop
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
