@@ -14,6 +14,7 @@ const isLocalDev = () => {
 // 開發者帳戶白名單（這些帳戶不消耗 Chips）
 const DEVELOPER_EMAILS = [
   'pokerhostdeveloper@gmail.com',
+  'viviankwok2002@gmail.com',
 ];
 
 // 檢查是否為開發者帳戶

@@ -182,6 +182,7 @@ const AppNavigator: React.FC = () => {
   // 開發者帳戶白名單（這些帳戶不需要電話驗證）
   const DEVELOPER_EMAILS = [
     'pokerhostdeveloper@gmail.com',
+    'viviankwok2002@gmail.com',
   ];
   
   const isDeveloperAccount = (email?: string | null): boolean => {
