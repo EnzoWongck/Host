@@ -129,7 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 如果需要確認郵件，data.user 會存在但 session 為 null
       if (data.user && !data.session) {
         console.log('請檢查郵箱確認註冊');
-      } else {
+        // 即使需要確認郵件，也設置用戶狀態（用於顯示歡迎訊息等）
+        const authUser = await transformUser(data.user);
+        setUser(authUser);
+      } else if (data.user && data.session) {
+        // 直接註冊成功（不需要確認郵件）
         const authUser = await transformUser(data.user);
         setUser(authUser);
       }

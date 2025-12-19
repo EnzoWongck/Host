@@ -226,6 +226,7 @@ const AppNavigator: React.FC = () => {
     saveScreenToStorage(screen);
   };
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false); // 標記是否正在註冊流程中
   const { setNavigateToWelcomeCallback } = useNavigationContext();
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
@@ -273,7 +274,8 @@ const AppNavigator: React.FC = () => {
       }
     } else {
       // 未登入，如果在 phoneVerify 頁面，返回 welcome
-      if (currentScreen === 'phoneVerify') {
+      // 但如果在註冊流程中，不要跳轉
+      if (currentScreen === 'phoneVerify' && !isSigningUp) {
         console.log('未登入，從電話驗證頁面返回歡迎頁面');
         setCurrentScreenWithStorage('welcome');
       }
@@ -331,6 +333,9 @@ const AppNavigator: React.FC = () => {
   const [shouldClearGames, setShouldClearGames] = useState(false);
   
   const handleSignupSuccess = async () => {
+    // 標記正在註冊流程中
+    setIsSigningUp(true);
+    
     // 標記需要清除遊戲數據（通過 AsyncStorage 傳遞給 GameProvider 內部的組件）
     try {
       await AsyncStorage.setItem('shouldClearGamesOnSignup', 'true');
@@ -341,15 +346,25 @@ const AppNavigator: React.FC = () => {
     // 顯示新用戶歡迎模態框
     setShowNewUserWelcome(true);
     
+    // 等待一下讓用戶狀態更新
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     // 開發者帳戶：跳過電話驗證
     if (isDeveloperAccount(user?.email)) {
       console.log('🛠️ 開發者帳戶註冊，跳過電話驗證');
+      setIsSigningUp(false);
       setCurrentScreenWithStorage('main');
       return;
     }
     
     // 新用戶註冊後強制進行電話驗證
+    // 即使需要郵件確認，也先進入電話驗證頁面
     setCurrentScreenWithStorage('phoneVerify');
+    
+    // 3 秒後清除註冊標記（給用戶足夠時間完成電話驗證）
+    setTimeout(() => {
+      setIsSigningUp(false);
+    }, 3000);
   };
 
   const handleForgotPassword = () => {
@@ -409,8 +424,14 @@ const AppNavigator: React.FC = () => {
   if (currentScreen === 'phoneVerify') {
     return (
       <PhoneVerifyScreen
-        onVerified={() => setCurrentScreenWithStorage('main')}
-        onLogout={() => setCurrentScreenWithStorage('welcome')}
+        onVerified={() => {
+          setIsSigningUp(false); // 清除註冊標記
+          setCurrentScreenWithStorage('main');
+        }}
+        onLogout={() => {
+          setIsSigningUp(false); // 清除註冊標記
+          setCurrentScreenWithStorage('welcome');
+        }}
       />
     );
   }
