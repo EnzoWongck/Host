@@ -177,9 +177,12 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
   };
 
   // 驗證 OTP
-  const handleVerifyOtp = async () => {
-    const code = otp.join('');
-    if (code.length !== 6) {
+  const handleVerifyOtp = async (codeOverride?: string) => {
+    const code = codeOverride || otp.join('');
+    const codeLength = code.replace(/\s/g, '').length; // 移除空格後計算長度
+    
+    if (codeLength !== 6) {
+      console.log('驗證碼長度不正確:', codeLength, 'code:', code, 'otp:', otp);
       setError('請輸入 6 位驗證碼');
       return;
     }
@@ -277,8 +280,15 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       otpRefs.current[index + 1]?.focus();
     }
 
-    if (newOtp.every(d => d) && newOtp.join('').length === 6) {
-      setTimeout(() => handleVerifyOtp(), 100);
+    // 檢查是否所有6位都已輸入
+    const fullCode = newOtp.join('');
+    if (fullCode.length === 6 && newOtp.every(d => d && d.trim() !== '')) {
+      // 使用新的 OTP 值直接驗證，避免狀態不同步問題
+      setTimeout(() => {
+        // 確保狀態已更新
+        setOtp(newOtp);
+        handleVerifyOtp(fullCode);
+      }, 150);
     }
   };
 

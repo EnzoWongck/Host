@@ -227,6 +227,7 @@ const AppNavigator: React.FC = () => {
   };
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false); // 標記是否正在註冊流程中
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false); // 標記是否正在驗證電話
   const { setNavigateToWelcomeCallback } = useNavigationContext();
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
@@ -297,6 +298,12 @@ const AppNavigator: React.FC = () => {
         }
       } else {
         // 未驗證電話，必須進入電話驗證頁面
+        // 但如果正在驗證電話流程中，不要強制跳轉
+        if (isVerifyingPhone) {
+          console.log('正在驗證電話流程中，保持當前頁面');
+          return;
+        }
+        
         // 特別處理 OAuth 回調情況：如果從 welcome/login 登入，強制進入電話驗證
         if (currentScreen === 'welcome' || currentScreen === 'login' || 
             (currentScreen !== 'phoneVerify' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword')) {
@@ -312,7 +319,7 @@ const AppNavigator: React.FC = () => {
         setCurrentScreenWithStorage('welcome');
       }
     }
-  }, [loading, isSignedIn, user?.phoneVerified, shouldSkipAuth, currentScreen]);
+  }, [loading, isSignedIn, user?.phoneVerified, shouldSkipAuth, currentScreen, isVerifyingPhone, refreshUser]);
 
   const handleWelcomeGetStarted = () => {
     if (!shouldSkipAuth) {
@@ -456,12 +463,25 @@ const AppNavigator: React.FC = () => {
   if (currentScreen === 'phoneVerify') {
     return (
       <PhoneVerifyScreen
-        onVerified={() => {
+        onVerified={async () => {
           setIsSigningUp(false); // 清除註冊標記
+          setIsVerifyingPhone(true); // 標記正在驗證電話，防止 useEffect 干擾
+          
+          // 等待用戶狀態更新完成
+          await refreshUser();
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refreshUser();
+          
+          // 清除驗證標記
+          setIsVerifyingPhone(false);
+          
+          // 直接進入主畫面，不依賴 useEffect 檢查
+          console.log('電話驗證完成，直接進入主畫面');
           setCurrentScreenWithStorage('main');
         }}
         onLogout={() => {
           setIsSigningUp(false); // 清除註冊標記
+          setIsVerifyingPhone(false); // 清除驗證標記
           setCurrentScreenWithStorage('welcome');
         }}
       />
