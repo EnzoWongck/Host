@@ -370,7 +370,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
 interface GameContextType {
   state: GameState;
-  createGame: (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => void;
+  createGame: (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => Promise<string | null>;
   endGame: (gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => void;
   selectCurrentGame: (gameId: string) => void;
   updateGame: (game: Game) => void;
@@ -508,13 +508,50 @@ function transformSupabaseGame(
       partners: i.partners || [],
       timestamp: new Date(i.timestamp),
     })),
-    totalBuyIn: 0,
-    totalCashOut: 0,
-    totalRake: 0,
-    totalTips: 0,
-    totalExpenses: 0,
-    dealerSalaries: 0,
-    netProfit: 0,
+    // 計算總買入
+    totalBuyIn: players.reduce((sum, player) => sum + (player.buy_in || 0), 0),
+    // 計算總兌現
+    totalCashOut: players.reduce((sum, player) => {
+      return sum + ((player.buy_in || 0) + (player.profit || 0));
+    }, 0),
+    // 計算總抽水
+    totalRake: rakes.reduce((sum, rake) => sum + (rake.amount || 0), 0),
+    // 計算總小費
+    totalTips: dealers.reduce((sum, dealer) => sum + (dealer.total_tips || 0), 0),
+    // 計算總支出
+    totalExpenses: expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0),
+    // 計算發牌員薪金
+    dealerSalaries: dealers.reduce((sum, dealer) => {
+      const tipPortion = (dealer.total_tips || 0) * ((dealer.tip_share || 50) / 100);
+      const hourlyPortion = (dealer.hourly_rate || 0) * (dealer.work_hours || 0);
+      const baseSalary = tipPortion + hourlyPortion;
+      const salary = dealer.estimated_salary && dealer.estimated_salary > 0
+        ? dealer.estimated_salary
+        : baseSalary;
+      return sum + salary;
+    }, 0),
+    // 計算淨利潤
+    netProfit: (() => {
+      const buyIn = players.reduce((sum, player) => sum + (player.buy_in || 0), 0);
+      const cashOut = players.reduce((sum, player) => {
+        return sum + ((player.buy_in || 0) + (player.profit || 0));
+      }, 0);
+      const rake = rakes.reduce((sum, rake) => sum + (rake.amount || 0), 0);
+      const tips = dealers.reduce((sum, dealer) => sum + (dealer.total_tips || 0), 0);
+      const expensesTotal = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+      const dealerSalary = dealers.reduce((sum, dealer) => {
+        const tipPortion = (dealer.total_tips || 0) * ((dealer.tip_share || 50) / 100);
+        const hourlyPortion = (dealer.hourly_rate || 0) * (dealer.work_hours || 0);
+        const baseSalary = tipPortion + hourlyPortion;
+        const salary = dealer.estimated_salary && dealer.estimated_salary > 0
+          ? dealer.estimated_salary
+          : baseSalary;
+        return sum + salary;
+      }, 0);
+      const insuranceProfit = insurances.reduce((sum, ins) => sum + (ins.amount || 0), 0);
+      const revenue = gameData.game_mode === 'noRake' ? 0 : rake;
+      return revenue + insuranceProfit - (cashOut - buyIn) - expensesTotal - dealerSalary;
+    })(),
   };
 }
 
@@ -595,8 +632,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ============================================
   // 創建遊戲
   // ============================================
-  const createGame = useCallback(async (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>) => {
-    if (!user?.uid) return;
+  const createGame = useCallback(async (gameData: Omit<Game, 'id' | 'players' | 'dealers' | 'expenses' | 'rakes' | 'insurances' | 'totalBuyIn' | 'totalCashOut' | 'totalRake' | 'totalTips' | 'totalExpenses' | 'dealerSalaries' | 'netProfit'>): Promise<string | null> => {
+    if (!user?.uid) return null;
 
     try {
       const { data, error } = await supabase
@@ -638,9 +675,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       dispatch({ type: 'ADD_GAME', payload: newGame });
+      return data.id;
     } catch (error) {
       console.error('創建遊戲失敗:', error);
       dispatch({ type: 'SET_ERROR', payload: '創建遊戲失敗' });
+      return null;
     }
   }, [user?.uid]);
 

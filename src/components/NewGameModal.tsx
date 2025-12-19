@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useChips } from '../context/ChipsContext';
 import { useNavigation } from '@react-navigation/native';
 import Modal from './Modal';
 import Button from './Button';
@@ -371,7 +372,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
     }
   };
 
-  const handleCreateGame = () => {
+  const handleCreateGame = async () => {
     // 檢查是否可以新增牌局
     if (!canCreateNewGame(state.games)) {
       Alert.alert(
@@ -446,9 +447,27 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         };
       });
       
+      // 檢查 chips 餘額
+      if (chips < 1) {
+        Alert.alert(
+          'Chips 不足',
+          '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
+          [
+            { text: '取消', style: 'cancel' },
+            { 
+              text: '購買 Chips', 
+              onPress: () => {
+                onClose();
+                openPurchaseModal();
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
       // 創建新牌局
-      const gameId = Date.now().toString();
-      createGame({
+      const gameId = await createGame({
         name: gameName.trim(),
         hosts: hostObjects,
         smallBlind,
@@ -457,6 +476,21 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         status: 'active',
         gameMode,
       });
+
+      if (!gameId) {
+        Alert.alert('錯誤', '創建牌局失敗，請稍後再試');
+        return;
+      }
+
+      // 消耗 1 chip
+      const success = await consumeChip(gameId, 'new_game');
+      if (!success) {
+        Alert.alert('錯誤', '消耗 Chip 失敗，請稍後再試');
+        return;
+      }
+
+      // 刷新 chips 餘額
+      await loadChipsBalance();
 
       // 重置表單
       setGameName('');

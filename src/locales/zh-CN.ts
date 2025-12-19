@@ -71,7 +71,7 @@ export const zhCN: Translations = {
     newGame: '新增牌局',
     totalBuyIn: '总买入',
     players: '玩家数',
-    currentProfit: '当前利润',
+    currentProfit: '牌局盈利',
     finalProfit: '最终利润',
     gameList: '牌局列表',
     startTime: '开始时间',

@@ -71,7 +71,7 @@ export const zhTW: Translations = {
     newGame: '新增牌局',
     totalBuyIn: '總買入',
     players: '玩家數',
-    currentProfit: '目前利潤',
+    currentProfit: '牌局盈利',
     finalProfit: '最終利潤',
     gameList: '牌局列表',
     startTime: '開始時間',

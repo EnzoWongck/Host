@@ -200,15 +200,8 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
           <Button
             title={t('modals.endGame')}
             onPress={() => {
-              if (!canEdit) {
-                if (isGameLocked) {
-                  Alert.alert(
-                    'Chips 不足',
-                    '你的牌局編輯時間已用完，請購買 Chips 後再結束牌局。',
-                    [{ text: '確定' }]
-                  );
-                  return;
-                }
+              if (!canEdit && !isGameLocked) {
+                // 只有訂閱相關問題時才阻止，chips 過期不阻止結束牌局
                 Alert.alert(
                   '試用已到期',
                   '你的免費試用已完結，請訂閱後再結束牌局。',
@@ -221,8 +214,8 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             }}
             size="md"
             variant="primary"
-            style={{ flex: 1, opacity: !canEdit ? 0.5 : 1 }}
-            disabled={!canEdit}
+            style={{ flex: 1, opacity: !canEdit && !isGameLocked ? 0.5 : 1 }}
+            disabled={!canEdit && !isGameLocked}
             leftIconName="close"
             textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
           />
