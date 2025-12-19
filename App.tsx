@@ -179,6 +179,16 @@ const AppNavigator: React.FC = () => {
   
   const { user, isSignedIn, signInWithEmail, loading, signOut } = useAuth();
   
+  // 開發者帳戶白名單（這些帳戶不需要電話驗證）
+  const DEVELOPER_EMAILS = [
+    'pokerhostdeveloper@gmail.com',
+  ];
+  
+  const isDeveloperAccount = (email?: string | null): boolean => {
+    if (!email) return false;
+    return DEVELOPER_EMAILS.includes(email.toLowerCase());
+  };
+  
   // 從 sessionStorage 恢復頁面狀態（僅 Web 平台）
   const getInitialScreenFromStorage = (): 'welcome' | 'login' | 'signup' | 'forgotPassword' | 'phoneVerify' | 'main' => {
     if (shouldSkipAuth) return 'main';
@@ -237,6 +247,15 @@ const AppNavigator: React.FC = () => {
     if (shouldSkipAuth) return;
     
     if (isSignedIn) {
+      // 開發者帳戶：跳過電話驗證
+      if (isDeveloperAccount(user?.email)) {
+        if (currentScreen === 'welcome' || currentScreen === 'phoneVerify') {
+          console.log('🛠️ 開發者帳戶，跳過電話驗證，進入主畫面');
+          setCurrentScreenWithStorage('main');
+        }
+        return;
+      }
+      
       // 已登入，檢查是否需要電話驗證
       if (user?.phoneVerified) {
         // 已驗證電話，進入主畫面（除非當前在登入/註冊流程中）
@@ -280,6 +299,13 @@ const AppNavigator: React.FC = () => {
   };
 
   const handleLoginSuccess = () => {
+    // 開發者帳戶：跳過電話驗證
+    if (isDeveloperAccount(user?.email)) {
+      console.log('🛠️ 開發者帳戶登入，跳過電話驗證');
+      setCurrentScreenWithStorage('main');
+      return;
+    }
+    
     // 登入成功後，檢查是否需要電話驗證
     // 如果用戶已驗證電話，直接進入主畫面；否則進入電話驗證
     if (user?.phoneVerified) {
@@ -313,6 +339,13 @@ const AppNavigator: React.FC = () => {
     
     // 顯示新用戶歡迎模態框
     setShowNewUserWelcome(true);
+    
+    // 開發者帳戶：跳過電話驗證
+    if (isDeveloperAccount(user?.email)) {
+      console.log('🛠️ 開發者帳戶註冊，跳過電話驗證');
+      setCurrentScreenWithStorage('main');
+      return;
+    }
     
     // 新用戶註冊後強制進行電話驗證
     setCurrentScreenWithStorage('phoneVerify');
