@@ -376,6 +376,7 @@ const AppNavigator: React.FC = () => {
     return (
       <PhoneVerifyScreen
         onVerified={() => setCurrentScreenWithStorage('main')}
+        onLogout={() => setCurrentScreenWithStorage('welcome')}
       />
     );
   }

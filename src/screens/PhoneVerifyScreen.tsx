@@ -45,20 +45,23 @@ import { useAuth } from '../context/AuthContext';
 interface PhoneVerifyScreenProps {
   onVerified: () => void;
   onSkip?: () => void; // 可選：跳過驗證（僅用於開發）
+  onLogout?: () => void; // 登出後回調
 }
 
 const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
   onVerified,
   onSkip,
+  onLogout,
 }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, signOut } = useAuth();
 
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+852');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -182,6 +185,17 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
     }
   };
 
+  // 處理登出
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setSettingsModalVisible(false);
+      onLogout?.(); // 調用回調，返回 welcome 頁面
+    } catch (error) {
+      console.error('登出失敗:', error);
+    }
+  };
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -302,10 +316,83 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       color: theme.colors.textSecondary,
       fontSize: 14,
     },
+    settingsButton: {
+      position: 'absolute',
+      top: 60,
+      right: 24,
+      padding: 12,
+      zIndex: 1000,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    threeDotsContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: 40,
+      width: 40,
+    },
+    dot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.colors.text,
+      marginVertical: 2,
+    },
+    settingsModalContent: {
+      backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+      borderRadius: 20,
+      padding: 20,
+      minWidth: 200,
+    },
+    settingsModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    settingsModalItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: 'transparent',
+      marginBottom: 8,
+    },
+    settingsModalItemText: {
+      fontSize: 16,
+      color: theme.colors.text,
+      marginLeft: 12,
+    },
+    logoutItem: {
+      borderTopWidth: 1,
+      borderTopColor: colorMode === 'dark' ? '#333' : '#E5E5E5',
+      marginTop: 8,
+      paddingTop: 16,
+    },
+    logoutText: {
+      color: '#EF4444',
+    },
   });
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 3點設置按鈕 */}
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => setSettingsModalVisible(true)}
+        activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <View style={styles.threeDotsContainer}>
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+        </View>
+      </TouchableOpacity>
+
       {onSkip && (
         <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
           <Text style={styles.skipText}>跳過 →</Text>
@@ -511,6 +598,40 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
               ))}
             </ScrollView>
           </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 設置 Modal */}
+      <Modal
+        visible={settingsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSettingsModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setSettingsModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={styles.settingsModalContent}
+          >
+            <Text style={styles.settingsModalTitle}>設置</Text>
+            
+            <TouchableOpacity
+              style={[styles.settingsModalItem, styles.logoutItem]}
+              onPress={handleLogout}
+            >
+              <Text style={[styles.settingsModalItemText, styles.logoutText]}>登出</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>
