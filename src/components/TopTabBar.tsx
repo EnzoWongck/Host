@@ -182,19 +182,6 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
   return (
     <>
       <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.logoButton}
-          onPress={navigateToWelcome}
-          activeOpacity={0.7}
-        >
-          {Platform.OS === 'web' && (
-            <Image
-              source={{ uri: '/icons/icon-front-512.PNG' }}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
-          )}
-        </TouchableOpacity>
         {title && (
           <View style={styles.titleContainer}>
             {typeof title === 'string' ? (
