@@ -115,6 +115,21 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         body: JSON.stringify({ phoneNumber: cleanedPhoneNumber }),
       });
 
+      // 檢查響應狀態
+      if (!response.ok) {
+        // 嘗試解析錯誤響應
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          setError(errorData.message || errorData.error || `請求失敗 (${response.status})`);
+        } else {
+          const text = await response.text();
+          console.error('API 返回非 JSON 錯誤響應:', text.substring(0, 200));
+          setError(`請求失敗 (${response.status})。請檢查 API 配置。`);
+        }
+        return;
+      }
+
       // 檢查響應內容類型
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -125,7 +140,14 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         return;
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('JSON 解析失敗:', parseError);
+        setError('服務器響應格式錯誤，請稍後再試');
+        return;
+      }
 
       if (response.ok && data.success) {
         setStep('otp');
