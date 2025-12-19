@@ -107,11 +107,18 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         setStep('otp');
         setCountdown(60); // 60 秒後可重發
       } else {
-        setError(data.message || '發送驗證碼失敗');
+        // 顯示詳細錯誤訊息
+        const errorMsg = data.message || data.error || '發送驗證碼失敗';
+        setError(errorMsg);
+        
+        // 如果是 Free Trial 限制，顯示額外提示
+        if (errorMsg.includes('Free Trial') || errorMsg.includes('未在 Twilio 驗證')) {
+          console.warn('Twilio Free Trial 限制：只能發送到已驗證的號碼');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('發送 OTP 失敗:', err);
-      setError('發送驗證碼失敗，請稍後再試');
+      setError(err.message || '發送驗證碼失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -268,6 +275,8 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       fontSize: 14,
       textAlign: 'center',
       marginBottom: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      lineHeight: 20,
     },
     backButton: {
       alignItems: 'center',

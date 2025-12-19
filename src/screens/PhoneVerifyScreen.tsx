@@ -102,11 +102,18 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         setStep('otp');
         setCountdown(60);
       } else {
-        setError(data.message || '發送驗證碼失敗');
+        // 顯示詳細錯誤訊息
+        const errorMsg = data.message || data.error || '發送驗證碼失敗';
+        setError(errorMsg);
+        
+        // 如果是 Free Trial 限制，顯示額外提示
+        if (errorMsg.includes('Free Trial') || errorMsg.includes('未在 Twilio 驗證')) {
+          console.warn('Twilio Free Trial 限制：只能發送到已驗證的號碼');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('發送 OTP 失敗:', err);
-      setError('發送驗證碼失敗，請稍後再試');
+      setError(err.message || '發送驗證碼失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -275,6 +282,8 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       fontSize: 14,
       textAlign: 'center',
       marginBottom: 16,
+      paddingHorizontal: 16,
+      lineHeight: 20,
     },
     backButton: {
       alignItems: 'center',
