@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useChips } from '../context/ChipsContext';
 import { Alert } from 'react-native';
 import Button from './Button';
 import TabBarIcon from './TabBarIcon';
@@ -15,8 +16,9 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
   const { t } = useLanguage();
   const { state: gameState, setGameSummaryModalVisible } = useGame();
   const { trialEnded, isSubscribed } = useSubscription();
+  const { isGameLocked } = useChips();
   
-  const canEdit = !(trialEnded && !isSubscribed);
+  const canEdit = !(trialEnded && !isSubscribed) && !isGameLocked;
 
   const getTabTextColor = (routeName: string, isFocused: boolean) => {
     if (!isFocused) return theme.colors.textSecondary; // 未選取為灰色
@@ -199,6 +201,14 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             title={t('modals.endGame')}
             onPress={() => {
               if (!canEdit) {
+                if (isGameLocked) {
+                  Alert.alert(
+                    'Chips 不足',
+                    '你的牌局編輯時間已用完，請購買 Chips 後再結束牌局。',
+                    [{ text: '確定' }]
+                  );
+                  return;
+                }
                 Alert.alert(
                   '試用已到期',
                   '你的免費試用已完結，請訂閱後再結束牌局。',
@@ -212,6 +222,7 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             size="md"
             variant="primary"
             style={{ flex: 1, opacity: !canEdit ? 0.5 : 1 }}
+            disabled={!canEdit}
             leftIconName="close"
             textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
           />
