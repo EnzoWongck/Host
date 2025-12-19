@@ -370,9 +370,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // 清除本地狀態
       setUser(null);
+      // 清除 Supabase session
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase 登出錯誤:', error);
+        throw error;
+      }
+      // 清除 Web 平台的 localStorage
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          // 清除所有 Supabase 相關的 localStorage 項目
+          const keys = Object.keys(localStorage);
+          keys.forEach(key => {
+            if (key.startsWith('sb-') || key.includes('supabase')) {
+              localStorage.removeItem(key);
+            }
+          });
+          // 清除 sessionStorage
+          sessionStorage.clear();
+        } catch (e) {
+          console.warn('清除 localStorage 失敗:', e);
+        }
+      }
+      console.log('登出完成');
+    } catch (error) {
+      console.error('登出過程出錯:', error);
+      // 即使出錯，也清除本地狀態
+      setUser(null);
+      throw error;
     } finally {
       setLoading(false);
     }

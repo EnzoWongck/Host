@@ -321,13 +321,25 @@ const SettingsScreen: React.FC = () => {
                     onPress={async () => {
                       try {
                         console.log('開始登出...');
-                        await signOut();
-                        console.log('登出成功，導航到歡迎頁');
+                        // 先導航到歡迎頁，避免在登出過程中停留在設定頁
                         navigateToWelcome();
+                        // 等待一下確保導航完成
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        // 執行登出
+                        await signOut();
+                        console.log('登出成功');
+                        // 清除 sessionStorage
+                        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                          sessionStorage.removeItem('currentScreen');
+                          localStorage.removeItem('supabase.auth.token');
+                        }
                       } catch (error) {
                         console.error('登出失敗:', error);
-                        // 即使登出失敗，也嘗試導航回歡迎頁
+                        // 即使登出失敗，也確保導航到歡迎頁
                         navigateToWelcome();
+                        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                          sessionStorage.removeItem('currentScreen');
+                        }
                       }
                     }}
                   />
