@@ -28,6 +28,7 @@ const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { state, selectCurrentGame, deleteGame, updateGame } = useGame();
+  const { chips, checkGameChipStatus, openPurchaseModal, consumeChip } = useChips();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
