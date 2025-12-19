@@ -32,7 +32,9 @@ CREATE TABLE profiles (
   email TEXT,
   display_name TEXT,
   avatar_url TEXT,
-  phone TEXT,
+  phone_number TEXT,
+  phone_verified BOOLEAN DEFAULT false,
+  phone_verified_at TIMESTAMPTZ,
   chips INTEGER DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

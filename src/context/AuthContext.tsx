@@ -62,15 +62,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 獲取用戶的 profile（包含 chips 和 phone_verified）
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('phone_number, phone_verified, phone_verified_at, chips')
       .eq('id', supabaseUser.id)
       .single();
 
+    console.log('查詢 profile 結果:', {
+      userId: supabaseUser.id,
+      email: supabaseUser.email,
+      hasProfile: !!profile,
+      profileError: profileError ? {
+        message: profileError.message,
+        code: profileError.code,
+        details: profileError.details,
+      } : null,
+      profileData: profile ? JSON.stringify(profile, null, 2) : null,
+    });
+
     if (profileError) {
-      console.warn('獲取用戶 profile 失敗:', profileError);
+      console.error('獲取用戶 profile 失敗:', {
+        error: profileError,
+        userId: supabaseUser.id,
+        errorMessage: profileError.message,
+        errorCode: profileError.code,
+        errorDetails: profileError.details,
+      });
+      
       // 如果 profile 不存在，嘗試從 user_metadata 獲取
       const phoneVerified = supabaseUser.user_metadata?.phone_verified === true || 
-                           supabaseUser.user_metadata?.phone_verified === 'true';
+                           supabaseUser.user_metadata?.phone_verified === 'true' ||
+                           String(supabaseUser.user_metadata?.phone_verified).toLowerCase() === 'true';
+      
+      console.log('使用 user_metadata 作為備用:', {
+        phoneVerified: phoneVerified,
+        userMetadata: supabaseUser.user_metadata,
+      });
       
       return {
         uid: supabaseUser.id,
@@ -85,16 +110,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
+    if (!profile) {
+      console.warn('Profile 為 null，使用默認值');
+      return {
+        uid: supabaseUser.id,
+        email: supabaseUser.email || null,
+        displayName: supabaseUser.user_metadata?.full_name || 
+                     supabaseUser.user_metadata?.name || 
+                     supabaseUser.email?.split('@')[0] || null,
+        photoURL: supabaseUser.user_metadata?.avatar_url || null,
+        phoneNumber: supabaseUser.phone || null,
+        phoneVerified: false,
+        chips: 0,
+      };
+    }
+
     // 確保 phone_verified 是布林值
+    // 如果字段不存在（undefined），檢查是否有 phone_verified_at（表示已驗證）
     const phoneVerified = profile.phone_verified === true || 
                           profile.phone_verified === 'true' ||
-                          profile.phone_verified === 1;
+                          profile.phone_verified === 1 ||
+                          String(profile.phone_verified).toLowerCase() === 'true' ||
+                          !!profile.phone_verified_at; // 如果有驗證時間，視為已驗證
 
     console.log('用戶電話驗證狀態:', {
       userId: supabaseUser.id,
+      email: supabaseUser.email,
       phoneVerified: phoneVerified,
       profilePhoneVerified: profile.phone_verified,
+      profilePhoneVerifiedType: typeof profile.phone_verified,
+      phoneVerifiedRaw: profile.phone_verified,
+      phoneVerifiedAt: profile.phone_verified_at,
       phoneNumber: profile.phone_number,
+      hasPhoneVerifiedField: 'phone_verified' in profile,
+      hasPhoneVerifiedAtField: 'phone_verified_at' in profile,
+      profileKeys: Object.keys(profile),
     });
 
     return {
