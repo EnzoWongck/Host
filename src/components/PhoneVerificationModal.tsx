@@ -7,11 +7,31 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Modal as RNModal,
+  ScrollView,
 } from 'react-native';
 import Modal from './Modal';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+
+// 常用國家/地區代碼
+const COUNTRY_CODES = [
+  { code: '+852', country: '香港', flag: '🇭🇰' },
+  { code: '+86', country: '中國', flag: '🇨🇳' },
+  { code: '+886', country: '台灣', flag: '🇹🇼' },
+  { code: '+853', country: '澳門', flag: '🇲🇴' },
+  { code: '+65', country: '新加坡', flag: '🇸🇬' },
+  { code: '+60', country: '馬來西亞', flag: '🇲🇾' },
+  { code: '+81', country: '日本', flag: '🇯🇵' },
+  { code: '+82', country: '韓國', flag: '🇰🇷' },
+  { code: '+1', country: '美國/加拿大', flag: '🇺🇸' },
+  { code: '+44', country: '英國', flag: '🇬🇧' },
+  { code: '+61', country: '澳洲', flag: '🇦🇺' },
+  { code: '+66', country: '泰國', flag: '🇹🇭' },
+  { code: '+84', country: '越南', flag: '🇻🇳' },
+  { code: '+91', country: '印度', flag: '🇮🇳' },
+];
 
 interface PhoneVerificationModalProps {
   visible: boolean;
@@ -32,11 +52,14 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+852'); // 預設香港
+  const [countryCode, setCountryCode] = useState('+852');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
+
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
 
   const otpRefs = useRef<(TextInput | null)[]>([]);
 
@@ -273,8 +296,13 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
             </Text>
 
             <View style={styles.phoneInputRow}>
-              <TouchableOpacity style={styles.countryCodeButton}>
-                <Text style={styles.countryCodeText}>{countryCode}</Text>
+              <TouchableOpacity 
+                style={styles.countryCodeButton}
+                onPress={() => setShowCountryPicker(true)}
+              >
+                <Text style={styles.countryCodeText}>
+                  {selectedCountry.flag} {countryCode}
+                </Text>
               </TouchableOpacity>
               <TextInput
                 style={styles.phoneInput}
@@ -356,6 +384,85 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
           </>
         )}
       </View>
+
+      {/* 國家/地區選擇器 */}
+      <RNModal
+        visible={showCountryPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCountryPicker(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowCountryPicker(false)}
+        >
+          <View
+            style={{
+              backgroundColor: colorMode === 'dark' ? '#1A1A1A' : '#FFFFFF',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: '60%',
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: colorMode === 'dark' ? '#333' : '#E5E5E5',
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
+                選擇國家/地區
+              </Text>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                <Text style={{ fontSize: 16, color: '#0891B2' }}>完成</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ padding: 8 }}>
+              {COUNTRY_CODES.map(country => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 14,
+                    borderRadius: 10,
+                    backgroundColor:
+                      countryCode === country.code
+                        ? colorMode === 'dark'
+                          ? 'rgba(8, 145, 178, 0.3)'
+                          : 'rgba(8, 145, 178, 0.1)'
+                        : 'transparent',
+                  }}
+                  onPress={() => {
+                    setCountryCode(country.code);
+                    setShowCountryPicker(false);
+                  }}
+                >
+                  <Text style={{ fontSize: 20, marginRight: 10 }}>{country.flag}</Text>
+                  <Text style={{ flex: 1, fontSize: 15, color: theme.colors.text }}>
+                    {country.country}
+                  </Text>
+                  <Text style={{ fontSize: 15, color: theme.colors.textSecondary }}>
+                    {country.code}
+                  </Text>
+                  {countryCode === country.code && (
+                    <Text style={{ marginLeft: 8, color: '#0891B2' }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </RNModal>
     </Modal>
   );
 };
