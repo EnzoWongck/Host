@@ -94,9 +94,13 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
       marginTop: -4, // 緊密排列
     },
     rightContainer: {
+      position: 'absolute',
+      top: theme.spacing.sm,
+      right: theme.spacing.lg,
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.sm,
+      zIndex: 10,
     },
     settingsButton: {
       padding: theme.spacing.sm,
