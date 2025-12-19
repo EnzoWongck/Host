@@ -351,30 +351,37 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess, onSig
       console.error('錯誤訊息:', error?.message);
       console.error('完整錯誤對象:', JSON.stringify(error, null, 2));
       
-      // 根據 Firebase 錯誤代碼提供友好的錯誤訊息
+      // 根據 Supabase/Firebase 錯誤代碼提供友好的錯誤訊息
       const errorCode = error?.code || (error?.message?.match(/\(([^)]+)\)/)?.[1]);
       let errorMessage = '登入失敗，請檢查 Email 和密碼後重試。';
       
       // 根據錯誤代碼設置友好的錯誤訊息
-      if (errorCode === 'auth/invalid-credential' || 
+      // Supabase 錯誤代碼
+      if (errorCode === 'invalid_credentials' || 
+          errorCode === 'invalid_grant' ||
+          errorCode === 'auth/invalid-credential' || 
           errorCode === 'auth/wrong-password' || 
           errorCode === 'auth/user-not-found') {
-        errorMessage = 'Email 或密碼錯誤，請檢查後重試。\n\n如果忘記密碼，請點擊「忘記密碼」重設。';
+        errorMessage = 'Email 或密碼錯誤，請檢查後重試。\n\n如果忘記密碼，請點擊「忘記密碼」重設。\n\n如果還沒有帳號，請先註冊。';
+      } else if (errorCode === 'email_not_confirmed' || errorCode === 'auth/email-not-verified') {
+        errorMessage = '請先確認您的 Email。我們已發送確認郵件到您的信箱，請點擊郵件中的連結完成確認。';
       } else if (errorCode === 'auth/user-disabled') {
         errorMessage = '此帳號已被停用，請聯繫客服。';
-      } else if (errorCode === 'auth/too-many-requests') {
+      } else if (errorCode === 'too_many_requests' || errorCode === 'auth/too-many-requests') {
         errorMessage = '登入嘗試次數過多，請稍後再試。';
       } else if (errorCode === 'auth/network-request-failed') {
         errorMessage = '網路連線失敗，請檢查網路連線後重試。';
-      } else if (errorCode === 'auth/invalid-email') {
+      } else if (errorCode === 'invalid_email' || errorCode === 'auth/invalid-email') {
         errorMessage = 'Email 格式不正確，請檢查後重試。';
       } else if (error?.message) {
         // 檢查錯誤訊息中是否包含已知的錯誤關鍵字
         const errorMsg = error.message.toLowerCase();
-        if (errorMsg.includes('invalid-credential') || 
+        if (errorMsg.includes('invalid_credentials') ||
+            errorMsg.includes('invalid-credential') || 
             errorMsg.includes('wrong-password') ||
-            errorMsg.includes('user-not-found')) {
-          errorMessage = 'Email 或密碼錯誤，請檢查後重試。\n\n如果忘記密碼，請點擊「忘記密碼」重設。';
+            errorMsg.includes('user-not-found') ||
+            errorMsg.includes('invalid login')) {
+          errorMessage = 'Email 或密碼錯誤，請檢查後重試。\n\n如果忘記密碼，請點擊「忘記密碼」重設。\n\n如果還沒有帳號，請先註冊。';
         } else {
           errorMessage = error.message;
         }
