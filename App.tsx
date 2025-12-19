@@ -181,7 +181,7 @@ const AppNavigator: React.FC = () => {
     shouldSkipAuth ? 'main' : 'welcome'
   );
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
-  const { isSignedIn, signInWithEmail, loading, signOut } = useAuth();
+  const { user, isSignedIn, signInWithEmail, loading, signOut } = useAuth();
   const { setNavigateToWelcomeCallback } = useNavigationContext();
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
@@ -206,15 +206,20 @@ const AppNavigator: React.FC = () => {
     // 只在初始載入時（currentScreen 為 'welcome'）檢查用戶狀態
     if (currentScreen === 'welcome') {
       if (isSignedIn) {
-        // 已登入，直接進入主畫面（Supabase 不強制電話驗證）
-        console.log('已登入，進入主畫面');
-        setCurrentScreen('main');
+        // 已登入，檢查是否需要電話驗證
+        if (user?.phoneVerified) {
+          console.log('已登入且已驗證電話，進入主畫面');
+          setCurrentScreen('main');
+        } else {
+          console.log('已登入但未驗證電話，進入電話驗證');
+          setCurrentScreen('phoneVerify');
+        }
       } else {
         // 未登入，保持在歡迎頁面
         console.log('未登入，保持在歡迎頁面');
       }
     }
-  }, [loading, isSignedIn, shouldSkipAuth, currentScreen]);
+  }, [loading, isSignedIn, user?.phoneVerified, shouldSkipAuth, currentScreen]);
 
   const handleWelcomeGetStarted = () => {
     if (!shouldSkipAuth) {
@@ -236,8 +241,13 @@ const AppNavigator: React.FC = () => {
   };
 
   const handleLoginSuccess = () => {
-    // 登入成功後，直接進入主畫面（Supabase 不強制電話驗證）
-    setCurrentScreen('main');
+    // 登入成功後，檢查是否需要電話驗證
+    // 如果用戶已驗證電話，直接進入主畫面；否則進入電話驗證
+    if (user?.phoneVerified) {
+      setCurrentScreen('main');
+    } else {
+      setCurrentScreen('phoneVerify');
+    }
   };
 
   const handleSignup = () => {
@@ -265,8 +275,8 @@ const AppNavigator: React.FC = () => {
     // 顯示新用戶歡迎模態框
     setShowNewUserWelcome(true);
     
-    // 註冊成功後直接進入主畫面
-    setCurrentScreen('main');
+    // 新用戶註冊後強制進行電話驗證
+    setCurrentScreen('phoneVerify');
   };
 
   const handleForgotPassword = () => {
@@ -322,15 +332,14 @@ const AppNavigator: React.FC = () => {
     return <ForgetPasswordScreen onBack={handleForgotPasswordBack} />;
   }
 
-  // 電話驗證暫時禁用（Supabase 電話驗證需要額外設置）
-  // if (currentScreen === 'phoneVerify') {
-  //   return (
-  //     <PhoneVerifyScreen
-  //       isLoginMode={true}
-  //       onVerified={() => setCurrentScreen('main')}
-  //     />
-  //   );
-  // }
+  // 電話驗證畫面
+  if (currentScreen === 'phoneVerify') {
+    return (
+      <PhoneVerifyScreen
+        onVerified={() => setCurrentScreen('main')}
+      />
+    );
+  }
 
   return (
     <>

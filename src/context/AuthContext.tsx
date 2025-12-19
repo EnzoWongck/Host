@@ -12,6 +12,7 @@ export type AuthUser = {
   displayName: string | null;
   photoURL: string | null;
   phoneNumber: string | null;
+  phoneVerified: boolean;
   chips: number;
 } | null;
 
@@ -72,7 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                    supabaseUser.user_metadata?.name || 
                    supabaseUser.email?.split('@')[0] || null,
       photoURL: supabaseUser.user_metadata?.avatar_url || null,
-      phoneNumber: supabaseUser.phone || null,
+      phoneNumber: profile?.phone_number || supabaseUser.phone || null,
+      phoneVerified: profile?.phone_verified || false,
       chips: profile?.chips || 0,
     };
   }, []);

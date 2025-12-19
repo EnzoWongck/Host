@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -56,7 +55,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       backgroundColor: 'rgba(0, 0, 0, 0.5)', // 半透明黑色遮罩，淡化背景
     },
     content: {
-      flexGrow: 1,
+      flex: 1,
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
@@ -248,11 +247,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
               <View style={styles.dot} />
             </View>
           </TouchableOpacity>
-          <ScrollView 
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
-          >
+          <View style={styles.content}>
             <View style={styles.logoContainer}>
               <Image 
                 // 使用自訂的歡迎頁圖示（welcomeicon.png）
@@ -310,7 +305,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
             <View style={styles.bottomLinks}>
               <Text style={styles.privacyText}>{t('welcome.privacy')}</Text>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </ImageBackground>
 
