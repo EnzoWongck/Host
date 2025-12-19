@@ -146,12 +146,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     setLoading(true);
     try {
+      // 確保使用當前域名作為 redirectTo（不依賴 Supabase Site URL）
+      const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : 'https://lunchips.com';
+      
+      console.log('Google OAuth redirectTo:', redirectUrl);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
-            ? `${window.location.origin}/auth/callback`
-            : 'https://lunchips.com/auth/callback',
+          redirectTo: redirectUrl,
         },
       });
       if (error) throw error;
@@ -165,12 +170,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithApple = useCallback(async () => {
     setLoading(true);
     try {
+      // 確保使用當前域名作為 redirectTo（不依賴 Supabase Site URL）
+      const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : 'https://lunchips.com';
+      
+      console.log('Apple OAuth redirectTo:', redirectUrl);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
-            ? `${window.location.origin}/auth/callback`
-            : 'https://lunchips.com/auth/callback',
+          redirectTo: redirectUrl,
         },
       });
       if (error) throw error;

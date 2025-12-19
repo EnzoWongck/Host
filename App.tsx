@@ -177,7 +177,7 @@ const AppNavigator: React.FC = () => {
   
   // 強制跳過登入：如果配置為 true，直接返回主頁面（在渲染前檢查）
   
-  const { user, isSignedIn, signInWithEmail, loading, signOut } = useAuth();
+  const { user, isSignedIn, signInWithEmail, loading, signOut, refreshUser } = useAuth();
   
   // 開發者帳戶白名單（這些帳戶不需要電話驗證）
   const DEVELOPER_EMAILS = [
@@ -244,32 +244,31 @@ const AppNavigator: React.FC = () => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     
-    const cleanupOAuthUrl = () => {
-      const hash = window.location.hash;
-      const hasOAuthParams = hash.includes('access_token') || 
-                            hash.includes('refresh_token') || 
-                            hash.includes('provider_token');
+    const hash = window.location.hash;
+    const hasOAuthParams = hash.includes('access_token') || 
+                          hash.includes('refresh_token') || 
+                          hash.includes('provider_token');
+    
+    if (hasOAuthParams) {
+      console.log('檢測到 OAuth 回調參數，等待 Supabase 處理 session...');
       
-      if (hasOAuthParams) {
-        console.log('檢測到 OAuth 回調參數，清理 URL...');
-        // 清理 URL hash，保留路徑和查詢參數（如果有的話）
+      // 等待 Supabase 處理 session 後再清理 URL 和檢查電話驗證
+      const timer = setTimeout(() => {
+        // 清理 URL hash
         const url = new URL(window.location.href);
-        url.hash = ''; // 清除 hash
+        url.hash = '';
         window.history.replaceState({}, '', url.toString());
         console.log('已清理 OAuth 回調參數');
-      }
-    };
-    
-    // 立即檢查一次（處理已經存在的回調）
-    cleanupOAuthUrl();
-    
-    // 當登入狀態變化時也檢查（處理剛完成的登入）
-    if (isSignedIn && !loading) {
-      // 給一點延遲確保 Supabase 已經處理完 session
-      const timer = setTimeout(cleanupOAuthUrl, 300);
+        
+        // 強制刷新用戶狀態以確保電話驗證狀態是最新的
+        if (isSignedIn && user) {
+          refreshUser();
+        }
+      }, 500);
+      
       return () => clearTimeout(timer);
     }
-  }, [isSignedIn, loading]); // 當登入狀態變化時檢查
+  }, [isSignedIn, user, refreshUser]); // 當登入狀態變化時檢查
 
   // 檢查初始狀態：如果已登入，直接進入主畫面
   useEffect(() => {
@@ -292,13 +291,15 @@ const AppNavigator: React.FC = () => {
       // 已登入，檢查是否需要電話驗證
       if (user?.phoneVerified) {
         // 已驗證電話，進入主畫面（除非當前在登入/註冊流程中）
-        if (currentScreen === 'welcome' || currentScreen === 'phoneVerify') {
+        if (currentScreen === 'welcome' || currentScreen === 'phoneVerify' || currentScreen === 'login') {
           console.log('已登入且已驗證電話，進入主畫面');
           setCurrentScreenWithStorage('main');
         }
       } else {
         // 未驗證電話，必須進入電話驗證頁面
-        if (currentScreen !== 'phoneVerify' && currentScreen !== 'login' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword') {
+        // 特別處理 OAuth 回調情況：如果從 welcome/login 登入，強制進入電話驗證
+        if (currentScreen === 'welcome' || currentScreen === 'login' || 
+            (currentScreen !== 'phoneVerify' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword')) {
           console.log('已登入但未驗證電話，進入電話驗證');
           setCurrentScreenWithStorage('phoneVerify');
         }
