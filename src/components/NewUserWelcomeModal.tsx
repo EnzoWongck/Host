@@ -157,7 +157,12 @@ const NewUserWelcomeModal: React.FC<NewUserWelcomeModalProps> = ({ visible, onCl
         >
           <Text style={styles.title}>歡迎使用 LunChips！</Text>
           <Text style={styles.message}>
-            你現可免費記錄 1 個牌局；超過 24 小時或結束牌局後，需先完成訂閱。
+            新用戶註冊即獲贈 1 個免費 Chip{'\n'}
+            {'\n'}
+            每個牌局需要消耗 1 個 Chip{'\n'}
+            每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
+            {'\n'}
+            當牌局編輯時間用完時，需要購買更多 Chips 以繼續使用
           </Text>
           
           {showPWAInstall && Platform.OS === 'web' && (
