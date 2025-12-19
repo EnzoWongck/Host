@@ -378,20 +378,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Supabase 登出錯誤:', error);
         throw error;
       }
-      // 清除 Web 平台的 localStorage
+      // 清除 Web 平台的認證相關存儲
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         try {
-          // 清除所有 Supabase 相關的 localStorage 項目
+          // 清除 Supabase 認證相關的 localStorage 項目
+          // Supabase 通常使用 'sb-<project-id>-auth-token' 格式
           const keys = Object.keys(localStorage);
           keys.forEach(key => {
-            if (key.startsWith('sb-') || key.includes('supabase')) {
+            // 清除所有 Supabase 相關的認證數據（以 sb- 開頭）
+            // 這只會清除認證令牌，不會影響其他數據
+            if (key.startsWith('sb-')) {
               localStorage.removeItem(key);
             }
           });
-          // 清除 sessionStorage
-          sessionStorage.clear();
+          // 清除 sessionStorage 中的認證相關項目
+          sessionStorage.removeItem('currentScreen');
+          // 清除 Supabase 的 sessionStorage（如果有的話）
+          const sessionKeys = Object.keys(sessionStorage);
+          sessionKeys.forEach(key => {
+            if (key.startsWith('sb-') || key.includes('supabase-auth')) {
+              sessionStorage.removeItem(key);
+            }
+          });
+          console.log('已清除認證相關的存儲數據（牌局數據不受影響，存儲在數據庫中）');
         } catch (e) {
-          console.warn('清除 localStorage 失敗:', e);
+          console.warn('清除認證數據失敗:', e);
         }
       }
       console.log('登出完成');
