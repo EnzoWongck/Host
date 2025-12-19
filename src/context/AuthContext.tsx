@@ -147,9 +147,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       // 確保使用當前域名作為 redirectTo（不依賴 Supabase Site URL）
-      const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-        ? `${window.location.origin}${window.location.pathname}`
-        : 'https://lunchips.com';
+      let redirectUrl: string;
+      
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // 使用當前頁面的完整 URL
+        redirectUrl = window.location.href.split('#')[0]; // 移除 hash
+        console.log('當前頁面 URL:', window.location.href);
+        console.log('當前 origin:', window.location.origin);
+        console.log('當前 pathname:', window.location.pathname);
+      } else {
+        redirectUrl = 'https://lunchips.com';
+      }
       
       console.log('Google OAuth redirectTo:', redirectUrl);
       
@@ -157,9 +165,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
+          queryParams: {
+            // 強制使用指定的 redirectTo，不依賴 Supabase Site URL
+            redirect_to: redirectUrl,
+          },
         },
       });
-      if (error) throw error;
+      if (error) {
+        console.error('Google OAuth 錯誤:', error);
+        throw error;
+      }
       // OAuth 登入會重定向，不需要在這裡處理 user
     } finally {
       setLoading(false);
@@ -171,9 +186,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       // 確保使用當前域名作為 redirectTo（不依賴 Supabase Site URL）
-      const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-        ? `${window.location.origin}${window.location.pathname}`
-        : 'https://lunchips.com';
+      let redirectUrl: string;
+      
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // 使用當前頁面的完整 URL
+        redirectUrl = window.location.href.split('#')[0]; // 移除 hash
+        console.log('當前頁面 URL:', window.location.href);
+        console.log('當前 origin:', window.location.origin);
+        console.log('當前 pathname:', window.location.pathname);
+      } else {
+        redirectUrl = 'https://lunchips.com';
+      }
       
       console.log('Apple OAuth redirectTo:', redirectUrl);
       
@@ -181,9 +204,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         provider: 'apple',
         options: {
           redirectTo: redirectUrl,
+          queryParams: {
+            // 強制使用指定的 redirectTo，不依賴 Supabase Site URL
+            redirect_to: redirectUrl,
+          },
         },
       });
-      if (error) throw error;
+      if (error) {
+        console.error('Apple OAuth 錯誤:', error);
+        throw error;
+      }
     } finally {
       setLoading(false);
     }
