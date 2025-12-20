@@ -293,36 +293,47 @@ const AppNavigator: React.FC = () => {
       const checkPhoneVerification = async () => {
         let phoneVerified = user?.phoneVerified;
         
-        // 如果 React 狀態中的 phoneVerified 為 false 或 undefined，直接從數據庫查詢
+        // 如果 React 狀態中的 phoneVerified 為 false 或 undefined，先刷新用戶狀態
         if (!phoneVerified) {
           try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('phone_verified, phone_verified_at, phone_number')
-              .eq('id', user.uid)
-              .single();
+            // 先刷新用戶狀態，這會從數據庫獲取最新的 phone_verified 狀態
+            await refreshUser();
+            await new Promise(resolve => setTimeout(resolve, 300)); // 等待狀態更新
             
-            if (profile) {
-              phoneVerified = profile.phone_verified === true || 
-                            profile.phone_verified === 'true' ||
-                            profile.phone_verified === 1 ||
-                            !!profile.phone_verified_at;
-              
-              console.log('從數據庫查詢的電話驗證狀態:', {
-                userId: user.uid,
-                email: user.email,
-                phoneVerified: phoneVerified,
-                profilePhoneVerified: profile.phone_verified,
-                phoneVerifiedAt: profile.phone_verified_at,
-              });
-              
-              // 如果查詢到已驗證，更新用戶狀態
-              if (phoneVerified) {
-                await refreshUser();
+            // 再次檢查刷新後的狀態
+            phoneVerified = user?.phoneVerified;
+            
+            // 如果刷新後仍然沒有，直接從數據庫查詢（作為備用方案）
+            if (!phoneVerified) {
+              try {
+                const { data: profile, error: profileError } = await supabase
+                  .from('profiles')
+                  .select('phone_verified, phone_verified_at, phone_number')
+                  .eq('id', user.uid)
+                  .maybeSingle(); // 使用 maybeSingle 而不是 single，避免在沒有記錄時拋錯
+                
+                if (profileError) {
+                  console.error('查詢 profile 錯誤:', profileError);
+                } else if (profile) {
+                  phoneVerified = profile.phone_verified === true || 
+                                profile.phone_verified === 'true' ||
+                                profile.phone_verified === 1 ||
+                                !!profile.phone_verified_at;
+                  
+                  console.log('從數據庫查詢的電話驗證狀態:', {
+                    userId: user.uid,
+                    email: user.email,
+                    phoneVerified: phoneVerified,
+                    profilePhoneVerified: profile.phone_verified,
+                    phoneVerifiedAt: profile.phone_verified_at,
+                  });
+                }
+              } catch (error) {
+                console.error('查詢電話驗證狀態失敗:', error);
               }
             }
           } catch (error) {
-            console.error('查詢電話驗證狀態失敗:', error);
+            console.error('刷新用戶狀態失敗:', error);
           }
         }
         
