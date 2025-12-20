@@ -461,7 +461,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       console.error('消耗 Chip 失敗:', error);
       return false;
     }
-  }, [isSignedIn, user, chips, getApiBaseUrl]);
+  }, [isSignedIn, user, chips, getApiBaseUrl, checkGameChipStatus, setupExpiryTimers]);
 
   // 創建 Stripe Checkout Session
   const createCheckoutSession = useCallback(async (packageItem: ChipsPackage): Promise<string | null> => {
