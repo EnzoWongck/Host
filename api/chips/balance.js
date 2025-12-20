@@ -44,9 +44,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 獲取用戶數據
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
+    // 獲取用戶數據（從 profiles 表）
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
       .select('chips')
       .eq('id', userId)
       .single();
@@ -59,22 +59,24 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (user) {
+    if (profile) {
       // 用戶存在
       res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
-        chips: user.chips || 0,
+        chips: profile.chips || 0,
         isNewUser: false,
       }));
     } else {
       // 新用戶：創建記錄並贈送免費 Chips
+      // 注意：通常觸發器會自動創建 profile，但如果沒有，這裡手動創建
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
       const { error: insertError } = await supabase
-        .from('users')
+        .from('profiles')
         .insert({
           id: userId,
+          email: authUser?.user?.email || null,
           chips: FREE_CHIPS_FOR_NEW_USER,
           created_at: new Date().toISOString(),
-          is_new_user: true
         });
 
       if (insertError) {
@@ -83,17 +85,6 @@ module.exports = async (req, res) => {
         res.end(JSON.stringify({ error: 'Failed to create user' }));
         return;
       }
-
-      // 記錄免費贈送交易
-      await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          type: 'free_gift',
-          chips_amount: FREE_CHIPS_FOR_NEW_USER,
-          reason: 'new_user_welcome',
-          created_at: new Date().toISOString()
-        });
 
       res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
