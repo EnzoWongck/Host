@@ -479,9 +479,11 @@ const AppNavigator: React.FC = () => {
     });
     
     // 嚴格檢查：phoneVerified 必須為 true
-    const isPhoneVerified = currentUser?.phoneVerified === true || 
-                           currentUser?.phoneVerified === 'true' ||
-                           currentUser?.phoneVerified === 1;
+    // 注意：currentUser?.phoneVerified 可能是 boolean | undefined，需要類型轉換
+    const phoneVerifiedValue = currentUser?.phoneVerified;
+    const isPhoneVerified = phoneVerifiedValue === true || 
+                           (typeof phoneVerifiedValue === 'string' && phoneVerifiedValue === 'true') ||
+                           (typeof phoneVerifiedValue === 'number' && phoneVerifiedValue === 1);
     
     if (isPhoneVerified) {
       console.log('✅ 用戶已驗證電話，進入主畫面');
