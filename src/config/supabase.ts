@@ -15,7 +15,7 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // 延遲初始化 Supabase 客戶端，避免在模塊加載時執行
 let _supabase: ReturnType<typeof createClient> | null = null;
 
-const getSupabaseClient = () => {
+const getSupabaseClient = (): ReturnType<typeof createClient> => {
   if (!_supabase) {
     _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
@@ -51,11 +51,18 @@ const getSupabaseClient = () => {
 };
 
 // 導出 getter，確保延遲初始化
+// 使用 Proxy 來延遲客戶端創建，直到第一次訪問
 export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
   get(_target, prop) {
-    return getSupabaseClient()[prop as keyof ReturnType<typeof createClient>];
+    const client = getSupabaseClient();
+    const value = (client as any)[prop];
+    // 如果是函數，綁定 this 上下文
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
   },
-});
+}) as ReturnType<typeof createClient>;
 
 // ============================================
 // OAuth 配置
