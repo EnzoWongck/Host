@@ -1,6 +1,7 @@
+// react-native-gesture-handler 必須在所有其他導入之前
+import 'react-native-gesture-handler';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Asset } from 'expo-asset';
