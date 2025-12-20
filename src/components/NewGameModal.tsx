@@ -30,6 +30,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { createGame, state, deleteGame } = useGame();
+  const { chips, consumeChip, loadChipsBalance, openPurchaseModal } = useChips();
   const navigation = useNavigation<any>();
   
   const [gameName, setGameName] = useState('');
