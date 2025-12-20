@@ -372,7 +372,10 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   };
 
   const handleCreateGame = async () => {
-
+    console.log('開始創建牌局，當前 chips:', chips);
+    console.log('consumeChip 函數:', typeof consumeChip);
+    console.log('loadChipsBalance 函數:', typeof loadChipsBalance);
+    
     // 驗證輸入
     if (!gameName.trim()) {
       Alert.alert(t('common.error') || '錯誤', t('newGame.errorNameRequired'));
@@ -473,7 +476,21 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       }
 
       // 消耗 1 chip
+      console.log('開始消耗 chip，gameId:', gameId);
+      if (!consumeChip) {
+        console.error('consumeChip 函數未定義');
+        Alert.alert('錯誤', '無法消耗 Chip，請刷新頁面後重試。');
+        // 刪除已創建的牌局
+        try {
+          await deleteGame(gameId);
+        } catch (deleteError) {
+          console.error('回滾牌局創建失敗:', deleteError);
+        }
+        return;
+      }
+      
       const success = await consumeChip(gameId, 'new_game');
+      console.log('消耗 chip 結果:', success);
       if (!success) {
         // 如果消耗 chip 失敗，刪除已創建的牌局（回滾）
         try {
