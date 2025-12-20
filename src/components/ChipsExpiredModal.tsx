@@ -27,7 +27,7 @@ const ChipsExpiredModal: React.FC<ChipsExpiredModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const { chips, consumeChip, openPurchaseModal } = useChips();
+  const { chips, consumeChip, openPurchaseModal, loadChipsBalance } = useChips();
   
   const [loading, setLoading] = useState(false);
 
@@ -45,14 +45,18 @@ const ChipsExpiredModal: React.FC<ChipsExpiredModalProps> = ({
       const success = await consumeChip(gameId, 'session_renewal');
       
       if (success) {
+        // 立即刷新 chips 餘額
+        await loadChipsBalance();
         onClose();
         if (onContinue) {
           onContinue();
         }
+      } else {
+        alert('消耗 Chip 失敗，請稍後再試');
       }
     } catch (error) {
       console.error('續費失敗:', error);
-      alert('續費失敗，請稍後再試');
+      alert(`續費失敗：${error instanceof Error ? error.message : '未知錯誤'}，請稍後再試`);
     } finally {
       setLoading(false);
     }

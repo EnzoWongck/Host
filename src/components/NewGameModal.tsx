@@ -541,8 +541,9 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         return;
       }
 
-      // 刷新 chips 餘額
+      // 立即刷新 chips 餘額，確保 UI 顯示最新餘額
       await loadChipsBalance();
+      console.log('Chip 餘額已刷新');
 
       // 重置表單
       setGameName('');

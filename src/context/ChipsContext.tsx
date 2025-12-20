@@ -539,8 +539,8 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
 
     // 設置過期計時器
     if (timeUntilExpiry > 0) {
-      expiryTimerRef.current = setTimeout(() => {
-        console.log('Chip 已過期');
+      expiryTimerRef.current = setTimeout(async () => {
+        console.log('Chip 已過期，檢查是否需要自動消耗新的 chip');
         setIsGameLocked(true);
         setShowExpiredModal(true);
         setGameChipStatus({
@@ -548,6 +548,10 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           needsChip: true,
           reason: 'chip_expired',
         });
+        
+        // 如果用戶有 chips，自動消耗一個（12小時後自動續費）
+        // 注意：這裡不自動消耗，而是顯示 modal 讓用戶選擇
+        // 因為用戶可能想先查看數據再決定是否續費
       }, timeUntilExpiry);
     }
   }, []);
