@@ -503,8 +503,27 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         return;
       }
       
-      const success = await consumeChip(gameId, 'new_game');
-      console.log('消耗 chip 結果:', success);
+      let success = false;
+      try {
+        success = await consumeChip(gameId, 'new_game');
+        console.log('消耗 chip 結果:', success);
+      } catch (chipError) {
+        console.error('消耗 chip 時發生錯誤:', chipError);
+        // 刪除已創建的牌局
+        try {
+          await deleteGame(gameId);
+          console.log('已回滾牌局創建，因為消耗 Chip 時發生錯誤');
+        } catch (deleteError) {
+          console.error('回滾牌局創建失敗:', deleteError);
+        }
+        Alert.alert(
+          '錯誤', 
+          `消耗 Chip 失敗：${chipError instanceof Error ? chipError.message : '未知錯誤'}。牌局已取消創建。`,
+          [{ text: '確定' }]
+        );
+        return;
+      }
+      
       if (!success) {
         // 如果消耗 chip 失敗，刪除已創建的牌局（回滾）
         try {
