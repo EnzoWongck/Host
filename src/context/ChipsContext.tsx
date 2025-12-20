@@ -170,10 +170,33 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       );
       
       if (!response.ok) {
+        // 如果 API 失敗，嘗試直接從 Supabase 查詢（作為備用方案）
+        console.warn('API 載入 chips 失敗，嘗試直接從 Supabase 查詢');
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('chips')
+          .eq('id', user.uid)
+          .maybeSingle();
+        
+        if (!profileError && profile) {
+          setChips(profile.chips || 0);
+          return;
+        }
+        
         throw new Error('Failed to load chips balance');
       }
       
-      const data = await response.json();
+      // 檢查響應是否為 JSON
+      const contentType = response.headers.get('content-type');
+      let data: any;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('API 返回非 JSON 響應:', text);
+        throw new Error(`API 返回錯誤: ${response.status} ${response.statusText}`);
+      }
+      
       setChips(data.chips || 0);
       setIsNewUser(data.isNewUser || false);
       
