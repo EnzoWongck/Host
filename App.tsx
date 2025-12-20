@@ -415,36 +415,45 @@ const AppNavigator: React.FC = () => {
     // 再次獲取最新的用戶狀態（直接從 Supabase 查詢，不依賴 React 狀態）
     let currentUser = user;
     if (!currentUser || !currentUser.phoneVerified) {
-      // 如果 React 狀態還沒有更新，直接從 Supabase 查詢
+      // 如果 React 狀態還沒有更新，先嘗試刷新用戶狀態
       try {
-        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-        if (supabaseUser) {
-          // 直接查詢 profile 獲取最新的 phone_verified 狀態
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('phone_verified, phone_verified_at, phone_number')
-            .eq('id', supabaseUser.id)
-            .single();
-          
-          if (profile) {
-            const phoneVerified = profile.phone_verified === true || 
-                                profile.phone_verified === 'true' ||
-                                profile.phone_verified === 1 ||
-                                !!profile.phone_verified_at;
+        await refreshUser();
+        await new Promise(resolve => setTimeout(resolve, 300));
+        currentUser = user; // 更新 currentUser 為刷新後的狀態
+        
+        // 如果刷新後仍然沒有，直接從 Supabase 查詢（作為備用方案）
+        if (!currentUser || !currentUser.phoneVerified) {
+          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+          if (supabaseUser) {
+            // 直接查詢 profile 獲取最新的 phone_verified 狀態
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('phone_verified, phone_verified_at, phone_number')
+              .eq('id', supabaseUser.id)
+              .maybeSingle(); // 使用 maybeSingle 而不是 single
             
-            console.log('直接查詢 profile 獲取的電話驗證狀態:', {
-              userId: supabaseUser.id,
-              email: supabaseUser.email,
-              phoneVerified: phoneVerified,
-              profilePhoneVerified: profile.phone_verified,
-              phoneVerifiedAt: profile.phone_verified_at,
-            });
-            
-            // 如果已驗證，直接進入主畫面
-            if (phoneVerified) {
-              console.log('✅ 用戶已驗證電話（從數據庫確認），進入主畫面');
-              setCurrentScreenWithStorage('main');
-              return;
+            if (profileError) {
+              console.error('查詢 profile 錯誤:', profileError);
+            } else if (profile) {
+              const phoneVerified = profile.phone_verified === true || 
+                                  profile.phone_verified === 'true' ||
+                                  profile.phone_verified === 1 ||
+                                  !!profile.phone_verified_at;
+              
+              console.log('直接查詢 profile 獲取的電話驗證狀態:', {
+                userId: supabaseUser.id,
+                email: supabaseUser.email,
+                phoneVerified: phoneVerified,
+                profilePhoneVerified: profile.phone_verified,
+                phoneVerifiedAt: profile.phone_verified_at,
+              });
+              
+              // 如果已驗證，直接進入主畫面
+              if (phoneVerified) {
+                console.log('✅ 用戶已驗證電話（從數據庫確認），進入主畫面');
+                setCurrentScreenWithStorage('main');
+                return;
+              }
             }
           }
         }
