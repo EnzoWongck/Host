@@ -29,7 +29,7 @@ interface NewGameModalProps {
 const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
-  const { createGame, state } = useGame();
+  const { createGame, state, deleteGame } = useGame();
   const navigation = useNavigation<any>();
   
   const [gameName, setGameName] = useState('');
@@ -474,7 +474,19 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       // 消耗 1 chip
       const success = await consumeChip(gameId, 'new_game');
       if (!success) {
-        Alert.alert('錯誤', '消耗 Chip 失敗，請稍後再試');
+        // 如果消耗 chip 失敗，刪除已創建的牌局（回滾）
+        try {
+          await deleteGame(gameId);
+          console.log('已回滾牌局創建，因為消耗 Chip 失敗');
+        } catch (deleteError) {
+          console.error('回滾牌局創建失敗:', deleteError);
+        }
+        
+        Alert.alert(
+          '錯誤', 
+          '消耗 Chip 失敗，牌局已取消創建。請檢查您的 Chips 餘額或稍後再試。',
+          [{ text: '確定' }]
+        );
         return;
       }
 

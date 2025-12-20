@@ -349,19 +349,35 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       
       // 生產環境：使用 API
       const baseUrl = getApiBaseUrl();
-      const response = await fetch(`${baseUrl}${STRIPE_API_ENDPOINTS.CONSUME_CHIP}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.uid,
-          gameId: gameId,
-          reason: reason || 'game_session',
-        }),
-      });
+      let response: Response;
+      let data: any;
+      
+      try {
+        response = await fetch(`${baseUrl}${STRIPE_API_ENDPOINTS.CONSUME_CHIP}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            gameId: gameId,
+            reason: reason || 'game_session',
+          }),
+        });
 
-      const data = await response.json();
+        // 檢查響應是否為 JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.error('API 返回非 JSON 響應:', text);
+          throw new Error(`API 返回錯誤: ${response.status} ${response.statusText}`);
+        }
+      } catch (fetchError) {
+        console.error('調用 consume chip API 失敗:', fetchError);
+        throw fetchError;
+      }
 
       if (!response.ok) {
         if (response.status === 402) {
@@ -369,7 +385,9 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           setShowPurchaseModal(true);
           return false;
         }
-        throw new Error(data.error || 'Failed to consume chip');
+        const errorMessage = data?.error || `API 錯誤: ${response.status} ${response.statusText}`;
+        console.error('消耗 Chip API 錯誤:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       // 更新本地狀態
