@@ -12,34 +12,48 @@ export const SUPABASE_URL = 'https://plnghuqosljnezjfpvmc.supabase.co';
 // 從 Supabase Dashboard > Settings > API > anon public 獲取
 export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbmdodXFvc2xqbmV6amZwdm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTA3NTEsImV4cCI6MjA4MTU2Njc1MX0.XVhRSrkSlAuVE_MWvb7j2JI3vEzexTYUIbGGfmiQED8';
 
-// 創建 Supabase 客戶端
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    // 自動刷新 token
-    autoRefreshToken: true,
-    // 持久化 session
-    persistSession: true,
-    // 檢測 session 變化
-    detectSessionInUrl: Platform.OS === 'web',
-    // Web 平台使用 localStorage
-    storage: Platform.OS === 'web' ? {
-      getItem: (key: string) => {
-        if (typeof window !== 'undefined') {
-          return window.localStorage.getItem(key);
-        }
-        return null;
+// 延遲初始化 Supabase 客戶端，避免在模塊加載時執行
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+const getSupabaseClient = () => {
+  if (!_supabase) {
+    _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        // 自動刷新 token
+        autoRefreshToken: true,
+        // 持久化 session
+        persistSession: true,
+        // 檢測 session 變化
+        detectSessionInUrl: Platform.OS === 'web',
+        // Web 平台使用 localStorage
+        storage: Platform.OS === 'web' ? {
+          getItem: (key: string) => {
+            if (typeof window !== 'undefined') {
+              return window.localStorage.getItem(key);
+            }
+            return null;
+          },
+          setItem: (key: string, value: string) => {
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(key, value);
+            }
+          },
+          removeItem: (key: string) => {
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem(key);
+            }
+          },
+        } : undefined,
       },
-      setItem: (key: string, value: string) => {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, value);
-        }
-      },
-      removeItem: (key: string) => {
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem(key);
-        }
-      },
-    } : undefined,
+    });
+  }
+  return _supabase;
+};
+
+// 導出 getter，確保延遲初始化
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_target, prop) {
+    return getSupabaseClient()[prop as keyof ReturnType<typeof createClient>];
   },
 });
 
