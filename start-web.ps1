@@ -20,3 +20,4 @@ Write-Host "🌐 終端會顯示本地 IP 地址，在手機瀏覽器中輸入�
 Write-Host ""
 npx expo start --web --host lan --clear
 
+

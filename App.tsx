@@ -233,7 +233,7 @@ const AppNavigator: React.FC = () => {
   useEffect(() => {
     if (shouldSkipAuth && !isSignedIn) {
       // 自動登入一個模擬用戶（用於開發，跳過登入流程）
-      signInWithEmail('web@example.com').catch(() => {
+      signInWithEmail('web@example.com', 'password').catch(() => {
         // 如果登入失敗，仍然允許訪問（用於開發）
         // 在 Web 平台上，即使沒有登入也能訪問主應用
       });
@@ -278,7 +278,7 @@ const AppNavigator: React.FC = () => {
     // 如果跳過登入，不執行此邏輯
     if (shouldSkipAuth) return;
     
-    if (isSignedIn) {
+    if (isSignedIn && user?.uid) {
       // 開發者帳戶：跳過電話驗證
       if (isDeveloperAccount(user?.email)) {
         if (currentScreen === 'welcome' || currentScreen === 'phoneVerify') {
@@ -289,36 +289,75 @@ const AppNavigator: React.FC = () => {
       }
       
       // 已登入，檢查是否需要電話驗證
-      // 添加日誌以便調試
-      console.log('檢查用戶電話驗證狀態:', {
-        userId: user?.uid,
-        email: user?.email,
-        phoneVerified: user?.phoneVerified,
-        phoneNumber: user?.phoneNumber,
-        currentScreen,
-      });
-      
-      if (user?.phoneVerified) {
-        // 已驗證電話，進入主畫面（除非當前在登入/註冊流程中）
-        if (currentScreen === 'welcome' || currentScreen === 'phoneVerify' || currentScreen === 'login') {
-          console.log('✅ 已登入且已驗證電話，進入主畫面');
-          setCurrentScreenWithStorage('main');
-        }
-      } else {
-        // 未驗證電話，必須進入電話驗證頁面
-        // 但如果正在驗證電話流程中，或者已經在主畫面，不要強制跳轉
-        if (isVerifyingPhone || currentScreen === 'main') {
-          console.log('正在驗證電話流程中或已在主畫面，保持當前頁面');
-          return;
+      // 如果 user?.phoneVerified 為 false 或 undefined，直接從數據庫查詢最新狀態
+      const checkPhoneVerification = async () => {
+        let phoneVerified = user?.phoneVerified;
+        
+        // 如果 React 狀態中的 phoneVerified 為 false 或 undefined，直接從數據庫查詢
+        if (!phoneVerified) {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('phone_verified, phone_verified_at, phone_number')
+              .eq('id', user.uid)
+              .single();
+            
+            if (profile) {
+              phoneVerified = profile.phone_verified === true || 
+                            profile.phone_verified === 'true' ||
+                            profile.phone_verified === 1 ||
+                            !!profile.phone_verified_at;
+              
+              console.log('從數據庫查詢的電話驗證狀態:', {
+                userId: user.uid,
+                email: user.email,
+                phoneVerified: phoneVerified,
+                profilePhoneVerified: profile.phone_verified,
+                phoneVerifiedAt: profile.phone_verified_at,
+              });
+              
+              // 如果查詢到已驗證，更新用戶狀態
+              if (phoneVerified) {
+                await refreshUser();
+              }
+            }
+          } catch (error) {
+            console.error('查詢電話驗證狀態失敗:', error);
+          }
         }
         
-        // 特別處理 OAuth 回調情況：如果從 welcome/login 登入，強制進入電話驗證
-        if (currentScreen === 'welcome' || currentScreen === 'login' || 
-            (currentScreen !== 'phoneVerify' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword')) {
-          console.log('⚠️ 已登入但未驗證電話，進入電話驗證');
-          setCurrentScreenWithStorage('phoneVerify');
+        console.log('檢查用戶電話驗證狀態:', {
+          userId: user?.uid,
+          email: user?.email,
+          phoneVerified: phoneVerified,
+          phoneNumber: user?.phoneNumber,
+          currentScreen,
+        });
+        
+        if (phoneVerified) {
+          // 已驗證電話，進入主畫面（除非當前在登入/註冊流程中）
+          if (currentScreen === 'welcome' || currentScreen === 'phoneVerify' || currentScreen === 'login') {
+            console.log('✅ 已登入且已驗證電話，進入主畫面');
+            setCurrentScreenWithStorage('main');
+          }
+        } else {
+          // 未驗證電話，必須進入電話驗證頁面
+          // 但如果正在驗證電話流程中，或者已經在主畫面，不要強制跳轉
+          if (isVerifyingPhone || currentScreen === 'main') {
+            console.log('正在驗證電話流程中或已在主畫面，保持當前頁面');
+            return;
+          }
+          
+          // 特別處理 OAuth 回調情況：如果從 welcome/login 登入，強制進入電話驗證
+          if (currentScreen === 'welcome' || currentScreen === 'login' || 
+              (currentScreen !== 'phoneVerify' && currentScreen !== 'signup' && currentScreen !== 'forgotPassword')) {
+            console.log('⚠️ 已登入但未驗證電話，進入電話驗證');
+            setCurrentScreenWithStorage('phoneVerify');
+          }
         }
-      }
+      };
+      
+      checkPhoneVerification();
     } else {
       // 未登入，如果在 phoneVerify 頁面，返回 welcome
       // 但如果在註冊流程中，不要跳轉
@@ -327,7 +366,7 @@ const AppNavigator: React.FC = () => {
         setCurrentScreenWithStorage('welcome');
       }
     }
-  }, [loading, isSignedIn, user?.phoneVerified, shouldSkipAuth, currentScreen, isVerifyingPhone, refreshUser]);
+  }, [loading, isSignedIn, user?.uid, user?.email, user?.phoneVerified, shouldSkipAuth, currentScreen, isVerifyingPhone, refreshUser]);
 
   const handleWelcomeGetStarted = () => {
     if (!shouldSkipAuth) {

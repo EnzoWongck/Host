@@ -65,3 +65,4 @@ echo "   3. 進入專案資料夾，執行：npm install"
 echo "   4. 執行：npm run web"
 echo ""
 
+
