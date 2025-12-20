@@ -729,8 +729,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ============================================
   // 玩家操作
   // ============================================
-  const addPlayer = useCallback(async (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!user?.uid) return;
+  const addPlayer = useCallback(async (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+    if (!user?.uid) {
+      throw new Error('用戶未登入');
+    }
 
     try {
       const now = new Date();
@@ -748,7 +750,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('添加玩家數據庫錯誤:', error);
+        throw error;
+      }
 
       const newPlayer: Player = {
         ...playerData,
@@ -760,8 +765,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       dispatch({ type: 'ADD_PLAYER', payload: { gameId, player: newPlayer } });
+      console.log('成功添加玩家:', newPlayer.name, '到遊戲:', gameId);
     } catch (error) {
       console.error('添加玩家失敗:', error);
+      throw error; // 重新拋出錯誤，讓調用者處理
     }
   }, [user?.uid]);
 
@@ -809,10 +816,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ============================================
   // Buy-In 操作（更新玩家的 buyIns 數組）
   // ============================================
-  const addBuyInEntry = useCallback(async (gameId: string, playerId: string, amount: number, timestamp?: Date) => {
-    const game = stateRef.current.games.find(g => g.id === gameId);
+  const addBuyInEntry = useCallback(async (gameId: string, playerId: string, amount: number, timestamp?: Date): Promise<void> => {
+    // 使用最新的 state 而不是 stateRef，確保獲取最新數據
+    const game = state.games.find(g => g.id === gameId) || state.currentGame;
     const player = game?.players.find(p => p.id === playerId);
-    if (!player) return;
+    
+    if (!player) {
+      console.error('找不到玩家:', playerId, '在遊戲:', gameId);
+      throw new Error('找不到指定的玩家');
+    }
 
     const entry: BuyInEntry = { id: crypto.randomUUID(), amount, timestamp: timestamp || new Date() };
     const newBuyIns = [...(player.buyIns || []), entry];
@@ -828,13 +840,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
         .eq('id', playerId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('添加買入數據庫錯誤:', error);
+        throw error;
+      }
 
       dispatch({ type: 'ADD_BUYIN', payload: { gameId, playerId, entry } });
+      console.log('成功添加買入:', amount, '給玩家:', player.name, '在遊戲:', gameId);
     } catch (error) {
       console.error('添加買入失敗:', error);
+      throw error; // 重新拋出錯誤，讓調用者處理
     }
-  }, []);
+  }, [state.games, state.currentGame]);
 
   const updateBuyInEntry = useCallback(async (gameId: string, playerId: string, entry: BuyInEntry) => {
     const game = stateRef.current.games.find(g => g.id === gameId);
