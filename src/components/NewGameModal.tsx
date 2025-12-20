@@ -441,7 +441,15 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       });
       
       // 檢查 chips 餘額
+      console.log('檢查 chips 餘額:', chips, '類型:', typeof chips);
+      if (chips === undefined || chips === null) {
+        console.error('chips 未定義，無法創建牌局');
+        Alert.alert('錯誤', '無法獲取 Chips 餘額，請刷新頁面後重試。');
+        return;
+      }
+      
       if (chips < 1) {
+        console.log('Chips 不足，顯示購買提示');
         Alert.alert(
           'Chips 不足',
           '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
@@ -451,13 +459,19 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
               text: '購買 Chips', 
               onPress: () => {
                 onClose();
-                openPurchaseModal();
+                if (openPurchaseModal) {
+                  openPurchaseModal();
+                } else {
+                  console.error('openPurchaseModal 未定義');
+                }
               }
             }
           ]
         );
         return;
       }
+      
+      console.log('Chips 餘額充足，繼續創建牌局');
       
       // 創建新牌局
       const gameId = await createGame({
