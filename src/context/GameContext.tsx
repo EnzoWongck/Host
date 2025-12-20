@@ -374,10 +374,10 @@ interface GameContextType {
   endGame: (gameId: string, endData: { endTime: Date; actualCollection: number; finalNotes?: string }) => void;
   selectCurrentGame: (gameId: string) => void;
   updateGame: (game: Game) => void;
-  addPlayer: (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addPlayer: (gameId: string, playerData: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updatePlayer: (gameId: string, player: Player) => void;
   deletePlayer: (gameId: string, playerId: string) => void;
-  addBuyInEntry: (gameId: string, playerId: string, amount: number, timestamp?: Date) => void;
+  addBuyInEntry: (gameId: string, playerId: string, amount: number, timestamp?: Date) => Promise<void>;
   updateBuyInEntry: (gameId: string, playerId: string, entry: BuyInEntry) => void;
   deleteBuyInEntry: (gameId: string, playerId: string, entryId: string) => void;
   addDealer: (gameId: string, dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'>) => void;
