@@ -358,15 +358,23 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         
         if (insertError) throw insertError;
         
-        // 更新本地狀態
+        // 更新本地狀態（立即反映）
         setChips(newChips);
         setIsGameLocked(false);
         setShowExpiredModal(false);
         
+        // 快取到本地
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          localStorage.setItem(`chips_${user.uid}`, String(newChips));
+        }
+        
         // 設置過期計時器
         setupExpiryTimers(expiresAt.toISOString(), gameId);
         
-        console.log(`成功消耗 1 Chip，剩餘 ${newChips}，有效至 ${expiresAt.toISOString()}`);
+        // 重新檢查遊戲 chip 狀態，確保狀態同步
+        await checkGameChipStatus(gameId);
+        
+        console.log(`✅ 成功消耗 1 Chip，剩餘 ${newChips}，有效至 ${expiresAt.toISOString()}`);
         return true;
       }
       
@@ -428,7 +436,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         throw new Error('API 返回數據無效：缺少 remainingChips');
       }
 
-      // 更新本地狀態
+      // 更新本地狀態（立即反映）
       setChips(data.remainingChips);
       setIsGameLocked(false);
       setShowExpiredModal(false);
@@ -443,7 +451,10 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         setupExpiryTimers(data.expiresAt, gameId);
       }
 
-      console.log(`成功消耗 1 Chip，剩餘 ${data.remainingChips}，有效至 ${data.expiresAt}`);
+      // 重新檢查遊戲 chip 狀態，確保狀態同步
+      await checkGameChipStatus(gameId);
+
+      console.log(`✅ 成功消耗 1 Chip，剩餘 ${data.remainingChips}，有效至 ${data.expiresAt}`);
       return true;
 
     } catch (error) {
