@@ -435,6 +435,7 @@ const AppNavigator: React.FC = () => {
             if (profileError) {
               console.error('查詢 profile 錯誤:', profileError);
             } else if (profile) {
+              // 嚴格檢查：必須為 true、'true'、1 或存在 phone_verified_at
               const phoneVerified = profile.phone_verified === true || 
                                   profile.phone_verified === 'true' ||
                                   profile.phone_verified === 1 ||
@@ -477,7 +478,12 @@ const AppNavigator: React.FC = () => {
       phoneNumber: currentUser?.phoneNumber,
     });
     
-    if (currentUser?.phoneVerified) {
+    // 嚴格檢查：phoneVerified 必須為 true
+    const isPhoneVerified = currentUser?.phoneVerified === true || 
+                           currentUser?.phoneVerified === 'true' ||
+                           currentUser?.phoneVerified === 1;
+    
+    if (isPhoneVerified) {
       console.log('✅ 用戶已驗證電話，進入主畫面');
       setCurrentScreenWithStorage('main');
     } else {

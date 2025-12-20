@@ -88,9 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       // 如果 profile 不存在，嘗試從 user_metadata 獲取
+      // 嚴格檢查：必須為 true、'true' 或 1
       const phoneVerified = supabaseUser.user_metadata?.phone_verified === true || 
                            supabaseUser.user_metadata?.phone_verified === 'true' ||
-                           String(supabaseUser.user_metadata?.phone_verified).toLowerCase() === 'true';
+                           supabaseUser.user_metadata?.phone_verified === 1;
       
       console.log('使用 user_metadata 作為備用:', {
         phoneVerified: phoneVerified,
