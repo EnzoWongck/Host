@@ -89,34 +89,32 @@ module.exports = async (req, res) => {
     const expiresAt = new Date(now + CHIP_VALIDITY_DURATION);
 
     // 更新或創建遊戲的 Chip 狀態
-    const gameChipId = `${userId}_${gameId}`;
-    
     const { error: upsertError } = await supabase
       .from('game_chips')
       .upsert({
-        id: gameChipId,
         user_id: userId,
         game_id: gameId,
-        consumed_at: new Date().toISOString(),
         expires_at: expiresAt.toISOString(),
-        is_active: true
+        reason: reason || 'game_session',
+      }, {
+        onConflict: 'user_id,game_id'
       });
 
     if (upsertError) {
       console.error('更新遊戲 Chip 狀態失敗:', upsertError);
+      // 如果創建 game_chips 失敗，回滾 chips 扣除
+      await supabase
+        .from('profiles')
+        .update({ chips: currentChips })
+        .eq('id', userId);
+      
+      res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        error: 'Failed to create game chip record', 
+        success: false 
+      }));
+      return;
     }
-
-    // 記錄消耗交易
-    await supabase
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        game_id: gameId,
-        type: 'consume',
-        chips_amount: -1,
-        reason: reason || 'game_session',
-        created_at: new Date().toISOString()
-      });
 
     res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
