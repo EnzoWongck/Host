@@ -89,16 +89,38 @@ module.exports = async (req, res) => {
     const expiresAt = new Date(now + CHIP_VALIDITY_DURATION);
 
     // 更新或創建遊戲的 Chip 狀態
-    const { error: upsertError } = await supabase
+    // 先檢查是否已存在記錄
+    const { data: existingRecord } = await supabase
       .from('game_chips')
-      .upsert({
-        user_id: userId,
-        game_id: gameId,
-        expires_at: expiresAt.toISOString(),
-        reason: reason || 'game_session',
-      }, {
-        onConflict: 'user_id,game_id'
-      });
+      .select('id')
+      .eq('user_id', userId)
+      .eq('game_id', gameId)
+      .maybeSingle();
+    
+    let upsertError = null;
+    if (existingRecord) {
+      // 更新現有記錄
+      const { error } = await supabase
+        .from('game_chips')
+        .update({
+          expires_at: expiresAt.toISOString(),
+          reason: reason || 'game_session',
+        })
+        .eq('user_id', userId)
+        .eq('game_id', gameId);
+      upsertError = error;
+    } else {
+      // 創建新記錄
+      const { error } = await supabase
+        .from('game_chips')
+        .insert({
+          user_id: userId,
+          game_id: gameId,
+          expires_at: expiresAt.toISOString(),
+          reason: reason || 'game_session',
+        });
+      upsertError = error;
+    }
 
     if (upsertError) {
       console.error('更新遊戲 Chip 狀態失敗:', upsertError);

@@ -409,14 +409,23 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           return false;
         }
         const errorMessage = data?.error || `API 錯誤: ${response.status} ${response.statusText}`;
-        console.error('消耗 Chip API 錯誤:', errorMessage);
+        console.error('消耗 Chip API 錯誤:', errorMessage, 'Response data:', data);
         throw new Error(errorMessage);
+      }
+
+      // 檢查返回的 success 字段
+      if (data.success === false) {
+        console.error('消耗 Chip 失敗，API 返回 success: false', data);
+        if (data.error === 'Insufficient chips' || response.status === 402) {
+          setShowPurchaseModal(true);
+        }
+        return false;
       }
 
       // 檢查返回數據是否有效
       if (data.remainingChips === undefined || data.remainingChips === null) {
         console.error('API 返回的 remainingChips 無效:', data);
-        throw new Error('API 返回數據無效');
+        throw new Error('API 返回數據無效：缺少 remainingChips');
       }
 
       // 更新本地狀態
