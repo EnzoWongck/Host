@@ -52,20 +52,35 @@ if (typeof window !== 'undefined') {
     console.log('resolveAssetSource polyfill 已強制載入（全局優先）');
   };
 
-  // 強制立即執行（同步執行，不等待）
-  (window as any).resolveAssetSourcePolyfill();
+  // 延遲執行 polyfill，避免在模塊初始化之前執行導致循環依賴
+  // 使用 setTimeout 確保所有模塊都已初始化
+  setTimeout(() => {
+    try {
+      (window as any).resolveAssetSourcePolyfill();
+    } catch (e) {
+      console.warn('Polyfill execution failed:', e);
+    }
+  }, 0);
   
   // 額外保護：在 DOMContentLoaded 時再次執行（確保所有模塊都已載入）
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        (window as any).resolveAssetSourcePolyfill();
+        try {
+          (window as any).resolveAssetSourcePolyfill();
+        } catch (e) {
+          console.warn('Polyfill execution on DOMContentLoaded failed:', e);
+        }
       });
     } else {
-      // 如果已經載入完成，立即執行
+      // 如果已經載入完成，延遲執行
       setTimeout(() => {
-        (window as any).resolveAssetSourcePolyfill();
-      }, 0);
+        try {
+          (window as any).resolveAssetSourcePolyfill();
+        } catch (e) {
+          console.warn('Polyfill execution on ready failed:', e);
+        }
+      }, 100);
     }
   }
 }
