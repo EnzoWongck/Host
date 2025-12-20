@@ -187,7 +187,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
 
   const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`;
 
-  const handleBuyIn = () => {
+  const handleBuyIn = async () => {
     if (!currentGame) {
       Alert.alert(t('common.error') || '錯誤', t('buyIn.errorNoGame'));
       return;
@@ -199,39 +199,47 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
       return;
     }
 
-    if (buyInType === 'new') {
-      // 新增玩家
-      if (!playerName.trim()) {
-        Alert.alert(t('common.error') || '錯誤', t('buyIn.errorPlayerNameRequired'));
-        return;
+    try {
+      if (buyInType === 'new') {
+        // 新增玩家
+        if (!playerName.trim()) {
+          Alert.alert(t('common.error') || '錯誤', t('buyIn.errorPlayerNameRequired'));
+          return;
+        }
+
+        const newPlayer: Omit<Player, 'id' | 'createdAt' | 'updatedAt'> = {
+          name: playerName.trim(),
+          buyIn: amount,
+          profit: -amount, // 初始盈虧為負的買入金額
+          status: 'active',
+        };
+
+        await addPlayer(currentGame.id, newPlayer);
+        
+        showToast(`${playerName} ${t('buyIn.successPlayerAdded')} ${formatCurrency(amount)}`, 'success');
+      } else {
+        // 現有玩家：新增一筆買入明細
+        if (!selectedPlayer) {
+          Alert.alert(t('common.error') || '錯誤', t('buyIn.errorPlayerRequired'));
+          return;
+        }
+
+        await addBuyInEntry(currentGame.id, selectedPlayer.id, amount);
+        showToast(`${selectedPlayer.name} ${t('buyIn.successBuyInAdded')} ${formatCurrency(amount)}`, 'success');
       }
 
-      const newPlayer: Omit<Player, 'id' | 'createdAt' | 'updatedAt'> = {
-        name: playerName.trim(),
-        buyIn: amount,
-        profit: -amount, // 初始盈虧為負的買入金額
-        status: 'active',
-      };
-
-      addPlayer(currentGame.id, newPlayer);
-      
-      showToast(`${playerName} ${t('buyIn.successPlayerAdded')} ${formatCurrency(amount)}`, 'success');
-    } else {
-      // 現有玩家：新增一筆買入明細
-      if (!selectedPlayer) {
-        Alert.alert(t('common.error') || '錯誤', t('buyIn.errorPlayerRequired'));
-        return;
-      }
-
-      addBuyInEntry(currentGame.id, selectedPlayer.id, amount);
-      showToast(`${selectedPlayer.name} ${t('buyIn.successBuyInAdded')} ${formatCurrency(amount)}`, 'success');
+      // 重置表單
+      setPlayerName('');
+      setBuyInAmount('');
+      setSelectedPlayer(null);
+      onClose();
+    } catch (error) {
+      console.error('添加買入失敗:', error);
+      Alert.alert(
+        t('common.error') || '錯誤',
+        error instanceof Error ? error.message : (t('buyIn.errorAddFailed') || '添加買入失敗，請稍後再試')
+      );
     }
-
-    // 重置表單
-    setPlayerName('');
-    setBuyInAmount('');
-    setSelectedPlayer(null);
-    onClose();
   };
 
   const resetForm = () => {
