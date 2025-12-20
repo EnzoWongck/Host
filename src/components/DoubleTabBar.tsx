@@ -4,7 +4,6 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSubscription } from '../context/SubscriptionContext';
 import { useChips } from '../context/ChipsContext';
 import { Alert } from 'react-native';
 import Button from './Button';
@@ -15,10 +14,9 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { state: gameState, setGameSummaryModalVisible } = useGame();
-  const { trialEnded, isSubscribed } = useSubscription();
   const { isGameLocked } = useChips();
   
-  const canEdit = !(trialEnded && !isSubscribed) && !isGameLocked;
+  const canEdit = !isGameLocked;
 
   const getTabTextColor = (routeName: string, isFocused: boolean) => {
     if (!isFocused) return theme.colors.textSecondary; // 未選取為灰色
@@ -200,22 +198,12 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
           <Button
             title={t('modals.endGame')}
             onPress={() => {
-              if (!canEdit && !isGameLocked) {
-                // 只有訂閱相關問題時才阻止，chips 過期不阻止結束牌局
-                Alert.alert(
-                  '試用已到期',
-                  '你的免費試用已完結，請訂閱後再結束牌局。',
-                  [{ text: '確定' }]
-                );
-                return;
-              }
-              // 直接導航到結束牌局頁面，顯示 EndGameModal
+              // 結束牌局永遠可以點擊，不受 chips 過期影響
               navigation.navigate('Game', { action: 'end_direct' });
             }}
             size="md"
             variant="primary"
-            style={{ flex: 1, opacity: !canEdit && !isGameLocked ? 0.5 : 1 }}
-            disabled={!canEdit && !isGameLocked}
+            style={{ flex: 1 }}
             leftIconName="close"
             textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
           />

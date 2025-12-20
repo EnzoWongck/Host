@@ -16,7 +16,7 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSubscription } from '../context/SubscriptionContext';
+import { useChips } from '../context/ChipsContext';
 import { Language } from '../types/language';
 import { resolveImageSource } from '../utils/imageUtils';
 // 靜態導入圖片
@@ -47,7 +47,7 @@ import SwipeHint from '../components/SwipeHint';
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const { trialEnded, isSubscribed } = useSubscription();
+  const { isGameLocked, checkGameChipStatus } = useChips();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { state, setGameSummaryModalVisible, deletePlayer } = useGame();
@@ -80,6 +80,13 @@ const GameScreen: React.FC = () => {
   const [playerToDelete, setPlayerToDelete] = useState<any>(null);
 
   const currentGame = state.currentGame;
+  
+  // 檢查遊戲 chips 狀態（當 currentGame 改變時）
+  useEffect(() => {
+    if (currentGame?.id) {
+      checkGameChipStatus(currentGame.id);
+    }
+  }, [currentGame?.id, checkGameChipStatus]);
   
   // 計算已進行時間
   const [elapsedTime, setElapsedTime] = useState('');
@@ -162,19 +169,11 @@ const GameScreen: React.FC = () => {
       // 清除參數避免重複觸發
       navigation.setParams({ action: undefined });
     } else if (params?.action === 'buy_in') {
-      if (!(trialEnded && !isSubscribed)) {
-        setBuyInModalVisible(true);
-      } else {
-        Alert.alert(
-          '試用已到期',
-          '你的免費試用已完結，請訂閱後再新增買入。',
-          [{ text: '確定' }]
-        );
-      }
+      setBuyInModalVisible(true);
       // 清除參數避免重複觸發
       navigation.setParams({ action: undefined });
     }
-  }, [route.params, navigation, trialEnded, isSubscribed]);
+  }, [route.params, navigation]);
 
   // 當 Modal 關閉時，將玩家列表滾動到頂部
   useEffect(() => {
@@ -659,14 +658,14 @@ const GameScreen: React.FC = () => {
     };
   };
 
-  // 檢查是否可以編輯（試用到期且未訂閱時不能編輯）
-  const canEdit = !(trialEnded && !isSubscribed);
+  // 檢查是否可以編輯（chips 過期時不能編輯）
+  const canEdit = !isGameLocked;
   
   const handleEditAction = (action: () => void, actionName: string) => {
     if (!canEdit) {
       Alert.alert(
-        '試用已到期',
-        '你的免費試用已完結，請訂閱後再編輯牌局。',
+        'Chips 不足',
+        '你的牌局編輯時間已用完，請購買 Chips 以繼續編輯。',
         [{ text: '確定' }]
       );
       return;

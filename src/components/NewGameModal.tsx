@@ -12,7 +12,6 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSubscription } from '../context/SubscriptionContext';
 import { useChips } from '../context/ChipsContext';
 import { useNavigation } from '@react-navigation/native';
 import Modal from './Modal';
@@ -31,7 +30,6 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { createGame, state } = useGame();
-  const { canCreateNewGame } = useSubscription();
   const navigation = useNavigation<any>();
   
   const [gameName, setGameName] = useState('');
@@ -373,15 +371,6 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   };
 
   const handleCreateGame = async () => {
-    // 檢查是否可以新增牌局
-    if (!canCreateNewGame(state.games)) {
-      Alert.alert(
-        t('common.error') || '錯誤',
-        '你現可免費記錄 1 個牌局；超過 24 小時或結束牌局後，需先完成訂閱。',
-        [{ text: '確定' }]
-      );
-      return;
-    }
 
     // 驗證輸入
     if (!gameName.trim()) {

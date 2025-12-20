@@ -105,7 +105,6 @@ import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { CollaborationProvider } from './src/context/CollaborationContext';
 import { NavigationProvider, useNavigationContext } from './src/context/NavigationContext';
-import { SubscriptionProvider, useSubscription } from './src/context/SubscriptionContext';
 import { ChipsProvider, useChips } from './src/context/ChipsContext';
 import ChipsPurchaseModal from './src/components/ChipsPurchaseModal';
 import ChipsExpiredModal from './src/components/ChipsExpiredModal';
@@ -905,17 +904,15 @@ export default function App() {
                     websocketUrl="ws://localhost:3001"
                     enableWebSocket={false}
                   >
-                    <SubscriptionProvider>
-                      <ChipsProvider>
-                        <NavigationProvider>
-                          <AppWithFont />
-                          <SignupSuccessHandlerWrapper />
-                          <PaywallGuard />
-                          <ChipsGuard />
-                          <AppStatusBar />
-                        </NavigationProvider>
-                      </ChipsProvider>
-                    </SubscriptionProvider>
+                    <ChipsProvider>
+                      <NavigationProvider>
+                        <AppWithFont />
+                        <SignupSuccessHandlerWrapper />
+                        <PaywallGuard />
+                        <ChipsGuard />
+                        <AppStatusBar />
+                      </NavigationProvider>
+                    </ChipsProvider>
                   </CollaborationProvider>
                 </GameProvider>
               </AuthProvider>
