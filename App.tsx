@@ -27,8 +27,7 @@ import EarthWhiteIconAsset from './assets/icons/earth.white.png';
 // Context
 import { GameProvider, useGame } from './src/context/GameContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-// 移除未使用的 supabase 導入，避免在模塊初始化時執行
-// import { supabase } from './src/config/supabase';
+import { supabase } from './src/config/supabase';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { ToastProvider } from './src/context/ToastContext';
