@@ -1,6 +1,3 @@
-// === resolveAssetSource polyfill：移到組件內部執行，避免初始化錯誤 ===
-// 注意：polyfill 現在在 AppNavigator 組件內部執行，確保所有模塊都已初始化
-
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
