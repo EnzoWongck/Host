@@ -1,55 +1,6 @@
 // === resolveAssetSource polyfill：移到組件內部執行，避免初始化錯誤 ===
 // 注意：polyfill 現在在 AppNavigator 組件內部執行，確保所有模塊都已初始化
 
-// Polyfill 函數定義（不立即執行）
-const setupResolveAssetSourcePolyfill = () => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    // 延遲 require，避免循環依賴
-    const RNImage = require('react-native/Libraries/Image/Image');
-    if (RNImage) {
-      RNImage.resolveAssetSource = (source: any) => source;
-      if (!RNImage.default) {
-        RNImage.default = RNImage;
-      } else {
-        RNImage.default.resolveAssetSource = (source: any) => source;
-      }
-    }
-  } catch (e) {
-    // 靜默失敗，不影響應用運行
-  }
-
-  try {
-    if (typeof Image !== 'undefined') {
-      // @ts-ignore
-      Image.resolveAssetSource = (source: any) => source;
-      // @ts-ignore
-      if (!Image.default) {
-        // @ts-ignore
-        Image.default = Image;
-      } else {
-        // @ts-ignore
-        Image.default.resolveAssetSource = (source: any) => source;
-      }
-    }
-  } catch (e) {
-    // 靜默失敗
-  }
-
-  try {
-    const ReactNative = require('react-native');
-    if (ReactNative && ReactNative.Image) {
-      ReactNative.Image.resolveAssetSource = (source: any) => source;
-      if (ReactNative.Image.default) {
-        ReactNative.Image.default.resolveAssetSource = (source: any) => source;
-      }
-    }
-  } catch (e) {
-    // 靜默失敗
-  }
-};
-
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
