@@ -61,87 +61,8 @@ import { RootTabParamList } from './src/types/navigation';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-// Polyfill 函數定義（在所有 import 之後，避免初始化錯誤）
-// 使用動態 require，完全延遲到執行時才加載模塊
-const setupResolveAssetSourcePolyfill = () => {
-  if (typeof window === 'undefined') return;
-  
-  // 使用 Function 構造函數來完全延遲 require 的執行
-  // 這樣可以避免在模塊初始化時觸發循環依賴
-  try {
-    const setupRNImage = new Function(`
-      try {
-        const RNImage = require('react-native/Libraries/Image/Image');
-        if (RNImage) {
-          RNImage.resolveAssetSource = (source) => source;
-          if (!RNImage.default) {
-            RNImage.default = RNImage;
-          } else {
-            RNImage.default.resolveAssetSource = (source) => source;
-          }
-        }
-      } catch (e) {
-        // 靜默失敗
-      }
-    `);
-    setupRNImage();
-  } catch (e) {
-    // 靜默失敗
-  }
-
-  try {
-    if (typeof Image !== 'undefined') {
-      // @ts-ignore
-      Image.resolveAssetSource = (source: any) => source;
-      // @ts-ignore
-      if (!Image.default) {
-        // @ts-ignore
-        Image.default = Image;
-      } else {
-        // @ts-ignore
-        Image.default.resolveAssetSource = (source: any) => source;
-      }
-    }
-  } catch (e) {
-    // 靜默失敗
-  }
-
-  try {
-    const setupReactNative = new Function(`
-      try {
-        const ReactNative = require('react-native');
-        if (ReactNative && ReactNative.Image) {
-          ReactNative.Image.resolveAssetSource = (source) => source;
-          if (ReactNative.Image.default) {
-            ReactNative.Image.default.resolveAssetSource = (source) => source;
-          }
-        }
-      } catch (e) {
-        // 靜默失敗
-      }
-    `);
-    setupReactNative();
-  } catch (e) {
-    // 靜默失敗
-  }
-};
-
 // 主要應用導航邏輯
 const AppNavigator: React.FC = () => {
-  // 在組件內部執行 polyfill，確保所有模塊都已初始化
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      // 延遲執行，確保所有模塊都已載入
-      const timer = setTimeout(() => {
-        try {
-          setupResolveAssetSourcePolyfill();
-        } catch (e) {
-          // 靜默失敗，不影響應用運行
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
   const isWeb = Platform.OS === 'web';
   // 根據配置決定是否跳過登入
