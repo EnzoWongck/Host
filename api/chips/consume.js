@@ -47,9 +47,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 獲取用戶當前 Chips
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
+    // 獲取用戶當前 Chips（從 profiles 表）
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
       .select('chips')
       .eq('id', userId)
       .single();
@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const currentChips = user.chips || 0;
+    const currentChips = profile.chips || 0;
 
     if (currentChips < 1) {
       res.writeHead(402, { ...corsHeaders, 'Content-Type': 'application/json' });
@@ -69,12 +69,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 扣除 1 個 Chip
+    // 扣除 1 個 Chip（更新 profiles 表）
     const { error: updateError } = await supabase
-      .from('users')
+      .from('profiles')
       .update({ 
         chips: currentChips - 1,
-        last_consumed: new Date().toISOString()
       })
       .eq('id', userId);
 

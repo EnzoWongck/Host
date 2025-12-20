@@ -413,6 +413,12 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         throw new Error(errorMessage);
       }
 
+      // 檢查返回數據是否有效
+      if (data.remainingChips === undefined || data.remainingChips === null) {
+        console.error('API 返回的 remainingChips 無效:', data);
+        throw new Error('API 返回數據無效');
+      }
+
       // 更新本地狀態
       setChips(data.remainingChips);
       setIsGameLocked(false);
