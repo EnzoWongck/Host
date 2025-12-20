@@ -1,91 +1,5 @@
-// === 終極 polyfill：強制在所有東西之前補上 resolveAssetSource ===
-// 必須放在 App.tsx 最上面，甚至在 import 之前！（是的，違反常規，但這是唯一 100% 有效的）
-
-if (typeof window !== 'undefined') {
-  // 強制在全局最優先執行（比任何 library 都早）
-  (window as any).resolveAssetSourcePolyfill = () => {
-    try {
-      const RNImage = require('react-native/Libraries/Image/Image');
-      if (RNImage) {
-        // 核心：補上 resolveAssetSource
-        RNImage.resolveAssetSource = (source: any) => source;
-        // 關鍵：處理 u.default（很多 library 會用 u.default.resolveAssetSource）
-        if (!RNImage.default) {
-          RNImage.default = RNImage;
-        } else {
-          // 如果已經有 default，也要補上
-          RNImage.default.resolveAssetSource = (source: any) => source;
-        }
-      }
-    } catch (e) {
-      console.warn('RNImage polyfill failed:', e);
-    }
-
-    try {
-      if (typeof Image !== 'undefined') {
-        // @ts-ignore
-        Image.resolveAssetSource = (source: any) => source;
-        // @ts-ignore
-        if (!Image.default) {
-          // @ts-ignore
-          Image.default = Image;
-        } else {
-          // @ts-ignore
-          Image.default.resolveAssetSource = (source: any) => source;
-        }
-      }
-    } catch (e) {
-      console.warn('Image polyfill failed:', e);
-    }
-
-    // 額外保護：直接補全局對象（處理編譯後的 u.default）
-    try {
-      const ReactNative = require('react-native');
-      if (ReactNative && ReactNative.Image) {
-        ReactNative.Image.resolveAssetSource = (source: any) => source;
-        if (ReactNative.Image.default) {
-          ReactNative.Image.default.resolveAssetSource = (source: any) => source;
-        }
-      }
-    } catch (e) {}
-
-    console.log('resolveAssetSource polyfill 已強制載入（全局優先）');
-  };
-
-  // 延遲執行 polyfill，避免在模塊初始化之前執行導致循環依賴
-  // 使用 setTimeout 確保所有模塊都已初始化
-  setTimeout(() => {
-    try {
-      (window as any).resolveAssetSourcePolyfill();
-    } catch (e) {
-      console.warn('Polyfill execution failed:', e);
-    }
-  }, 0);
-  
-  // 額外保護：在 DOMContentLoaded 時再次執行（確保所有模塊都已載入）
-  if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        try {
-          (window as any).resolveAssetSourcePolyfill();
-        } catch (e) {
-          console.warn('Polyfill execution on DOMContentLoaded failed:', e);
-        }
-      });
-    } else {
-      // 如果已經載入完成，延遲執行
-      setTimeout(() => {
-        try {
-          (window as any).resolveAssetSourcePolyfill();
-        } catch (e) {
-          console.warn('Polyfill execution on ready failed:', e);
-        }
-      }, 100);
-    }
-  }
-}
-
-// 現在才開始 import（所有 import 都要在這下面！）
+// === resolveAssetSource polyfill：移到組件內部執行，避免初始化錯誤 ===
+// 注意：polyfill 現在在 AppNavigator 組件內部執行，確保所有模塊都已初始化
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
@@ -151,6 +65,21 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 
 // 主要應用導航邏輯
 const AppNavigator: React.FC = () => {
+  // 在組件內部執行 polyfill，確保所有模塊都已初始化
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      // 延遲執行，確保所有模塊都已載入
+      const timer = setTimeout(() => {
+        try {
+          setupResolveAssetSourcePolyfill();
+        } catch (e) {
+          // 靜默失敗，不影響應用運行
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const isWeb = Platform.OS === 'web';
   // 根據配置決定是否跳過登入
   const shouldSkipAuth = isWeb && SKIP_AUTH_ON_WEB;
