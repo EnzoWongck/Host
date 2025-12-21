@@ -10,20 +10,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-// 靜態導入圖標
-import HomeIconAsset from './assets/icons/home.png';
-import PokercardIconAsset from './assets/icons/pokercard.png';
-import SettingsIconAsset from './assets/icons/settings.png';
-import Player2IconAsset from './assets/icons/player2.png';
-import Connect2IconAsset from './assets/icons/connect2.png';
-import CopyIconAsset from './assets/icons/copy.png';
-import Inout2IconAsset from './assets/icons/inout2.png';
-import RakeIconAsset from './assets/icons/rake.png';
-import CostIconAsset from './assets/icons/cost.png';
-import DealerIconAsset from './assets/icons/dealer.png';
-import EarthIconAsset from './assets/icons/earth.png';
-import EarthWhiteIconAsset from './assets/icons/earth.white.png';
-// IconFrontAsset 將使用 require() 動態導入以避免大小寫問題
+// 圖標將使用動態導入，避免在模塊初始化時執行
 // Context
 import { GameProvider, useGame } from './src/context/GameContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -580,21 +567,24 @@ const MainTabNavigator: React.FC = () => {
   useEffect(() => {
     // 預先載入常用 icon，避免 Expo Go 上延遲顯示
     // 在 Web 平台上跳過 Asset.loadAsync，因為它可能會使用 resolveAssetSource
+    // 使用動態導入避免在模塊初始化時執行
     if (Platform.OS !== 'web') {
-      Asset.loadAsync([
-        HomeIconAsset,
-        PokercardIconAsset,
-        SettingsIconAsset,
-        Player2IconAsset,
-        Connect2IconAsset,
-        CopyIconAsset,
-        Inout2IconAsset,
-        RakeIconAsset,
-        CostIconAsset,
-        DealerIconAsset,
-        EarthIconAsset,
-        EarthWhiteIconAsset,
-      ]).catch(() => {});
+      Promise.all([
+        import('./assets/icons/home.png'),
+        import('./assets/icons/pokercard.png'),
+        import('./assets/icons/settings.png'),
+        import('./assets/icons/player2.png'),
+        import('./assets/icons/connect2.png'),
+        import('./assets/icons/copy.png'),
+        import('./assets/icons/inout2.png'),
+        import('./assets/icons/rake.png'),
+        import('./assets/icons/cost.png'),
+        import('./assets/icons/dealer.png'),
+        import('./assets/icons/earth.png'),
+        import('./assets/icons/earth.white.png'),
+      ]).then((assets) => {
+        Asset.loadAsync(assets.map(m => m.default)).catch(() => {});
+      }).catch(() => {});
     }
   }, []);
 
