@@ -12,13 +12,11 @@ export const SUPABASE_URL = 'https://plnghuqosljnezjfpvmc.supabase.co';
 // 從 Supabase Dashboard > Settings > API > anon public 獲取
 export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbmdodXFvc2xqbmV6amZwdm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTA3NTEsImV4cCI6MjA4MTU2Njc1MX0.XVhRSrkSlAuVE_MWvb7j2JI3vEzexTYUIbGGfmiQED8';
 
-// 延遲初始化 Supabase 客戶端，避免在模塊加載時執行
-// 使用 getter 函數來延遲初始化，直到第一次訪問
-let _supabase: ReturnType<typeof createClient> | null = null;
-
-function initSupabaseClient(): ReturnType<typeof createClient> {
-  if (!_supabase) {
-    _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// 創建 Supabase 客戶端
+// 使用立即執行函數來確保在模塊加載時執行，但避免循環依賴
+export const supabase = (() => {
+  try {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         // 自動刷新 token
         autoRefreshToken: true,
@@ -47,42 +45,12 @@ function initSupabaseClient(): ReturnType<typeof createClient> {
         } : undefined,
       },
     });
+  } catch (error) {
+    console.error('創建 Supabase 客戶端失敗:', error);
+    // 返回一個空對象作為備用，避免應用崩潰
+    return {} as ReturnType<typeof createClient>;
   }
-  return _supabase;
-}
-
-// 導出客戶端，使用 Object.defineProperty 來實現延遲初始化
-// 這樣可以確保在第一次訪問時才初始化，而不是在模塊加載時
-const supabaseProxy = {} as ReturnType<typeof createClient>;
-Object.defineProperty(supabaseProxy, 'auth', {
-  get() {
-    return initSupabaseClient().auth;
-  },
-  enumerable: true,
-  configurable: true,
-});
-Object.defineProperty(supabaseProxy, 'from', {
-  get() {
-    return initSupabaseClient().from.bind(initSupabaseClient());
-  },
-  enumerable: true,
-  configurable: true,
-});
-
-// 使用 Proxy 來捕獲所有其他屬性訪問
-export const supabase = new Proxy(supabaseProxy, {
-  get(target, prop) {
-    if (prop === 'auth' || prop === 'from') {
-      return (target as any)[prop];
-    }
-    const client = initSupabaseClient();
-    const value = (client as any)[prop];
-    if (typeof value === 'function') {
-      return value.bind(client);
-    }
-    return value;
-  },
-}) as ReturnType<typeof createClient>;
+})();
 
 // ============================================
 // OAuth 配置
