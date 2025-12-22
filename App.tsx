@@ -47,7 +47,95 @@ import { SignupSuccessHandler } from './src/components/SignupSuccessHandler';
 // Types
 import { RootTabParamList } from './src/types/navigation';
 
+// 創建 Tab 導航器（必須在組件外部）
 const Tab = createBottomTabNavigator<RootTabParamList>();
+
+// 主應用 Tab 導航（必須在 AppNavigator 之前定義，避免初始化順序問題）
+// 使用函數聲明而不是 const 賦值，避免可能的 TDZ 問題
+function MainTabNavigator() {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
+  
+  useEffect(() => {
+    // 預先載入常用 icon，避免 Expo Go 上延遲顯示
+    // 在 Web 平台上跳過 Asset.loadAsync，因為它可能會使用 resolveAssetSource
+    // 使用動態導入避免在模塊初始化時執行
+    if (Platform.OS !== 'web') {
+      Promise.all([
+        import('./assets/icons/home.png'),
+        import('./assets/icons/pokercard.png'),
+        import('./assets/icons/settings.png'),
+        import('./assets/icons/player2.png'),
+        import('./assets/icons/connect2.png'),
+        import('./assets/icons/copy.png'),
+        import('./assets/icons/inout2.png'),
+        import('./assets/icons/rake.png'),
+        import('./assets/icons/cost.png'),
+        import('./assets/icons/dealer.png'),
+        import('./assets/icons/earth.png'),
+        import('./assets/icons/earth.white.png'),
+      ]).then((assets) => {
+        Asset.loadAsync(assets.map(m => m.default)).catch(() => {});
+      }).catch(() => {});
+    }
+  }, []);
+
+  return (
+    <NavigationContainer>
+      <Tab.Navigator
+        tabBar={(props) => <DoubleTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: theme.colors.background,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+            height: 80,
+            paddingBottom: 20,
+            paddingTop: 10,
+          },
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
+          },
+        }}
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            title: t('navigation.home'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon name="home" color={color} size={size} focused={focused} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Game"
+          component={GameScreen}
+          options={{
+            title: t('navigation.game'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon name="target" color={color} size={size} focused={focused} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            title: t('navigation.settings'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon name="settings" color={color} size={size} focused={focused} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
 
 // 主要應用導航邏輯
 const AppNavigator: React.FC = () => {
@@ -556,92 +644,6 @@ const AppNavigator: React.FC = () => {
         onClose={() => setShowNewUserWelcome(false)}
       />
     </>
-  );
-};
-
-// 主應用 Tab 導航
-const MainTabNavigator: React.FC = () => {
-  const { theme } = useTheme();
-  const { t } = useLanguage();
-  
-  useEffect(() => {
-    // 預先載入常用 icon，避免 Expo Go 上延遲顯示
-    // 在 Web 平台上跳過 Asset.loadAsync，因為它可能會使用 resolveAssetSource
-    // 使用動態導入避免在模塊初始化時執行
-    if (Platform.OS !== 'web') {
-      Promise.all([
-        import('./assets/icons/home.png'),
-        import('./assets/icons/pokercard.png'),
-        import('./assets/icons/settings.png'),
-        import('./assets/icons/player2.png'),
-        import('./assets/icons/connect2.png'),
-        import('./assets/icons/copy.png'),
-        import('./assets/icons/inout2.png'),
-        import('./assets/icons/rake.png'),
-        import('./assets/icons/cost.png'),
-        import('./assets/icons/dealer.png'),
-        import('./assets/icons/earth.png'),
-        import('./assets/icons/earth.white.png'),
-      ]).then((assets) => {
-        Asset.loadAsync(assets.map(m => m.default)).catch(() => {});
-      }).catch(() => {});
-    }
-  }, []);
-
-  return (
-    <NavigationContainer>
-      <Tab.Navigator
-        tabBar={(props) => <DoubleTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: theme.colors.background,
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
-            height: 80,
-            paddingBottom: 20,
-            paddingTop: 10,
-          },
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '600',
-          },
-        }}
-      >
-        <Tab.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{
-            title: t('navigation.home'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon name="home" color={color} size={size} focused={focused} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Game"
-          component={GameScreen}
-          options={{
-            title: t('navigation.game'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon name="target" color={color} size={size} focused={focused} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            title: t('navigation.settings'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon name="settings" color={color} size={size} focused={focused} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
   );
 };
 

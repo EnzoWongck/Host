@@ -98,6 +98,50 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================
+  // 計時器（提前定義，避免 TDZ 問題）
+  // ============================================
+  const setupExpiryTimers = useCallback((expiresAt: string, gameId: string) => {
+    // 清除舊計時器
+    if (expiryTimerRef.current) {
+      clearTimeout(expiryTimerRef.current);
+    }
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+    }
+
+    const expiryTime = new Date(expiresAt).getTime();
+    const now = Date.now();
+    const timeUntilExpiry = expiryTime - now;
+    const timeUntilWarning = timeUntilExpiry - CHIPS_CONFIG.REMINDER_BEFORE_EXPIRY;
+
+    // 設置警告計時器（到期前 30 分鐘）
+    if (timeUntilWarning > 0) {
+      warningTimerRef.current = setTimeout(() => {
+        console.log('Chip 即將過期警告');
+        // 可以在這裡顯示警告通知
+      }, timeUntilWarning);
+    }
+
+    // 設置過期計時器
+    if (timeUntilExpiry > 0) {
+      expiryTimerRef.current = setTimeout(async () => {
+        console.log('Chip 已過期，檢查是否需要自動消耗新的 chip');
+        setIsGameLocked(true);
+        setShowExpiredModal(true);
+        setGameChipStatus({
+          hasValidChip: false,
+          needsChip: true,
+          reason: 'chip_expired',
+        });
+        
+        // 如果用戶有 chips，自動消耗一個（12小時後自動續費）
+        // 注意：這裡不自動消耗，而是顯示 modal 讓用戶選擇
+        // 因為用戶可能想先查看數據再決定是否續費
+      }, timeUntilExpiry);
+    }
+  }, []);
+
+  // ============================================
   // API 調用
   // ============================================
   
@@ -522,50 +566,6 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       return null;
     }
   }, [isSignedIn, user, chips, getApiBaseUrl]);
-
-  // ============================================
-  // 計時器
-  // ============================================
-  const setupExpiryTimers = useCallback((expiresAt: string, gameId: string) => {
-    // 清除舊計時器
-    if (expiryTimerRef.current) {
-      clearTimeout(expiryTimerRef.current);
-    }
-    if (warningTimerRef.current) {
-      clearTimeout(warningTimerRef.current);
-    }
-
-    const expiryTime = new Date(expiresAt).getTime();
-    const now = Date.now();
-    const timeUntilExpiry = expiryTime - now;
-    const timeUntilWarning = timeUntilExpiry - CHIPS_CONFIG.REMINDER_BEFORE_EXPIRY;
-
-    // 設置警告計時器（到期前 30 分鐘）
-    if (timeUntilWarning > 0) {
-      warningTimerRef.current = setTimeout(() => {
-        console.log('Chip 即將過期警告');
-        // 可以在這裡顯示警告通知
-      }, timeUntilWarning);
-    }
-
-    // 設置過期計時器
-    if (timeUntilExpiry > 0) {
-      expiryTimerRef.current = setTimeout(async () => {
-        console.log('Chip 已過期，檢查是否需要自動消耗新的 chip');
-        setIsGameLocked(true);
-        setShowExpiredModal(true);
-        setGameChipStatus({
-          hasValidChip: false,
-          needsChip: true,
-          reason: 'chip_expired',
-        });
-        
-        // 如果用戶有 chips，自動消耗一個（12小時後自動續費）
-        // 注意：這裡不自動消耗，而是顯示 modal 讓用戶選擇
-        // 因為用戶可能想先查看數據再決定是否續費
-      }, timeUntilExpiry);
-    }
-  }, []);
 
   // ============================================
   // Modal 控制

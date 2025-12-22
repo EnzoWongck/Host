@@ -30,21 +30,29 @@ export const FORCE_SUBSCRIBED = true; // 設置為 true 來測試已訂閱狀態
 // false = 使用 Live (正式環境，URL: https://www.paypal.com)
 // 
 // 自動檢測環境：localhost 使用 Sandbox，生產環境使用 Live
-const isLocalhost = typeof window !== 'undefined' && (
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '127.0.0.1' ||
-  window.location.hostname.startsWith('192.168.') ||
-  window.location.hostname.startsWith('10.') ||
-  window.location.hostname.endsWith('.local')
-);
+// 使用函數延遲執行，避免在模塊頂層訪問 window，防止生產環境初始化問題
+const getIsLocalhost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location?.hostname;
+  if (!hostname) return false;
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.endsWith('.local')
+  );
+};
 
-const isProduction = typeof window !== 'undefined' && (
-  window.location.hostname === 'lunchips.com' ||
-  window.location.hostname === 'www.lunchips.com'
-);
-
-// 自動選擇環境：生產環境使用 Live，其他使用 Sandbox
-export const PAYPAL_USE_SANDBOX = !isProduction; // 生產環境自動使用 Live，其他使用 Sandbox
+const getIsProduction = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location?.hostname;
+  if (!hostname) return false;
+  return (
+    hostname === 'lunchips.com' ||
+    hostname === 'www.lunchips.com'
+  );
+};
 
 // Sandbox 測試環境配置
 export const PAYPAL_SANDBOX_CLIENT_ID = 'AQ1VvdEb7EI-w95pq5RNiYtXaL05cecchwK1y8dPRVo08nZcbOivk1LVbDvsxFRrjkcANZOsvtofxaPl';
@@ -55,11 +63,83 @@ export const PAYPAL_LIVE_CLIENT_ID = 'AdONrxmjU1VFgNTLu8Al7z5j9RNMwoKUNfUL9ZxYk8
 export const PAYPAL_LIVE_PLAN_ID = 'P-53786539UG299980ANEY2VEA';
 
 // 根據環境自動選擇配置
-export const PAYPAL_CLIENT_ID = PAYPAL_USE_SANDBOX ? PAYPAL_SANDBOX_CLIENT_ID : PAYPAL_LIVE_CLIENT_ID;
-export const PAYPAL_SUBSCRIPTION_PLAN_ID = PAYPAL_USE_SANDBOX ? PAYPAL_SANDBOX_PLAN_ID : PAYPAL_LIVE_PLAN_ID;
-export const PAYPAL_SDK_URL = PAYPAL_USE_SANDBOX 
-  ? 'https://www.sandbox.paypal.com/sdk/js'
-  : 'https://www.paypal.com/sdk/js';
+// 使用 getter 函數，確保在運行時動態檢測環境，避免模塊初始化時的問題
+export const getPayPalClientId = (): string => {
+  try {
+    return getIsProduction() ? PAYPAL_LIVE_CLIENT_ID : PAYPAL_SANDBOX_CLIENT_ID;
+  } catch {
+    return PAYPAL_SANDBOX_CLIENT_ID; // 默認使用 Sandbox
+  }
+};
+
+export const getPayPalSubscriptionPlanId = (): string => {
+  try {
+    return getIsProduction() ? PAYPAL_LIVE_PLAN_ID : PAYPAL_SANDBOX_PLAN_ID;
+  } catch {
+    return PAYPAL_SANDBOX_PLAN_ID; // 默認使用 Sandbox
+  }
+};
+
+export const getPayPalSdkUrl = (): string => {
+  try {
+    return getIsProduction() 
+      ? 'https://www.paypal.com/sdk/js'
+      : 'https://www.sandbox.paypal.com/sdk/js';
+  } catch {
+    return 'https://www.sandbox.paypal.com/sdk/js'; // 默認使用 Sandbox
+  }
+};
+
+// 自動選擇環境：生產環境使用 Live，其他使用 Sandbox
+// 使用 getter 函數延遲執行，避免模塊初始化時的問題
+export const getPayPalUseSandbox = (): boolean => {
+  try {
+    return !getIsProduction();
+  } catch {
+    // 如果無法檢測，默認使用 Sandbox（更安全）
+    return true;
+  }
+};
+
+// 為了向後兼容，提供延遲初始化的常量
+// 使用立即執行函數（IIFE）安全地初始化，避免在模塊加載時訪問 window
+export const PAYPAL_USE_SANDBOX = (() => {
+  try {
+    if (typeof window === 'undefined') return true; // 默認使用 Sandbox
+    const hostname = window.location?.hostname;
+    if (!hostname) return true;
+    const isProd = hostname === 'lunchips.com' || hostname === 'www.lunchips.com';
+    return !isProd;
+  } catch {
+    return true; // 錯誤時默認使用 Sandbox
+  }
+})();
+
+export const PAYPAL_CLIENT_ID = (() => {
+  try {
+    return PAYPAL_USE_SANDBOX ? PAYPAL_SANDBOX_CLIENT_ID : PAYPAL_LIVE_CLIENT_ID;
+  } catch {
+    return PAYPAL_SANDBOX_CLIENT_ID;
+  }
+})();
+
+export const PAYPAL_SUBSCRIPTION_PLAN_ID = (() => {
+  try {
+    return PAYPAL_USE_SANDBOX ? PAYPAL_SANDBOX_PLAN_ID : PAYPAL_LIVE_PLAN_ID;
+  } catch {
+    return PAYPAL_SANDBOX_PLAN_ID;
+  }
+})();
+
+export const PAYPAL_SDK_URL = (() => {
+  try {
+    return PAYPAL_USE_SANDBOX 
+      ? 'https://www.sandbox.paypal.com/sdk/js'
+      : 'https://www.paypal.com/sdk/js';
+  } catch {
+    return 'https://www.sandbox.paypal.com/sdk/js';
+  }
+})();
 
 // ============================================
 // 如何獲取 PayPal Client ID:
