@@ -43,13 +43,16 @@ module.exports = async (req, res) => {
     }
 
     // 獲取遊戲的 Chip 狀態
-    const gameChipId = `${userId}_${gameId}`;
-    
+    // 與其他地方保持一致：按 user_id + game_id 查詢最新一筆紀錄
+    // 注意：game_chips 表使用 consumed_at 而不是 created_at
     const { data: gameChip, error: fetchError } = await supabase
       .from('game_chips')
       .select('*')
-      .eq('id', gameChipId)
-      .single();
+      .eq('user_id', userId)
+      .eq('game_id', gameId)
+      .order('consumed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('獲取遊戲 Chip 狀態失敗:', fetchError);

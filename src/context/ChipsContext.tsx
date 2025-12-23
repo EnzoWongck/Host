@@ -292,7 +292,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           .select('*')
           .eq('user_id', user.uid)
           .eq('game_id', gameId)
-          .order('created_at', { ascending: false })
+          .order('consumed_at', { ascending: false })
           .limit(1)
           .single();
         

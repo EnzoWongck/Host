@@ -1216,23 +1216,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteGame = useCallback(async (gameId: string) => {
     try {
       // Supabase 會自動刪除關聯的子表數據（CASCADE）
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('games')
         .delete()
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .select(); // 返回刪除的數據，確認刪除成功
 
-      if (error) throw error;
+      if (error) {
+        console.error('刪除遊戲失敗:', error);
+        dispatch({ type: 'SET_ERROR', payload: `刪除遊戲失敗: ${error.message}` });
+        return; // 刪除失敗，不更新狀態
+      }
 
-      const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
-      const newCurrent =
-        stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
-          ? null
-          : stateRef.current.currentGame;
+      // 確認刪除成功後才更新本地狀態
+      if (data && data.length > 0) {
+        const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
+        const newCurrent =
+          stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
+            ? null
+            : stateRef.current.currentGame;
 
-      dispatch({ type: 'SET_GAMES', payload: updatedGames });
-      dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
-    } catch (error) {
+        dispatch({ type: 'SET_GAMES', payload: updatedGames });
+        dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
+        dispatch({ type: 'SET_ERROR', payload: null }); // 清除錯誤
+      } else {
+        // 沒有刪除任何記錄（可能已經不存在）
+        console.warn('嘗試刪除的遊戲不存在:', gameId);
+        // 仍然更新本地狀態，以防前端狀態不一致
+        const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
+        dispatch({ type: 'SET_GAMES', payload: updatedGames });
+      }
+    } catch (error: any) {
       console.error('刪除遊戲失敗:', error);
+      dispatch({ type: 'SET_ERROR', payload: `刪除遊戲失敗: ${error?.message || '未知錯誤'}` });
     }
   }, []);
 
