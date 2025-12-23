@@ -47,7 +47,7 @@ import SwipeHint from '../components/SwipeHint';
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const { isGameLocked, checkGameChipStatus } = useChips();
+  const { isGameLocked, checkGameChipStatus, openPurchaseModal } = useChips();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { state, setGameSummaryModalVisible, deletePlayer } = useGame();
@@ -663,11 +663,8 @@ const GameScreen: React.FC = () => {
   
   const handleEditAction = (action: () => void, actionName: string) => {
     if (!canEdit) {
-      Alert.alert(
-        'Chips 不足',
-        '你的牌局編輯時間已用完，請購買 Chips 以繼續編輯。',
-        [{ text: '確定' }]
-      );
+      // 如果按鈕被禁用，顯示購買 Chips 視窗
+      openPurchaseModal();
       return;
     }
     action();
@@ -896,7 +893,6 @@ const GameScreen: React.FC = () => {
                   <TouchableOpacity 
                     onPress={() => handleEditAction(() => setBuyInModalVisible(true), 'buyIn')}
                     activeOpacity={0.7}
-                    disabled={!canEdit}
                     style={{ alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="buy-in" size={40} style={styles.functionIconInCard} />
@@ -908,7 +904,6 @@ const GameScreen: React.FC = () => {
                   <TouchableOpacity 
                     onPress={() => handleEditAction(() => setCashOutModalVisible(true), 'cashOut')}
                     activeOpacity={0.7}
-                    disabled={!canEdit}
                     style={{ alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="cashout" size={40} style={styles.functionIconInCard} />
@@ -921,7 +916,6 @@ const GameScreen: React.FC = () => {
                     <TouchableOpacity 
                       onPress={() => handleEditAction(() => setEntryFeeModalVisible(true), 'entryFee')}
                       activeOpacity={0.7}
-                      disabled={!canEdit}
                       style={{ alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Icon name="rake" size={50} style={styles.functionIconInCard} />
@@ -933,7 +927,6 @@ const GameScreen: React.FC = () => {
                     <TouchableOpacity 
                       onPress={() => handleEditAction(() => setRakeModalVisible(true), 'rake')}
                       activeOpacity={0.7}
-                      disabled={!canEdit}
                       style={{ alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Icon name="rake" size={50} style={styles.functionIconInCard} />
@@ -946,7 +939,6 @@ const GameScreen: React.FC = () => {
                   <TouchableOpacity 
                     onPress={() => handleEditAction(() => setExpenseModalVisible(true), 'expense')}
                     activeOpacity={0.7}
-                    disabled={!canEdit}
                     style={{ alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="cost" size={40} style={styles.functionIconInCard} />
@@ -956,10 +948,15 @@ const GameScreen: React.FC = () => {
                 
                 <View style={[styles.functionButtonInCard, !canEdit && { opacity: 0.5 }]}>
                   <TouchableOpacity 
-                    onPress={() => setInsuranceRecordsVisible(true)}
+                    onPress={() => {
+                      if (!canEdit) {
+                        openPurchaseModal();
+                        return;
+                      }
+                      setInsuranceRecordsVisible(true);
+                    }}
                     activeOpacity={0.7}
                     style={{ alignItems: 'center', justifyContent: 'center' }}
-                    disabled={!canEdit}
                   >
                     <Icon name="insurance" size={40} style={styles.functionIconInCard} />
                     <Text style={styles.functionTextInCard}>{t('game.functions.insurance')}</Text>
@@ -970,7 +967,6 @@ const GameScreen: React.FC = () => {
                   <TouchableOpacity 
                     onPress={() => handleEditAction(() => setDealerModalVisible(true), 'dealer')}
                     activeOpacity={0.7}
-                    disabled={!canEdit}
                     style={{ alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="dealer" size={60} style={styles.dealerIconInCard} />
