@@ -1214,6 +1214,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const deleteGame = useCallback(async (gameId: string) => {
+    // 先檢查本地狀態中是否存在這個遊戲，避免重複刪除
+    const gameExists = stateRef.current.games.some(g => g.id === gameId);
+    
+    // 如果本地狀態中不存在，直接更新狀態並返回（可能已經被刪除或不存在）
+    if (!gameExists) {
+      // 仍然更新 currentGame 狀態，以防它是當前選中的遊戲
+      const newCurrent =
+        stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
+          ? null
+          : stateRef.current.currentGame;
+      
+      if (stateRef.current.currentGame?.id === gameId) {
+        dispatch({ type: 'SET_CURRENT_GAME', payload: null });
+      }
+      // 靜默返回，不顯示警告（這是正常情況）
+      return;
+    }
+
     try {
       // Supabase 會自動刪除關聯的子表數據（CASCADE）
       const { error, data } = await supabase
@@ -1223,6 +1241,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select(); // 返回刪除的數據，確認刪除成功
 
       if (error) {
+        // 檢查是否是因為記錄不存在而導致的錯誤
+        if (error.code === 'PGRST116' || error.message?.includes('not found')) {
+          // 記錄不存在是正常情況，靜默處理
+          const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
+          const newCurrent =
+            stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
+              ? null
+              : stateRef.current.currentGame;
+          
+          dispatch({ type: 'SET_GAMES', payload: updatedGames });
+          dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
+          return;
+        }
+        
         console.error('刪除遊戲失敗:', error);
         dispatch({ type: 'SET_ERROR', payload: `刪除遊戲失敗: ${error.message}` });
         return; // 刪除失敗，不更新狀態
@@ -1239,18 +1271,47 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_GAMES', payload: updatedGames });
         dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
         dispatch({ type: 'SET_ERROR', payload: null }); // 清除錯誤
+        
+        // 重新載入遊戲列表，確保與數據庫同步
+        // 使用 setTimeout 確保狀態更新完成後再載入
+        setTimeout(() => {
+          loadGames();
+        }, 100);
       } else {
-        // 沒有刪除任何記錄（可能已經不存在）
-        console.warn('嘗試刪除的遊戲不存在:', gameId);
-        // 仍然更新本地狀態，以防前端狀態不一致
+        // 沒有刪除任何記錄（可能已經不存在或已被刪除）
+        // 這是正常情況，靜默處理，不顯示警告
         const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
+        const newCurrent =
+          stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
+            ? null
+            : stateRef.current.currentGame;
+        
         dispatch({ type: 'SET_GAMES', payload: updatedGames });
+        dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
+        // 重新載入以確保同步
+        setTimeout(() => {
+          loadGames();
+        }, 100);
       }
     } catch (error: any) {
+      // 檢查是否是因為記錄不存在而導致的錯誤
+      if (error?.code === 'PGRST116' || error?.message?.includes('not found')) {
+        // 記錄不存在是正常情況，靜默處理
+        const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
+        const newCurrent =
+          stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
+            ? null
+            : stateRef.current.currentGame;
+        
+        dispatch({ type: 'SET_GAMES', payload: updatedGames });
+        dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
+        return;
+      }
+      
       console.error('刪除遊戲失敗:', error);
       dispatch({ type: 'SET_ERROR', payload: `刪除遊戲失敗: ${error?.message || '未知錯誤'}` });
     }
-  }, []);
+  }, [loadGames]);
 
   const clearAllGames = useCallback(async () => {
     if (!user?.uid) return;
