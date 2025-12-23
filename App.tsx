@@ -199,14 +199,17 @@ const AppNavigator: React.FC = () => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('currentScreen');
       // 只有在用戶已登入時才恢復 phoneVerify 或 main
-      // 如果用戶未登入但 sessionStorage 中有這些狀態，清除它們
+      // 如果用戶未登入但 sessionStorage 中有這些狀態，清除它們並返回 welcome
       if (saved && ['welcome', 'login', 'signup', 'forgotPassword'].includes(saved)) {
         return saved as any;
       }
-      // 如果保存的是 phoneVerify 或 main，需要檢查用戶是否真的登入
-      // 這個檢查會在 useEffect 中進行，這裡先返回 saved
+      // 如果保存的是 phoneVerify 或 main，但用戶未登入，清除 sessionStorage 並返回 welcome
+      // 注意：這裡無法檢查 isSignedIn（因為它在 hook 中），所以先返回 welcome
+      // useEffect 會在認證狀態加載後再決定正確的頁面
       if (saved && ['phoneVerify', 'main'].includes(saved)) {
-        return saved as any;
+        // 清除可能無效的狀態，讓 useEffect 根據實際登入狀態決定
+        sessionStorage.removeItem('currentScreen');
+        return 'welcome';
       }
     }
     return 'welcome';
@@ -411,10 +414,10 @@ const AppNavigator: React.FC = () => {
       
       checkPhoneVerification();
     } else {
-      // 未登入，如果在 phoneVerify 頁面，返回 welcome
+      // 未登入，如果在 phoneVerify 或 main 頁面，返回 welcome
       // 但如果在註冊流程中，不要跳轉
-      if (currentScreen === 'phoneVerify' && !isSigningUp) {
-        console.log('未登入，從電話驗證頁面返回歡迎頁面');
+      if ((currentScreen === 'phoneVerify' || currentScreen === 'main') && !isSigningUp) {
+        console.log('未登入，從', currentScreen, '頁面返回歡迎頁面');
         setCurrentScreenWithStorage('welcome');
       }
     }
@@ -628,6 +631,14 @@ const AppNavigator: React.FC = () => {
     return <MainTabNavigator />;
   }
 
+  // 如果未登入但當前畫面是 main，強制返回 welcome
+  // 這是一個安全檢查，防止在認證狀態加載完成前顯示主畫面
+  if (!loading && !isSignedIn && currentScreen === 'main') {
+    console.log('安全檢查：未登入但當前畫面是 main，返回 welcome');
+    setCurrentScreenWithStorage('welcome');
+    return <WelcomeScreen onGetStarted={handleWelcomeGetStarted} />;
+  }
+
   if (currentScreen === 'welcome') {
     return <WelcomeScreen onGetStarted={handleWelcomeGetStarted} />;
   }
@@ -687,6 +698,13 @@ const AppNavigator: React.FC = () => {
         }}
       />
     );
+  }
+
+  // 如果未登入但嘗試訪問主畫面，返回 welcome
+  if (!loading && !isSignedIn) {
+    console.log('未登入，返回 welcome 頁面');
+    setCurrentScreenWithStorage('welcome');
+    return <WelcomeScreen onGetStarted={handleWelcomeGetStarted} />;
   }
 
   return (
