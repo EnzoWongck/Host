@@ -1262,6 +1262,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 確認刪除成功後才更新本地狀態
       if (data && data.length > 0) {
+        // 刪除成功，更新本地狀態
         const updatedGames = stateRef.current.games.filter((g) => g.id !== gameId);
         const newCurrent =
           stateRef.current.currentGame && stateRef.current.currentGame.id === gameId
@@ -1272,11 +1273,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
         dispatch({ type: 'SET_ERROR', payload: null }); // 清除錯誤
         
-        // 重新載入遊戲列表，確保與數據庫同步
-        // 使用 setTimeout 確保狀態更新完成後再載入
-        setTimeout(() => {
-          loadGames();
-        }, 100);
+        // 不立即重新載入，因為我們已經手動更新了本地狀態
+        // 只有在真正需要同步時才重新載入（例如用戶手動刷新）
+        // 這樣可以避免競態條件和閃爍問題
       } else {
         // 沒有刪除任何記錄（可能已經不存在或已被刪除）
         // 這是正常情況，靜默處理，不顯示警告
@@ -1288,10 +1287,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         dispatch({ type: 'SET_GAMES', payload: updatedGames });
         dispatch({ type: 'SET_CURRENT_GAME', payload: newCurrent });
-        // 重新載入以確保同步
-        setTimeout(() => {
-          loadGames();
-        }, 100);
+        // 不重新載入，因為我們已經手動更新了本地狀態
       }
     } catch (error: any) {
       // 檢查是否是因為記錄不存在而導致的錯誤
@@ -1311,7 +1307,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('刪除遊戲失敗:', error);
       dispatch({ type: 'SET_ERROR', payload: `刪除遊戲失敗: ${error?.message || '未知錯誤'}` });
     }
-  }, [loadGames]);
+  }, []);
 
   const clearAllGames = useCallback(async () => {
     if (!user?.uid) return;

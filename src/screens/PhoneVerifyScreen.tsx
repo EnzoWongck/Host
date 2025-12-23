@@ -48,6 +48,19 @@ interface PhoneVerifyScreenProps {
   onLogout?: () => void; // 登出後回調
 }
 
+// 獲取 API base URL
+const getApiBaseUrl = (): string => {
+  if (Platform.OS !== 'web') return '';
+  if (typeof window === 'undefined') return '';
+  
+  const hostname = window.location.hostname;
+  // 在 localhost 時，使用生產環境的 API（因為 Expo 開發服務器不支持 API 路由）
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+    return 'https://lunchips.com';
+  }
+  return ''; // 生產環境使用相對路徑（同域名）
+};
+
 const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
   onVerified,
   onSkip,
@@ -109,7 +122,11 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
 
     try {
       console.log('發送 OTP 到:', cleanedPhoneNumber);
-      const response = await fetch('/api/phone/send-otp', {
+      const apiBaseUrl = getApiBaseUrl();
+      const apiUrl = `${apiBaseUrl}/api/phone/send-otp`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: cleanedPhoneNumber }),
@@ -200,7 +217,11 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
 
       console.log('發送驗證 OTP 請求:', { phoneNumber: cleanedPhoneNumber, code, userId: user?.uid });
       
-      const response = await fetch('/api/phone/verify-otp', {
+      const apiBaseUrl = getApiBaseUrl();
+      const apiUrl = `${apiBaseUrl}/api/phone/verify-otp`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,17 +268,27 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       }
 
       if (data.success) {
+        // 先清除 loading 狀態，避免界面卡住
+        setLoading(false);
+        
         // 刷新用戶資料，等待狀態更新
         console.log('OTP 驗證成功，開始刷新用戶狀態...');
-        await refreshUser();
+        try {
+          await refreshUser();
+          
+          // 給一點時間確保 Supabase 狀態已更新
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // 再次刷新確保狀態是最新的
+          await refreshUser();
+          
+          console.log('電話驗證成功，用戶狀態已更新，調用 onVerified');
+        } catch (refreshError) {
+          console.error('刷新用戶狀態時出錯:', refreshError);
+          // 即使刷新失敗，也繼續執行 onVerified
+        }
         
-        // 給一點時間確保 Supabase 狀態已更新
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // 再次刷新確保狀態是最新的
-        await refreshUser();
-        
-        console.log('電話驗證成功，用戶狀態已更新，調用 onVerified');
+        // 調用 onVerified（不等待，讓它在背景執行）
         onVerified();
       } else {
         setError(data.message || '驗證碼錯誤');
@@ -280,9 +311,13 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       } else {
         setError(err.message || '驗證失敗，請稍後再試');
       }
-    } finally {
-      // 確保 loading 狀態被清除
       setLoading(false);
+    } finally {
+      // 確保 loading 狀態被清除（如果還沒有被清除）
+      // 注意：成功時 loading 已經在成功分支中清除，錯誤時在 catch 中清除
+      if (loading) {
+        setLoading(false);
+      }
       console.log('驗證 OTP 流程結束，loading 已清除');
     }
   };

@@ -62,7 +62,42 @@ module.exports = async (req, res) => {
     }
 
     if (!gameChip) {
-      // 沒有 Chip 記錄，需要消耗新的 Chip
+      // 沒有 Chip 記錄，檢查遊戲是否在 12 小時內創建
+      const { data: gameData, error: gameError } = await supabase
+        .from('games')
+        .select('start_time')
+        .eq('id', gameId)
+        .single();
+      
+      if (!gameError && gameData?.start_time) {
+        const gameStartTime = new Date(gameData.start_time);
+        const now = new Date();
+        const timeSinceStart = now.getTime() - gameStartTime.getTime();
+        const CHIP_VALIDITY_DURATION = 12 * 60 * 60 * 1000; // 12 小時
+        const isWithin12Hours = timeSinceStart < CHIP_VALIDITY_DURATION;
+        
+        if (isWithin12Hours) {
+          // 遊戲在 12 小時內創建，允許使用
+          const remainingMs = CHIP_VALIDITY_DURATION - timeSinceStart;
+          const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
+          const remainingHours = Math.floor(remainingMinutes / 60);
+          const expiresAt = new Date(gameStartTime.getTime() + CHIP_VALIDITY_DURATION);
+          
+          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            hasValidChip: true,
+            needsChip: false,
+            expiresAt: expiresAt.toISOString(),
+            remainingMinutes: remainingMinutes,
+            remainingHours: remainingHours,
+            shouldWarn: remainingMinutes <= 30,
+            reason: 'within_12_hours',
+          }));
+          return;
+        }
+      }
+      
+      // 沒有記錄且不在 12 小時內，需要消耗新的 Chip
       res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         hasValidChip: false,

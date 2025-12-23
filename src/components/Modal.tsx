@@ -398,19 +398,51 @@ const Modal: React.FC<ModalProps> = ({
       <Pressable onPress={handleBackdropPress}>
         <View style={styles.overlay} data-modal-overlay>
           <Pressable onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.modalContainer, responsiveContainerStyle]} data-modal-container>
+            <View 
+              style={[styles.modalContainer, responsiveContainerStyle]} 
+              data-modal-container
+              {...(Platform.OS === 'web' ? {
+                role: "dialog",
+                'aria-modal': true,
+                'aria-labelledby': 'modal-title',
+              } : {
+                accessibilityViewIsModal: true,
+                accessibilityLabel: typeof title === 'string' ? title : 'Modal',
+              })}
+            >
               <View style={styles.header}>
                 <View style={styles.titleRow}>
                   {leftIconName ? (
                     <Icon name={leftIconName as any} size={20} style={styles.titleIcon} />
                   ) : null}
                   {typeof title === 'string' ? (
-                    <Text style={styles.title}>{title}</Text>
+                    <Text 
+                      style={styles.title}
+                      accessibilityRole="header"
+                      accessibilityLevel={1}
+                      {...(Platform.OS === 'web' ? {
+                        // Web 平台：添加 ARIA 屬性以符合無障礙性要求
+                        role: "heading",
+                        'aria-level': 1,
+                        id: 'modal-title',
+                      } : {})}
+                    >
+                      {title}
+                    </Text>
                   ) : (
                     title
                   )}
                 </View>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
+                <TouchableOpacity 
+                  style={styles.closeButton} 
+                  onPress={onClose} 
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="關閉"
+                  {...(Platform.OS === 'web' ? {
+                    'aria-label': '關閉',
+                  } : {})}
+                >
                   <Text style={styles.closeButtonText}>×</Text>
                 </TouchableOpacity>
               </View>

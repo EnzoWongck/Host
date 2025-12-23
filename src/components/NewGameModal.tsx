@@ -30,7 +30,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { createGame, state, deleteGame } = useGame();
-  const { chips, consumeChip, loadChipsBalance, openPurchaseModal } = useChips();
+  const { chips, loading: chipsLoading, consumeChip, loadChipsBalance, openPurchaseModal } = useChips();
   const navigation = useNavigation<any>();
   
   const [gameName, setGameName] = useState('');
@@ -441,33 +441,79 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       });
       
       // 檢查 chips 餘額
-      console.log('檢查 chips 餘額:', chips, '類型:', typeof chips);
-      if (chips === undefined || chips === null) {
+      console.log('檢查 chips 餘額:', chips, '類型:', typeof chips, 'loading:', chipsLoading);
+      
+      // 如果 chips 還在載入中，先等待載入完成
+      if (chipsLoading) {
+        console.log('Chips 餘額正在載入中，等待載入完成...');
+        // 等待載入完成
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // 重新載入餘額
+        await loadChipsBalance();
+        // 再次等待
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      // 再次檢查 chips（載入後的值）
+      const currentChips = chips;
+      console.log('載入後的 chips 餘額:', currentChips);
+      
+      if (currentChips === undefined || currentChips === null) {
         console.error('chips 未定義，無法創建牌局');
         Alert.alert('錯誤', '無法獲取 Chips 餘額，請刷新頁面後重試。');
         return;
       }
       
-      if (chips < 1) {
-        console.log('Chips 不足，顯示購買提示');
-        Alert.alert(
-          'Chips 不足',
-          '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
-          [
-            { text: '取消', style: 'cancel' },
-            { 
-              text: '購買 Chips', 
-              onPress: () => {
-                onClose();
-                if (openPurchaseModal) {
-                  openPurchaseModal();
-                } else {
-                  console.error('openPurchaseModal 未定義');
-                }
-              }
+      if (currentChips < 1) {
+        console.log('Chips 不足，顯示購買提示，當前 chips:', currentChips);
+        console.log('openPurchaseModal 函數:', typeof openPurchaseModal);
+        
+        // 先關閉創建模態框
+        onClose();
+        
+        // 使用較長的延遲確保創建模態框完全關閉後再打開購買模態框
+        setTimeout(() => {
+          if (openPurchaseModal && typeof openPurchaseModal === 'function') {
+            try {
+              console.log('正在打開購買模態框...');
+              openPurchaseModal();
+              console.log('已調用 openPurchaseModal');
+            } catch (error) {
+              console.error('打開購買模態框失敗:', error);
+              // 如果打開失敗，使用 Alert 作為備用
+              Alert.alert(
+                'Chips 不足',
+                '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
+                [
+                  { text: '取消', style: 'cancel' },
+                  { 
+                    text: '購買 Chips', 
+                    onPress: () => {
+                      // 再次嘗試打開購買模態框
+                      if (openPurchaseModal) {
+                        openPurchaseModal();
+                      }
+                    }
+                  }
+                ]
+              );
             }
-          ]
-        );
+          } else {
+            console.error('openPurchaseModal 未定義或不是函數');
+            // 如果 openPurchaseModal 不可用，使用 Alert 作為備用
+            Alert.alert(
+              'Chips 不足',
+              '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
+              [
+                { text: '取消', style: 'cancel' },
+                { 
+                  text: '確定', 
+                  style: 'default'
+                }
+              ]
+            );
+          }
+        }, 300); // 增加延遲時間，確保模態框切換流暢
         return;
       }
       

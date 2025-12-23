@@ -133,7 +133,10 @@ module.exports = async (req, res) => {
       res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         error: 'Failed to create game chip record', 
-        success: false 
+        success: false,
+        details: upsertError.message || null,
+        code: upsertError.code || null,
+        hint: upsertError.hint || null,
       }));
       return;
     }

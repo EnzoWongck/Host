@@ -15,6 +15,19 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
+// 獲取 API base URL
+const getApiBaseUrl = (): string => {
+  if (Platform.OS !== 'web') return '';
+  if (typeof window === 'undefined') return '';
+  
+  const hostname = window.location.hostname;
+  // 在 localhost 時，使用生產環境的 API（因為 Expo 開發服務器不支持 API 路由）
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+    return 'https://lunchips.com';
+  }
+  return ''; // 生產環境使用相對路徑（同域名）
+};
+
 // 常用國家/地區代碼
 const COUNTRY_CODES = [
   { code: '+852', country: '香港', flag: '🇭🇰' },
@@ -111,7 +124,11 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
     try {
       console.log('發送 OTP 到:', cleanedPhoneNumber);
-      const response = await fetch('/api/phone/send-otp', {
+      const apiBaseUrl = getApiBaseUrl();
+      const apiUrl = `${apiBaseUrl}/api/phone/send-otp`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: cleanedPhoneNumber }),
@@ -171,7 +188,11 @@ const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     setError('');
 
     try {
-      const response = await fetch('/api/phone/verify-otp', {
+      const apiBaseUrl = getApiBaseUrl();
+      const apiUrl = `${apiBaseUrl}/api/phone/verify-otp`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

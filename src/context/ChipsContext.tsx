@@ -297,7 +297,47 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           .single();
         
         if (error || !chipRecord) {
-          // 沒有記錄，需要消耗 Chip
+          // 沒有 chip 記錄，檢查遊戲是否在 12 小時內創建
+          const { data: gameData, error: gameError } = await supabase
+            .from('games')
+            .select('start_time')
+            .eq('id', gameId)
+            .single();
+          
+          if (!gameError && gameData?.start_time) {
+            const gameStartTime = new Date(gameData.start_time);
+            const now = new Date();
+            const timeSinceStart = now.getTime() - gameStartTime.getTime();
+            const isWithin12Hours = timeSinceStart < CHIPS_CONFIG.CHIP_VALIDITY_DURATION;
+            
+            if (isWithin12Hours) {
+              // 遊戲在 12 小時內創建，允許使用
+              const remainingMs = CHIPS_CONFIG.CHIP_VALIDITY_DURATION - timeSinceStart;
+              const remainingMinutes = Math.floor(remainingMs / 60000);
+              const remainingHours = Math.floor(remainingMinutes / 60);
+              const expiresAt = new Date(gameStartTime.getTime() + CHIPS_CONFIG.CHIP_VALIDITY_DURATION);
+              
+              const status: GameChipStatus = {
+                hasValidChip: true,
+                needsChip: false,
+                expiresAt: expiresAt.toISOString(),
+                remainingMinutes,
+                remainingHours,
+                shouldWarn: remainingMinutes < 30 && remainingMinutes > 0,
+                reason: 'within_12_hours',
+              };
+              
+              setGameChipStatus(status);
+              setIsGameLocked(false);
+              
+              // 設置過期計時器
+              setupExpiryTimers(expiresAt.toISOString(), gameId);
+              
+              return status;
+            }
+          }
+          
+          // 沒有記錄且不在 12 小時內，需要消耗 Chip
           const status: GameChipStatus = { hasValidChip: false, needsChip: true, reason: 'no_chip_record' };
           setGameChipStatus(status);
           setIsGameLocked(true);
