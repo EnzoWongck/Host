@@ -28,7 +28,7 @@ const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { state, selectCurrentGame, deleteGame, updateGame } = useGame();
-  const { chips, checkGameChipStatus, openPurchaseModal, consumeChip, loadChipsBalance } = useChips();
+  const { loadChipsBalance } = useChips();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
@@ -37,17 +37,6 @@ const HomeScreen: React.FC = () => {
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
   const [pendingGameNavigation, setPendingGameNavigation] = useState<string | null>(null);
   const [showAddToHomeModal, setShowAddToHomeModal] = useState(false);
-  
-  // 12 小時的有效期（毫秒）
-  const CHIP_VALIDITY_DURATION = 12 * 60 * 60 * 1000;
-  
-  // 檢查牌局是否超過 12 小時
-  const isGameExpired = (gameStartTime: string | Date): boolean => {
-    const startTime = new Date(gameStartTime);
-    const now = new Date();
-    const timeSinceStart = now.getTime() - startTime.getTime();
-    return timeSinceStart >= CHIP_VALIDITY_DURATION;
-  };
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -380,79 +369,17 @@ const HomeScreen: React.FC = () => {
                 const timeB = new Date(b.startTime).getTime();
                 return timeB - timeA; // 降序：最新的在前
               })
-              .map((game) => {
-                // 檢查牌局是否超過 12 小時（獨立計算，不依賴 chip 狀態）
-                const expired = isGameExpired(game.startTime);
-                
-                return (
+              .map((game) => (
                 <TouchableOpacity 
                   key={game.id} 
-                  onPress={async () => {
-                    // 如果牌局超過 12 小時，檢查是否需要消耗 chip
-                    if (expired) {
-                      // 檢查 chip 狀態
-                      const chipStatus = await checkGameChipStatus(game.id);
-                      if (!chipStatus.hasValidChip) {
-                        // 沒有有效的 chip
-                        if (chips < 1) {
-                          // chips 餘額為 0，彈出購買視窗
-                          openPurchaseModal();
-                          return;
-                        } else {
-                          // 有 chips 餘額，顯示確認視窗
-                          if (Platform.OS === 'web') {
-                            const confirmed = window.confirm('是否消耗 1 Chip 繼續編輯牌局？');
-                            if (!confirmed) return;
-                            // 消耗 chip
-                            const success = await consumeChip(game.id, 'restore_game');
-                            if (success) {
-                              // 將遊戲狀態改回 active
-                              const updatedGame = { ...game, status: 'active' as const };
-                              await updateGame(updatedGame);
-                              // 進入遊戲
-                              selectCurrentGame(game.id);
-                              setPendingGameNavigation(game.id);
-                            }
-                            return;
-                          } else {
-                            // 原生平台使用 Alert
-                            Alert.alert(
-                              '消耗 Chip',
-                              '是否消耗 1 Chip 繼續編輯牌局？',
-                              [
-                                {
-                                  text: '取消',
-                                  style: 'cancel',
-                                },
-                                {
-                                  text: '確認',
-                                  onPress: async () => {
-                                    // 消耗 chip
-                                    const success = await consumeChip(game.id, 'restore_game');
-                                    if (success) {
-                                      // 將遊戲狀態改回 active
-                                      const updatedGame = { ...game, status: 'active' as const };
-                                      await updateGame(updatedGame);
-                                      // 進入遊戲
-                                      selectCurrentGame(game.id);
-                                      setPendingGameNavigation(game.id);
-                                    }
-                                  },
-                                },
-                              ],
-                              { cancelable: true }
-                            );
-                            return;
-                          }
-                        }
-                      }
-                    }
+                  onPress={() => {
+                    // 直接進入牌局，不檢查 chip 狀態
+                    // chip 狀態檢查和購買視窗將在 GameScreen 中的按鈕點擊時處理
                     selectCurrentGame(game.id);
                     // 設置導航標記，等待 state 更新
                     setPendingGameNavigation(game.id);
                   }}
                   activeOpacity={0.7}
-                  style={expired ? { opacity: 0.5 } : undefined}
                 >
                   <Card style={styles.gameCard}>
                   <View style={styles.gameHeader}>
