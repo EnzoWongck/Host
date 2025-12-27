@@ -37,7 +37,17 @@ const HomeScreen: React.FC = () => {
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
   const [pendingGameNavigation, setPendingGameNavigation] = useState<string | null>(null);
   const [showAddToHomeModal, setShowAddToHomeModal] = useState(false);
-  const [gameChipStatuses, setGameChipStatuses] = useState<Record<string, { hasValidChip: boolean; needsChip: boolean }>>({});
+  
+  // 12 小時的有效期（毫秒）
+  const CHIP_VALIDITY_DURATION = 12 * 60 * 60 * 1000;
+  
+  // 檢查牌局是否超過 12 小時
+  const isGameExpired = (gameStartTime: string | Date): boolean => {
+    const startTime = new Date(gameStartTime);
+    const now = new Date();
+    const timeSinceStart = now.getTime() - startTime.getTime();
+    return timeSinceStart >= CHIP_VALIDITY_DURATION;
+  };
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -281,39 +291,7 @@ const HomeScreen: React.FC = () => {
     }
   }, [isRunningStandalone]);
 
-  // 檢查所有遊戲的 chip 狀態
-  useEffect(() => {
-    const checkAllGamesChipStatus = async () => {
-      if (state.games.length === 0) return;
-      
-      const statuses: Record<string, { hasValidChip: boolean; needsChip: boolean }> = {};
-      
-      // 並行檢查所有遊戲的 chip 狀態
-      const promises = state.games.map(async (game) => {
-        try {
-          const status = await checkGameChipStatus(game.id);
-          statuses[game.id] = {
-            hasValidChip: status.hasValidChip,
-            needsChip: status.needsChip,
-          };
-        } catch (error) {
-          console.error(`檢查遊戲 ${game.id} 的 chip 狀態失敗:`, error);
-          // 默認狀態：需要 chip
-          statuses[game.id] = {
-            hasValidChip: false,
-            needsChip: true,
-          };
-        }
-      });
-      
-      await Promise.all(promises);
-      setGameChipStatuses(statuses);
-    };
-
-    checkAllGamesChipStatus();
-  }, [state.games, chips, checkGameChipStatus]);
-
-  // 監聽支付成功，重新檢查所有遊戲狀態
+  // 監聽支付成功，重新載入 chips 餘額
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
@@ -324,30 +302,13 @@ const HomeScreen: React.FC = () => {
         await loadChipsBalance();
         // 等待一下確保餘額已更新
         await new Promise(resolve => setTimeout(resolve, 500));
-        // 重新檢查所有遊戲的 chip 狀態
-        const statuses: Record<string, { hasValidChip: boolean; needsChip: boolean }> = {};
-        const promises = state.games.map(async (game) => {
-          try {
-            const status = await checkGameChipStatus(game.id);
-            statuses[game.id] = {
-              hasValidChip: status.hasValidChip,
-              needsChip: status.needsChip,
-            };
-          } catch (error) {
-            console.error(`檢查遊戲 ${game.id} 的 chip 狀態失敗:`, error);
-            statuses[game.id] = {
-              hasValidChip: false,
-              needsChip: true,
-            };
-          }
-        });
-        await Promise.all(promises);
-        setGameChipStatuses(statuses);
+        // 再次載入確保狀態同步
+        await loadChipsBalance();
       }
     };
 
     handlePaymentSuccess();
-  }, [state.games, checkGameChipStatus, loadChipsBalance]);
+  }, [loadChipsBalance]);
 
   const handleDismissAddToHome = () => {
     setShowAddToHomeModal(false);
@@ -420,18 +381,18 @@ const HomeScreen: React.FC = () => {
                 return timeB - timeA; // 降序：最新的在前
               })
               .map((game) => {
-                // 檢查遊戲的 chip 狀態
-                const chipStatus = gameChipStatuses[game.id];
-                const isGameLocked = game.status === 'completed' && chipStatus && !chipStatus.hasValidChip && chipStatus.needsChip;
+                // 檢查牌局是否超過 12 小時（獨立計算，不依賴 chip 狀態）
+                const expired = isGameExpired(game.startTime);
                 
                 return (
                 <TouchableOpacity 
                   key={game.id} 
                   onPress={async () => {
-                    // 如果牌局狀態為 completed（已失效），檢查 chips 狀態
-                    if (game.status === 'completed') {
-                      const currentChipStatus = chipStatus || await checkGameChipStatus(game.id);
-                      if (!currentChipStatus.hasValidChip) {
+                    // 如果牌局超過 12 小時，檢查是否需要消耗 chip
+                    if (expired) {
+                      // 檢查 chip 狀態
+                      const chipStatus = await checkGameChipStatus(game.id);
+                      if (!chipStatus.hasValidChip) {
                         // 沒有有效的 chip
                         if (chips < 1) {
                           // chips 餘額為 0，彈出購買視窗
@@ -448,15 +409,6 @@ const HomeScreen: React.FC = () => {
                               // 將遊戲狀態改回 active
                               const updatedGame = { ...game, status: 'active' as const };
                               await updateGame(updatedGame);
-                              // 重新檢查 chip 狀態
-                              const newStatus = await checkGameChipStatus(game.id);
-                              setGameChipStatuses(prev => ({
-                                ...prev,
-                                [game.id]: {
-                                  hasValidChip: newStatus.hasValidChip,
-                                  needsChip: newStatus.needsChip,
-                                },
-                              }));
                               // 進入遊戲
                               selectCurrentGame(game.id);
                               setPendingGameNavigation(game.id);
@@ -481,15 +433,6 @@ const HomeScreen: React.FC = () => {
                                       // 將遊戲狀態改回 active
                                       const updatedGame = { ...game, status: 'active' as const };
                                       await updateGame(updatedGame);
-                                      // 重新檢查 chip 狀態
-                                      const newStatus = await checkGameChipStatus(game.id);
-                                      setGameChipStatuses(prev => ({
-                                        ...prev,
-                                        [game.id]: {
-                                          hasValidChip: newStatus.hasValidChip,
-                                          needsChip: newStatus.needsChip,
-                                        },
-                                      }));
                                       // 進入遊戲
                                       selectCurrentGame(game.id);
                                       setPendingGameNavigation(game.id);
@@ -509,9 +452,9 @@ const HomeScreen: React.FC = () => {
                     setPendingGameNavigation(game.id);
                   }}
                   activeOpacity={0.7}
-                  style={isGameLocked ? { opacity: 0.5 } : undefined}
+                  style={expired ? { opacity: 0.5 } : undefined}
                 >
-                  <Card style={[styles.gameCard, isGameLocked && { opacity: 0.5 }]}>
+                  <Card style={[styles.gameCard, expired && { opacity: 0.5 }]}>
                   <View style={styles.gameHeader}>
                     <Text style={styles.gameName}>{game.name}</Text>
                     <View style={styles.gameHeaderRight}>
