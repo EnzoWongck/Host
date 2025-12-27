@@ -639,12 +639,24 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('payment') === 'success') {
         console.log('支付成功，重新載入餘額和遊戲狀態');
-        // 重新載入 chips 餘額
+        
+        // 清除本地緩存，強制從服務器重新載入
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && user?.uid) {
+          try {
+            localStorage.removeItem(`chips_${user.uid}`);
+          } catch (e) {
+            console.error('清除本地緩存失敗:', e);
+          }
+        }
+        
+        // 重新載入 chips 餘額（強制從服務器獲取）
         await loadChipsBalance();
         
-        // 如果有當前遊戲，重新檢查遊戲 chip 狀態
-        // 注意：這裡無法直接獲取當前遊戲 ID，所以依賴 GameScreen 中的 useEffect 來重新檢查
-        // 但我們可以通過觸發一個事件或使用其他方式來通知
+        // 等待一下確保餘額已更新
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 再次載入確保狀態同步
+        await loadChipsBalance();
         
         // 清除 URL 參數
         window.history.replaceState({}, document.title, window.location.pathname);
