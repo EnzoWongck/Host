@@ -13,7 +13,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
-import Icon from './Icon';
 
 interface ChipsHistoryModalProps {
   visible: boolean;
@@ -29,6 +28,15 @@ interface ChipUsageRecord {
   reason: string;
 }
 
+interface ChipPurchaseRecord {
+  id: string;
+  chips_amount: number;
+  amount_paid: number;
+  currency: string;
+  created_at: string;
+  session_id: string;
+}
+
 const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
   visible,
   onClose,
@@ -38,13 +46,18 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [usageRecords, setUsageRecords] = useState<ChipUsageRecord[]>([]);
+  const [purchaseRecords, setPurchaseRecords] = useState<ChipPurchaseRecord[]>([]);
   const [activeTab, setActiveTab] = useState<'usage' | 'purchase'>('usage');
 
   useEffect(() => {
     if (visible && user?.uid) {
-      loadUsageRecords();
+      if (activeTab === 'usage') {
+        loadUsageRecords();
+      } else {
+        loadPurchaseRecords();
+      }
     }
-  }, [visible, user?.uid]);
+  }, [visible, user?.uid, activeTab]);
 
   const loadUsageRecords = async () => {
     if (!user?.uid) return;
@@ -66,7 +79,7 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
         .limit(50);
 
       if (error) {
-        console.error('載入使用記錄失敗:', error);
+        console.error('載入使用紀錄失敗:', error);
         return;
       }
 
@@ -90,7 +103,43 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
 
       setUsageRecords(records);
     } catch (error) {
-      console.error('載入使用記錄錯誤:', error);
+      console.error('載入使用紀錄錯誤:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPurchaseRecords = async () => {
+    if (!user?.uid) return;
+
+    setLoading(true);
+    try {
+      // 查詢 transactions 表獲取購買記錄
+      const { data: purchaseData, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.uid)
+        .eq('type', 'purchase')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('載入購買紀錄失敗:', error);
+        return;
+      }
+
+      const records: ChipPurchaseRecord[] = (purchaseData || []).map((record: any) => ({
+        id: record.id,
+        chips_amount: record.chips_amount || 0,
+        amount_paid: record.amount_paid || 0,
+        currency: record.currency || 'hkd',
+        created_at: record.created_at,
+        session_id: record.session_id || '',
+      }));
+
+      setPurchaseRecords(records);
+    } catch (error) {
+      console.error('載入購買紀錄錯誤:', error);
     } finally {
       setLoading(false);
     }
@@ -222,9 +271,9 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <View style={styles.header}>
-            <Text style={styles.title}>Chips 記錄</Text>
+            <Text style={styles.title}>Chips 紀錄</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Icon name="x" size={24} color={theme.colors.text} />
+              <Text style={{ fontSize: theme.fontSize.xl, color: theme.colors.text, fontWeight: '600' }}>X</Text>
             </TouchableOpacity>
           </View>
 
@@ -239,7 +288,7 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
                   activeTab === 'usage' && styles.activeTabText,
                 ]}
               >
-                使用記錄
+                使用紀錄
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -252,7 +301,7 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
                   activeTab === 'purchase' && styles.activeTabText,
                 ]}
               >
-                購買記錄
+                購買紀錄
               </Text>
             </TouchableOpacity>
           </View>
@@ -265,7 +314,7 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
             ) : activeTab === 'usage' ? (
               usageRecords.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>暫無使用記錄</Text>
+                  <Text style={styles.emptyText}>暫無使用紀錄</Text>
                 </View>
               ) : (
                 usageRecords.map((record) => (
@@ -288,9 +337,27 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
                 ))
               )
             ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>購買記錄功能開發中</Text>
-              </View>
+              purchaseRecords.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>暫無購買紀錄</Text>
+                </View>
+              ) : (
+                purchaseRecords.map((record) => (
+                  <View key={record.id} style={styles.recordItem}>
+                    <View style={styles.recordHeader}>
+                      <Text style={styles.recordTitle}>
+                        購買 {record.chips_amount} Chips
+                      </Text>
+                      <Text style={styles.recordDate}>
+                        {formatDate(record.created_at)}
+                      </Text>
+                    </View>
+                    <Text style={styles.recordDetails}>
+                      金額：${(record.amount_paid / 100).toFixed(2)} {record.currency.toUpperCase()}
+                    </Text>
+                  </View>
+                ))
+              )
             )}
           </ScrollView>
         </View>

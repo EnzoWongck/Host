@@ -374,8 +374,8 @@ const SettingsScreen: React.FC = () => {
                     backgroundColor: colorMode === 'light' ? '#F8F9FA' : '#1E2023',
                   }}
                 >
-                  <Text style={{ fontSize: theme.fontSize.sm, color: theme.colors.primary, fontWeight: '600' }}>
-                    記錄
+                  <Text style={{ fontSize: theme.fontSize.sm, color: theme.colors.text, fontWeight: '600' }}>
+                    紀錄
                   </Text>
                 </TouchableOpacity>
               </View>
