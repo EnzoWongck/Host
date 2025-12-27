@@ -454,7 +454,7 @@ const HomeScreen: React.FC = () => {
                   activeOpacity={0.7}
                   style={expired ? { opacity: 0.5 } : undefined}
                 >
-                  <Card style={[styles.gameCard, expired && { opacity: 0.5 }]}>
+                  <Card style={styles.gameCard}>
                   <View style={styles.gameHeader}>
                     <Text style={styles.gameName}>{game.name}</Text>
                     <View style={styles.gameHeaderRight}>

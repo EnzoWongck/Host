@@ -658,18 +658,47 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         // 再次載入確保狀態同步
         await loadChipsBalance();
         
+        // 再等待一下，然後第三次載入（確保服務器已處理完成）
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await loadChipsBalance();
+        
         // 清除 URL 參數
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
 
+    // 立即檢查一次（處理從 Stripe 返回的情況）
     handlePaymentSuccess();
+    
+    // 監聽 URL 變化
     window.addEventListener('popstate', handlePaymentSuccess);
+    
+    // 監聽頁面可見性變化（當用戶從 Stripe 返回時）
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handlePaymentSuccess();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 定期檢查 URL 參數（每 2 秒檢查一次，持續 30 秒）
+    let checkCount = 0;
+    const maxChecks = 15; // 30 秒 / 2 秒
+    const checkInterval = setInterval(() => {
+      checkCount++;
+      if (checkCount > maxChecks) {
+        clearInterval(checkInterval);
+        return;
+      }
+      handlePaymentSuccess();
+    }, 2000);
 
     return () => {
       window.removeEventListener('popstate', handlePaymentSuccess);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(checkInterval);
     };
-  }, [loadChipsBalance]);
+  }, [loadChipsBalance, user?.uid]);
 
   // 清理計時器
   useEffect(() => {
