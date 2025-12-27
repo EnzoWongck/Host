@@ -430,7 +430,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         if (updateError) throw updateError;
         
         // 2. 創建 game_chips 記錄
-        const expiresAt = new Date(Date.now() + CHIPS_CONFIG.GAME_SESSION_DURATION);
+        const expiresAt = new Date(Date.now() + CHIPS_CONFIG.CHIP_VALIDITY_DURATION);
         const { error: insertError } = await supabase
           .from('game_chips')
           .insert({
