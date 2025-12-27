@@ -437,8 +437,7 @@ const HomeScreen: React.FC = () => {
                   </View>
                 </Card>
               </TouchableOpacity>
-              );
-            })
+            ))
           )}
 
           {/* New Game Button */}
