@@ -207,10 +207,19 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
         return;
       }
       
-      // 生產環境：使用 API
+      // 生產環境：使用 API（添加時間戳避免緩存）
       const baseUrl = getApiBaseUrl();
+      const timestamp = Date.now();
       const response = await fetch(
-        `${baseUrl}${STRIPE_API_ENDPOINTS.GET_BALANCE}?userId=${user.uid}`
+        `${baseUrl}${STRIPE_API_ENDPOINTS.GET_BALANCE}?userId=${user.uid}&_t=${timestamp}`,
+        {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
+        }
       );
       
       if (!response.ok) {
@@ -649,16 +658,31 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           }
         }
         
+        // 直接從 Supabase 查詢最新餘額（繞過 API 緩存）
+        if (user?.uid) {
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('chips')
+              .eq('id', user.uid)
+              .maybeSingle();
+            
+            if (!profileError && profile) {
+              console.log('直接從 Supabase 獲取餘額:', profile.chips);
+              setChips(profile.chips || 0);
+            }
+          } catch (error) {
+            console.error('直接查詢 Supabase 失敗:', error);
+          }
+        }
+        
+        // 等待一下確保 Stripe webhook 已處理完成
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         // 重新載入 chips 餘額（強制從服務器獲取）
         await loadChipsBalance();
         
-        // 等待一下確保餘額已更新
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // 再次載入確保狀態同步
-        await loadChipsBalance();
-        
-        // 再等待一下，然後第三次載入（確保服務器已處理完成）
+        // 再等待一下，然後再次載入確保狀態同步
         await new Promise(resolve => setTimeout(resolve, 1000));
         await loadChipsBalance();
         
