@@ -215,10 +215,10 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
     tabText: {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
-      color: theme.colors.textSecondary,
+      color: theme.colors.primary,
     },
     activeTabText: {
-      color: theme.colors.primary,
+      color: theme.colors.textSecondary,
     },
     content: {
       maxHeight: Platform.OS === 'web' ? 400 : 300,
