@@ -571,7 +571,8 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           .single();
         
         if (!error && data) {
-          setChips(data.chips);
+          // 重新載入餘額以確保狀態同步
+          await loadChipsBalance();
           alert(`模擬購買成功！已增加 ${packageItem.chips} Chips，目前餘額：${data.chips} Chips`);
         }
       }
@@ -605,7 +606,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
       console.error('創建 Checkout Session 失敗:', error);
       return null;
     }
-  }, [isSignedIn, user, chips, getApiBaseUrl]);
+  }, [isSignedIn, user, chips, getApiBaseUrl, loadChipsBalance]);
 
   // ============================================
   // Modal 控制
@@ -634,11 +635,17 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    const handlePaymentSuccess = () => {
+    const handlePaymentSuccess = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('payment') === 'success') {
-        console.log('支付成功，重新載入餘額');
-        loadChipsBalance();
+        console.log('支付成功，重新載入餘額和遊戲狀態');
+        // 重新載入 chips 餘額
+        await loadChipsBalance();
+        
+        // 如果有當前遊戲，重新檢查遊戲 chip 狀態
+        // 注意：這裡無法直接獲取當前遊戲 ID，所以依賴 GameScreen 中的 useEffect 來重新檢查
+        // 但我們可以通過觸發一個事件或使用其他方式來通知
+        
         // 清除 URL 參數
         window.history.replaceState({}, document.title, window.location.pathname);
       }

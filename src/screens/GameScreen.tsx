@@ -47,7 +47,7 @@ import SwipeHint from '../components/SwipeHint';
 const GameScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const { isGameLocked, checkGameChipStatus, openPurchaseModal } = useChips();
+  const { isGameLocked, checkGameChipStatus, openPurchaseModal, chips, consumeChip } = useChips();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { state, setGameSummaryModalVisible, deletePlayer } = useGame();
@@ -87,6 +87,17 @@ const GameScreen: React.FC = () => {
       checkGameChipStatus(currentGame.id);
     }
   }, [currentGame?.id, checkGameChipStatus]);
+
+  // 當 chips 餘額變化時，重新檢查遊戲狀態（例如購買 chips 後）
+  useEffect(() => {
+    if (currentGame?.id && chips > 0) {
+      // 延遲一點時間，確保 chips 餘額已更新
+      const timer = setTimeout(() => {
+        checkGameChipStatus(currentGame.id);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [chips, currentGame?.id, checkGameChipStatus]);
   
   // 計算已進行時間
   const [elapsedTime, setElapsedTime] = useState('');
@@ -661,10 +672,45 @@ const GameScreen: React.FC = () => {
   // 檢查是否可以編輯（chips 過期時不能編輯）
   const canEdit = !isGameLocked;
   
-  const handleEditAction = (action: () => void, actionName: string) => {
+  const handleEditAction = async (action: () => void, actionName: string) => {
     if (!canEdit) {
-      // 如果按鈕被禁用，顯示購買 Chips 視窗
-      openPurchaseModal();
+      // 如果按鈕被禁用，檢查是否有 chips 餘額可以恢復遊戲
+      if (chips >= 1 && currentGame?.id) {
+        // 有 chips 餘額，詢問是否消耗 chip 恢復遊戲
+        if (Platform.OS === 'web') {
+          const confirmed = window.confirm('你的牌局編輯時間已用完。是否消耗 1 Chip 繼續編輯？');
+          if (confirmed) {
+            const success = await consumeChip(currentGame.id, 'restore_game');
+            if (success) {
+              // 重新檢查遊戲狀態
+              await checkGameChipStatus(currentGame.id);
+              // 如果恢復成功，執行原操作
+              action();
+            }
+          }
+        } else {
+          Alert.alert(
+            '消耗 Chip',
+            '你的牌局編輯時間已用完。是否消耗 1 Chip 繼續編輯？',
+            [
+              { text: '取消', style: 'cancel' },
+              {
+                text: '確認',
+                onPress: async () => {
+                  const success = await consumeChip(currentGame.id, 'restore_game');
+                  if (success) {
+                    await checkGameChipStatus(currentGame.id);
+                    action();
+                  }
+                },
+              },
+            ]
+          );
+        }
+      } else {
+        // 沒有 chips 餘額，顯示購買 Chips 視窗
+        openPurchaseModal();
+      }
       return;
     }
     action();
