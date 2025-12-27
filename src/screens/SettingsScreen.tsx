@@ -25,6 +25,7 @@ import Card from '../components/Card';
 import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
 import PhoneVerificationModal from '../components/PhoneVerificationModal';
+import ChipsHistoryModal from '../components/ChipsHistoryModal';
 import { Language } from '../types/language';
 
 const SettingsScreen: React.FC = () => {
@@ -36,6 +37,7 @@ const SettingsScreen: React.FC = () => {
   const { navigateToWelcome } = useNavigationContext();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [phoneVerificationModalVisible, setPhoneVerificationModalVisible] = useState(false);
+  const [chipsHistoryModalVisible, setChipsHistoryModalVisible] = useState(false);
   const [rememberLogin, setRememberLogin] = useState(true);
   const [allowAnalytics, setAllowAnalytics] = useState(false);
 
@@ -361,7 +363,22 @@ const SettingsScreen: React.FC = () => {
           {/* Chips 區塊 */}
           {isSignedIn && (
             <>
-              <Text style={styles.sectionTitle}>Chips 餘額</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                <Text style={styles.sectionTitle}>Chips 餘額</Text>
+                <TouchableOpacity
+                  onPress={() => setChipsHistoryModalVisible(true)}
+                  style={{
+                    paddingHorizontal: theme.spacing.md,
+                    paddingVertical: theme.spacing.xs,
+                    borderRadius: theme.borderRadius.md,
+                    backgroundColor: colorMode === 'light' ? '#F8F9FA' : '#1E2023',
+                  }}
+                >
+                  <Text style={{ fontSize: theme.fontSize.sm, color: theme.colors.primary, fontWeight: '600' }}>
+                    記錄
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <Card padding="md">
                 <View style={styles.dataManagementItem}>
                   <View style={styles.dataItemContent}>
@@ -609,6 +626,11 @@ const SettingsScreen: React.FC = () => {
         mode="bind"
       />
 
+      {/* Chips 記錄 Modal */}
+      <ChipsHistoryModal
+        visible={chipsHistoryModalVisible}
+        onClose={() => setChipsHistoryModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
