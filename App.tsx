@@ -839,9 +839,16 @@ const AppWithFont: React.FC = () => {
 // Chips 不足 Paywall 檢查組件
 const PaywallGuard: React.FC = () => {
   const { chips, loading } = useChips();
+  const { isSignedIn, loading: authLoading } = useAuth();
   const [paywallVisible, setPaywallVisible] = React.useState(false);
 
   useEffect(() => {
+    // 如果未登入，不顯示 paywall
+    if (!isSignedIn || authLoading) {
+      setPaywallVisible(false);
+      return;
+    }
+
     // 只有在沒有 chips（chips === 0）時才顯示 paywall
     // 等待 loading 完成後再檢查
     if (loading) return;
@@ -861,7 +868,7 @@ const PaywallGuard: React.FC = () => {
     } else {
       setPaywallVisible(false);
     }
-  }, [chips, loading]);
+  }, [chips, loading, isSignedIn, authLoading]);
 
   const handleClose = () => {
     setPaywallVisible(false);
@@ -892,6 +899,7 @@ const PaywallGuard: React.FC = () => {
 const ChipsGuard: React.FC = () => {
   const { showPurchaseModal, showExpiredModal, closePurchaseModal, closeExpiredModal, gameChipStatus } = useChips();
   const { state } = useGame();
+  const { isSignedIn } = useAuth();
   
   // 獲取當前遊戲 ID
   const currentGameId = state.currentGame?.id || '';
@@ -899,11 +907,11 @@ const ChipsGuard: React.FC = () => {
   return (
     <>
       <ChipsPurchaseModal
-        visible={showPurchaseModal}
+        visible={showPurchaseModal && isSignedIn}
         onClose={closePurchaseModal}
       />
       <ChipsExpiredModal
-        visible={showExpiredModal}
+        visible={showExpiredModal && isSignedIn}
         onClose={closeExpiredModal}
         gameId={currentGameId}
       />
