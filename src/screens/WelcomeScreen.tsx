@@ -67,13 +67,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     logoContainer: {
       alignItems: 'center',
       marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
-      marginTop: isMobile ? theme.spacing.xl * 3 : 0, // 手機版 logo 和 LunChips 向下移動
+      marginTop: isMobile ? theme.spacing.xl * 2 : 0, // 手機版 logo 向上移動
     },
     logoImage: {
       width: isMobile ? 140 : 280, // 電腦版稍微縮小
       height: isMobile ? 140 : 280,
       marginBottom: theme.spacing.xs, // 減少與文字的距離
-      marginTop: isMobile ? 0 : theme.spacing.xl, // 手機版 logo 向上移動
+      marginTop: isMobile ? 0 : theme.spacing.xl,
     },
     hostTitle: {
       fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
@@ -81,7 +81,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.md : theme.spacing.xl * 1.5, // 手機版 LunChips 向上移動
+      marginTop: isMobile ? theme.spacing.xl : theme.spacing.xl * 1.5, // 手機版文字向下移動一點
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
