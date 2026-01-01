@@ -81,13 +81,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 1.5, // 手機版文字向下移動
+      marginTop: isMobile ? theme.spacing.xl * 3 : theme.spacing.xl * 1.5, // 手機版文字向下移動更多
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
       color: '#9CA3AF', // 灰色，兩種模式一致
       textAlign: 'center',
-      marginTop: theme.spacing.md,
+      marginTop: isMobile ? theme.spacing.lg : theme.spacing.md,
       marginBottom: theme.spacing.xl,
       lineHeight: 26,
       paddingHorizontal: theme.spacing.lg,
@@ -98,7 +98,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       maxWidth: 400,
       marginBottom: isMobile ? theme.spacing.lg : theme.spacing.xl, // 手機版：與按鈕之間距離縮小
       paddingHorizontal: theme.spacing.lg,
-      marginTop: isMobile ? theme.spacing.xs : theme.spacing.md, // 電腦版減少 marginTop
+      marginTop: isMobile ? theme.spacing.lg : theme.spacing.md, // 手機版特色列表向下移動
     },
     featureItem: {
       flexDirection: 'row',
