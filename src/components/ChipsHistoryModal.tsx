@@ -165,16 +165,22 @@ const ChipsHistoryModal: React.FC<ChipsHistoryModalProps> = ({
     return reasonMap[reason] || reason;
   };
 
+  // 檢測是否為手機
+  const isMobile = Platform.OS !== 'web' || (typeof window !== 'undefined' && window.innerWidth < 768);
+
   const styles = StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
       alignItems: 'center',
+      paddingHorizontal: isMobile ? theme.spacing.md : 0,
+      paddingVertical: isMobile ? theme.spacing.xl : 0,
     },
     modal: {
-      width: Platform.OS === 'web' ? 600 : '90%',
-      maxHeight: Platform.OS === 'web' ? '80%' : '80%',
+      width: isMobile ? '100%' : 600,
+      maxWidth: isMobile ? 400 : 600,
+      maxHeight: isMobile ? '85%' : '80%',
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.lg,
