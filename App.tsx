@@ -925,7 +925,7 @@ const AppStatusBar: React.FC = () => {
   return <StatusBar style={colorMode === 'dark' ? 'light' : 'dark'} />;
 };
 
-// 頁面可見性監控組件：處理手機從後台返回的情況（適用於所有移動設備）
+// 頁面可見性監控組件：處理手機從後台返回的情況（適用於所有移動設備和 PWA）
 const VisibilityRefreshHandler: React.FC = () => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -940,7 +940,15 @@ const VisibilityRefreshHandler: React.FC = () => {
     const isAndroid = /Android/.test(navigator.userAgent);
     const isMobile = isIOS || isAndroid || /Mobile|webOS|BlackBerry|Opera Mini|IEMobile/.test(navigator.userAgent);
     
-    console.log('設備檢測:', { isIOS, isAndroid, isMobile, userAgent: navigator.userAgent });
+    // 檢測是否為 PWA 模式（加到主畫面）
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  (window.navigator as any).standalone === true ||
+                  document.referrer.includes('android-app://');
+    
+    console.log('設備檢測:', { isIOS, isAndroid, isMobile, isPWA, userAgent: navigator.userAgent });
+
+    // 對於移動設備或 PWA，需要自動刷新
+    const shouldAutoReload = isMobile || isPWA;
 
     // 記錄頁面隱藏時間
     const saveHiddenTime = () => {
@@ -950,6 +958,13 @@ const VisibilityRefreshHandler: React.FC = () => {
       } catch (e) {
         console.error('保存隱藏時間失敗:', e);
       }
+    };
+
+    // 強制刷新頁面
+    const forceReload = (source: string) => {
+      console.log(`[${source}] 強制刷新頁面...`);
+      localStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
     };
 
     // 檢查是否需要刷新頁面
@@ -964,9 +979,9 @@ const VisibilityRefreshHandler: React.FC = () => {
           // 清除記錄
           localStorage.removeItem(STORAGE_KEY);
           
-          // 對於所有移動設備，只要頁面曾經被隱藏過，就刷新
-          if (isMobile && inactiveTime > RELOAD_THRESHOLD) {
-            console.log('移動設備從後台返回，自動刷新頁面...');
+          // 對於移動設備或 PWA，只要頁面曾經被隱藏過，就刷新
+          if (shouldAutoReload && inactiveTime > RELOAD_THRESHOLD) {
+            console.log('移動設備/PWA 從後台返回，自動刷新頁面...');
             window.location.reload();
             return;
           }
@@ -991,19 +1006,29 @@ const VisibilityRefreshHandler: React.FC = () => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('頁面從 bfcache 恢復');
-        // bfcache 恢復時，移動設備一定需要刷新
-        if (isMobile) {
-          console.log('移動設備從 bfcache 恢復，自動刷新頁面...');
-          window.location.reload();
+        // bfcache 恢復時，移動設備/PWA 一定需要刷新
+        if (shouldAutoReload) {
+          forceReload('pageshow-persisted');
           return;
         }
         checkAndReload('pageshow-persisted');
+      } else if (isPWA) {
+        // PWA 模式下，即使不是從 bfcache 恢復，也檢查是否需要刷新
+        checkAndReload('pageshow-pwa');
       }
     };
 
     // pagehide 事件（比 visibilitychange 更可靠）
     const handlePageHide = () => {
       saveHiddenTime();
+    };
+
+    // blur 事件（PWA 中更可靠）
+    const handleBlur = () => {
+      if (isPWA) {
+        saveHiddenTime();
+        console.log('PWA blur，記錄時間');
+      }
     };
 
     // 清除可能存在的舊記錄（頁面正常載入時）
@@ -1014,11 +1039,13 @@ const VisibilityRefreshHandler: React.FC = () => {
     window.addEventListener('pageshow', handlePageShow);
     window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('focus', () => checkAndReload('focus'));
+    window.addEventListener('blur', handleBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('blur', handleBlur);
     };
   }, []);
 
