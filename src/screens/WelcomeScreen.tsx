@@ -60,19 +60,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3, // 手機版減少 paddingTop
+      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 3, // 手機版增加 paddingTop，向下移動
       paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3,
       minHeight: isMobile ? undefined : '100%', // 電腦版確保最小高度
     },
     logoContainer: {
       alignItems: 'center',
       marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
+      marginTop: isMobile ? theme.spacing.xl * 2 : 0, // 手機版 logo 向下移動
     },
     logoImage: {
       width: isMobile ? 140 : 280, // 電腦版稍微縮小
       height: isMobile ? 140 : 280,
       marginBottom: theme.spacing.xs, // 減少與文字的距離
-      marginTop: isMobile ? 0 : theme.spacing.xl, // 手機版移除 marginTop
+      marginTop: isMobile ? theme.spacing.md : theme.spacing.xl, // 手機版增加 marginTop
     },
     hostTitle: {
       fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
