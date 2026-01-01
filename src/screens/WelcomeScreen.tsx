@@ -81,7 +81,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF', // 兩種模式都固定白色
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.xl * 2.5 : theme.spacing.xl * 1.5, // 手機版 LunChips 上移一點
+      marginTop: isMobile ? theme.spacing.xl * 2.7 : theme.spacing.xl * 1.5, // 手機版 LunChips 微調
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
