@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 import { Game, Player, Dealer, Expense, Rake, Insurance, InsurancePartner, BuyInEntry } from '../types/game';
@@ -1384,6 +1385,59 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dispatch({ type: 'SET_GAMES', payload: [] });
       dispatch({ type: 'SET_CURRENT_GAME', payload: null });
     }
+  }, [user?.uid, loadGames]);
+
+  // 監聽頁面可見性變化（處理手機從後台返回的情況）
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    let isRefreshing = false;
+    let lastRefreshTime = 0;
+    const REFRESH_COOLDOWN = 5000; // 5 秒冷卻時間，避免頻繁刷新
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && user?.uid && !isRefreshing) {
+        const now = Date.now();
+        if (now - lastRefreshTime < REFRESH_COOLDOWN) {
+          console.log('頁面可見性：冷卻中，跳過刷新');
+          return;
+        }
+
+        console.log('頁面重新變為可見，重新載入遊戲數據...');
+        isRefreshing = true;
+        lastRefreshTime = now;
+
+        try {
+          await loadGames();
+          console.log('遊戲數據已重新載入');
+        } catch (error) {
+          console.error('重新載入遊戲數據失敗:', error);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+    };
+
+    // 監聽頁面可見性變化
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 監聽頁面焦點
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // 監聽 pageshow 事件（用於處理 bfcache 返回的情況）
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('遊戲頁面從 bfcache 恢復');
+        handleVisibilityChange();
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
   }, [user?.uid, loadGames]);
 
   const contextValue: GameContextType = useMemo(() => ({

@@ -481,6 +481,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [transformUser]);
 
+  // 監聽頁面可見性變化（處理手機從後台返回的情況）
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    let isRefreshing = false;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && !isRefreshing) {
+        console.log('頁面重新變為可見，檢查會話狀態...');
+        isRefreshing = true;
+
+        try {
+          // 刷新 Supabase 會話
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('獲取會話失敗:', sessionError);
+            // 嘗試刷新會話
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+              console.error('刷新會話失敗:', refreshError);
+            } else if (refreshData.session?.user) {
+              console.log('會話已刷新');
+              const authUser = await transformUser(refreshData.session.user);
+              setUser(authUser);
+            }
+          } else if (session?.user) {
+            // 會話有效，更新用戶狀態
+            console.log('會話有效，更新用戶狀態');
+            const authUser = await transformUser(session.user);
+            setUser(authUser);
+          } else {
+            console.log('無有效會話');
+          }
+        } catch (error) {
+          console.error('頁面可見性變化處理錯誤:', error);
+        } finally {
+          // 延遲重置刷新狀態，避免短時間內重複刷新
+          setTimeout(() => {
+            isRefreshing = false;
+          }, 1000);
+        }
+      }
+    };
+
+    // 監聯頁面可見性變化
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 監聽頁面焦點（某些瀏覽器可能不觸發 visibilitychange）
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // 監聯 pageshow 事件（用於處理 bfcache 返回的情況）
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        console.log('頁面從 bfcache 恢復');
+        handleVisibilityChange();
+      }
+    });
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [transformUser]);
+
   // ============================================
   // Context Value
   // ============================================
