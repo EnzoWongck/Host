@@ -930,65 +930,58 @@ const VisibilityRefreshHandler: React.FC = () => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    // 使用 localStorage 存儲離開時間（因為 JavaScript 變量在後台可能被清除）
-    const STORAGE_KEY = 'lastActiveTime';
-    const RELOAD_THRESHOLD = 30000; // 30 秒後自動刷新頁面
+    // 使用 localStorage 存儲離開時間
+    const STORAGE_KEY = 'pageHiddenTime';
+    // iOS Safari：只要頁面曾經被隱藏過，返回時就刷新
+    const RELOAD_THRESHOLD = 1000; // 1 秒 - 基本上只要離開就刷新
     
     // 檢測是否為 iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
     
     console.log('設備檢測:', { isIOS, userAgent: navigator.userAgent });
 
-    // 記錄當前時間
-    const saveActiveTime = () => {
+    // 記錄頁面隱藏時間
+    const saveHiddenTime = () => {
       try {
         localStorage.setItem(STORAGE_KEY, Date.now().toString());
+        console.log('頁面隱藏，記錄時間');
       } catch (e) {
-        console.error('保存活動時間失敗:', e);
-      }
-    };
-
-    // 獲取上次活動時間
-    const getLastActiveTime = (): number => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? parseInt(saved, 10) : Date.now();
-      } catch (e) {
-        return Date.now();
+        console.error('保存隱藏時間失敗:', e);
       }
     };
 
     // 檢查是否需要刷新頁面
     const checkAndReload = (source: string) => {
-      const lastActiveTime = getLastActiveTime();
-      const inactiveTime = Date.now() - lastActiveTime;
-      
-      console.log(`[${source}] 頁面重新激活，離開時間: ${Math.round(inactiveTime / 1000)}秒`);
-      
-      // 對於 iOS，如果離開時間超過閾值，直接刷新頁面
-      if (isIOS && inactiveTime > RELOAD_THRESHOLD) {
-        console.log('iOS 設備離開時間較長，自動刷新頁面...');
-        // 清除存儲的時間，避免刷新後再次觸發
-        localStorage.removeItem(STORAGE_KEY);
-        // 使用 location.reload() 強制刷新
-        window.location.reload();
-        return;
+      try {
+        const hiddenTime = localStorage.getItem(STORAGE_KEY);
+        
+        if (hiddenTime) {
+          const inactiveTime = Date.now() - parseInt(hiddenTime, 10);
+          console.log(`[${source}] 頁面重新激活，離開時間: ${Math.round(inactiveTime / 1000)}秒`);
+          
+          // 清除記錄
+          localStorage.removeItem(STORAGE_KEY);
+          
+          // 對於 iOS，只要頁面曾經被隱藏過，就刷新
+          if (isIOS && inactiveTime > RELOAD_THRESHOLD) {
+            console.log('iOS 設備從後台返回，自動刷新頁面...');
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('檢查刷新時發生錯誤:', e);
       }
-      
-      // 更新活動時間
-      saveActiveTime();
     };
-
-    // 初始化：記錄當前時間
-    saveActiveTime();
 
     // 頁面可見性變化
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'hidden') {
+        // 頁面被隱藏時記錄時間
+        saveHiddenTime();
+      } else if (document.visibilityState === 'visible') {
+        // 頁面重新可見時檢查是否需要刷新
         checkAndReload('visibilitychange');
-      } else {
-        // 離開時記錄時間
-        saveActiveTime();
       }
     };
 
@@ -996,22 +989,34 @@ const VisibilityRefreshHandler: React.FC = () => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('頁面從 bfcache 恢復');
+        // bfcache 恢復時，iOS 一定需要刷新
+        if (isIOS) {
+          console.log('iOS 從 bfcache 恢復，自動刷新頁面...');
+          window.location.reload();
+          return;
+        }
         checkAndReload('pageshow-persisted');
       }
     };
 
-    // 定期更新活動時間（確保在後台時也有最新的時間戳）
-    const intervalId = setInterval(saveActiveTime, 5000);
+    // pagehide 事件（比 visibilitychange 更可靠）
+    const handlePageHide = () => {
+      saveHiddenTime();
+    };
+
+    // 清除可能存在的舊記錄（頁面正常載入時）
+    localStorage.removeItem(STORAGE_KEY);
 
     // 監聽事件
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('focus', () => checkAndReload('focus'));
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pageshow', handlePageShow);
-      clearInterval(intervalId);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, []);
 
