@@ -67,7 +67,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     logoContainer: {
       alignItems: 'center',
       marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
-      marginTop: isMobile ? theme.spacing.xl : 0, // 手機版 logo 向上移動一點
+      marginTop: isMobile ? theme.spacing.xl * 3 : 0, // 手機版 logo 和 LunChips 向下移動
     },
     logoImage: {
       width: isMobile ? 140 : 280, // 電腦版稍微縮小
