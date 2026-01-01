@@ -927,135 +927,93 @@ const AppStatusBar: React.FC = () => {
 
 // 頁面可見性監控組件：處理手機從後台返回的情況（特別針對 iOS Safari）
 const VisibilityRefreshHandler: React.FC = () => {
-  const { loadGames } = useGame();
-  const { refreshUser } = useAuth();
-  const { loadChipsBalance } = useChips();
-  const [, forceUpdate] = useState(0);
-  
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    let lastActiveTime = Date.now();
-    const INACTIVE_THRESHOLD = 10000; // 10 秒後視為需要刷新（縮短時間）
-    let isRefreshing = false;
-
-    // 檢測是否為 iOS Safari
-    const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-                        !('MSStream' in window) &&
-                        /Safari/.test(navigator.userAgent);
+    // 使用 localStorage 存儲離開時間（因為 JavaScript 變量在後台可能被清除）
+    const STORAGE_KEY = 'lastActiveTime';
+    const RELOAD_THRESHOLD = 30000; // 30 秒後自動刷新頁面
     
-    console.log('設備檢測:', { isIOSSafari, userAgent: navigator.userAgent });
+    // 檢測是否為 iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
+    
+    console.log('設備檢測:', { isIOS, userAgent: navigator.userAgent });
 
-    const handlePageResume = async (source: string) => {
-      if (isRefreshing) return;
-      
+    // 記錄當前時間
+    const saveActiveTime = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, Date.now().toString());
+      } catch (e) {
+        console.error('保存活動時間失敗:', e);
+      }
+    };
+
+    // 獲取上次活動時間
+    const getLastActiveTime = (): number => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? parseInt(saved, 10) : Date.now();
+      } catch (e) {
+        return Date.now();
+      }
+    };
+
+    // 檢查是否需要刷新頁面
+    const checkAndReload = (source: string) => {
+      const lastActiveTime = getLastActiveTime();
       const inactiveTime = Date.now() - lastActiveTime;
+      
       console.log(`[${source}] 頁面重新激活，離開時間: ${Math.round(inactiveTime / 1000)}秒`);
       
-      // 對於 iOS Safari，使用更短的閾值
-      const threshold = isIOSSafari ? 5000 : INACTIVE_THRESHOLD;
-      
-      if (inactiveTime > threshold) {
-        isRefreshing = true;
-        console.log('離開時間較長，強制刷新所有數據...');
-        
-        try {
-          // 強制重新渲染組件
-          forceUpdate(n => n + 1);
-          
-          // 依次刷新所有數據
-          try {
-            await refreshUser();
-          } catch (e) {
-            console.error('刷新用戶失敗:', e);
-          }
-          
-          try {
-            await loadGames();
-          } catch (e) {
-            console.error('刷新遊戲失敗:', e);
-          }
-          
-          try {
-            await loadChipsBalance();
-          } catch (e) {
-            console.error('刷新餘額失敗:', e);
-          }
-          
-          console.log('所有數據已刷新');
-          
-          // iOS Safari 特殊處理：觸發一個微小的滾動來"喚醒"頁面
-          if (isIOSSafari) {
-            window.scrollBy(0, 1);
-            setTimeout(() => window.scrollBy(0, -1), 10);
-          }
-        } catch (error) {
-          console.error('刷新數據時發生錯誤:', error);
-        } finally {
-          isRefreshing = false;
-        }
+      // 對於 iOS，如果離開時間超過閾值，直接刷新頁面
+      if (isIOS && inactiveTime > RELOAD_THRESHOLD) {
+        console.log('iOS 設備離開時間較長，自動刷新頁面...');
+        // 清除存儲的時間，避免刷新後再次觸發
+        localStorage.removeItem(STORAGE_KEY);
+        // 使用 location.reload() 強制刷新
+        window.location.reload();
+        return;
       }
       
-      lastActiveTime = Date.now();
+      // 更新活動時間
+      saveActiveTime();
     };
 
+    // 初始化：記錄當前時間
+    saveActiveTime();
+
+    // 頁面可見性變化
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        handlePageResume('visibilitychange');
+        checkAndReload('visibilitychange');
       } else {
-        lastActiveTime = Date.now();
+        // 離開時記錄時間
+        saveActiveTime();
       }
     };
 
-    const handleFocus = () => {
-      handlePageResume('focus');
-    };
-
-    // pageshow 事件 - iOS Safari 推薦使用
+    // pageshow 事件（處理 bfcache）
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        // 頁面從 bfcache 恢復
         console.log('頁面從 bfcache 恢復');
-        handlePageResume('pageshow-persisted');
-      } else {
-        handlePageResume('pageshow');
+        checkAndReload('pageshow-persisted');
       }
     };
 
-    // iOS Safari 特殊處理：監聽第一次觸摸事件來"喚醒"頁面
-    let hasWokenUp = false;
-    const handleTouchStart = () => {
-      if (!hasWokenUp && isIOSSafari) {
-        console.log('觸摸事件觸發，檢查是否需要喚醒頁面');
-        const inactiveTime = Date.now() - lastActiveTime;
-        if (inactiveTime > 5000) {
-          handlePageResume('touchstart');
-          hasWokenUp = true;
-          // 重置喚醒狀態
-          setTimeout(() => { hasWokenUp = false; }, 1000);
-        }
-      }
-    };
+    // 定期更新活動時間（確保在後台時也有最新的時間戳）
+    const intervalId = setInterval(saveActiveTime, 5000);
 
     // 監聽事件
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
     window.addEventListener('pageshow', handlePageShow);
-    
-    // iOS Safari 特殊處理
-    if (isIOSSafari) {
-      document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    }
+    window.addEventListener('focus', () => checkAndReload('focus'));
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('pageshow', handlePageShow);
-      if (isIOSSafari) {
-        document.removeEventListener('touchstart', handleTouchStart);
-      }
+      clearInterval(intervalId);
     };
-  }, [loadGames, refreshUser, loadChipsBalance]);
+  }, []);
 
   return null;
 };
