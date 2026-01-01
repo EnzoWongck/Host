@@ -925,20 +925,22 @@ const AppStatusBar: React.FC = () => {
   return <StatusBar style={colorMode === 'dark' ? 'light' : 'dark'} />;
 };
 
-// 頁面可見性監控組件：處理手機從後台返回的情況（特別針對 iOS Safari）
+// 頁面可見性監控組件：處理手機從後台返回的情況（適用於所有移動設備）
 const VisibilityRefreshHandler: React.FC = () => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     // 使用 localStorage 存儲離開時間
     const STORAGE_KEY = 'pageHiddenTime';
-    // iOS Safari：只要頁面曾經被隱藏過，返回時就刷新
+    // 只要頁面曾經被隱藏過，返回時就刷新
     const RELOAD_THRESHOLD = 1000; // 1 秒 - 基本上只要離開就刷新
     
-    // 檢測是否為 iOS
+    // 檢測是否為移動設備（iOS 或 Android）
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isMobile = isIOS || isAndroid || /Mobile|webOS|BlackBerry|Opera Mini|IEMobile/.test(navigator.userAgent);
     
-    console.log('設備檢測:', { isIOS, userAgent: navigator.userAgent });
+    console.log('設備檢測:', { isIOS, isAndroid, isMobile, userAgent: navigator.userAgent });
 
     // 記錄頁面隱藏時間
     const saveHiddenTime = () => {
@@ -962,9 +964,9 @@ const VisibilityRefreshHandler: React.FC = () => {
           // 清除記錄
           localStorage.removeItem(STORAGE_KEY);
           
-          // 對於 iOS，只要頁面曾經被隱藏過，就刷新
-          if (isIOS && inactiveTime > RELOAD_THRESHOLD) {
-            console.log('iOS 設備從後台返回，自動刷新頁面...');
+          // 對於所有移動設備，只要頁面曾經被隱藏過，就刷新
+          if (isMobile && inactiveTime > RELOAD_THRESHOLD) {
+            console.log('移動設備從後台返回，自動刷新頁面...');
             window.location.reload();
             return;
           }
@@ -989,9 +991,9 @@ const VisibilityRefreshHandler: React.FC = () => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('頁面從 bfcache 恢復');
-        // bfcache 恢復時，iOS 一定需要刷新
-        if (isIOS) {
-          console.log('iOS 從 bfcache 恢復，自動刷新頁面...');
+        // bfcache 恢復時，移動設備一定需要刷新
+        if (isMobile) {
+          console.log('移動設備從 bfcache 恢復，自動刷新頁面...');
           window.location.reload();
           return;
         }
