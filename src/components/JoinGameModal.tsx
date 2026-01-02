@@ -58,74 +58,97 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
 
   // 查詢邀請資訊
   const handleLookup = async () => {
-    if (!codeOrLink.trim()) {
+    const input = codeOrLink.trim();
+    if (!input) {
       Alert.alert('錯誤', '請輸入協作碼或連結');
       return;
     }
 
     setLoading(true);
     try {
-      // 解析輸入：可能是6位數字碼或連結
-      let inviteCode = codeOrLink.trim();
+      console.log('查詢協作碼/連結:', input);
       
       // 如果是連結，提取 game ID
-      if (inviteCode.includes('/invite')) {
-        const url = new URL(inviteCode);
-        const gameId = url.searchParams.get('game');
-        if (gameId) {
-          // 透過 game_id 查詢
-          const { data, error } = await supabase
-            .from('game_collaborations')
-            .select('*')
-            .eq('game_id', gameId)
-            .eq('collaborator_email', user?.email?.toLowerCase())
-            .eq('status', 'pending')
-            .maybeSingle();
+      if (input.includes('/invite') || input.includes('game=')) {
+        try {
+          let gameId: string | null = null;
+          if (input.includes('game=')) {
+            // 從 URL 參數提取
+            const match = input.match(/game=([a-zA-Z0-9-]+)/);
+            gameId = match ? match[1] : null;
+          }
+          
+          if (gameId) {
+            console.log('從連結提取的 gameId:', gameId);
+            // 透過 game_id 查詢（允許無 email 的邀請）
+            const { data, error } = await supabase
+              .from('game_collaborations')
+              .select('*')
+              .eq('game_id', gameId)
+              .eq('status', 'pending')
+              .or(`collaborator_email.eq.${user?.email?.toLowerCase()},collaborator_email.is.null`)
+              .limit(1)
+              .maybeSingle();
 
-          if (error || !data) {
-            Alert.alert('錯誤', '找不到該邀請或邀請已過期');
+            console.log('連結查詢結果:', { data, error });
+
+            if (error) {
+              console.error('查詢錯誤:', error);
+              Alert.alert('錯誤', '查詢失敗');
+              return;
+            }
+            
+            if (!data) {
+              Alert.alert('錯誤', '找不到該邀請或邀請已過期');
+              return;
+            }
+
+            await fetchInviteDetails(data);
             return;
           }
-
-          await fetchInviteDetails(data);
-          return;
+        } catch (urlError) {
+          console.error('解析連結失敗:', urlError);
         }
       }
 
-      // 如果是6位數字碼
-      if (/^\d{6}$/.test(inviteCode)) {
-        const { data, error } = await supabase
-          .from('game_collaborations')
-          .select('*')
-          .eq('invite_code', inviteCode)
-          .eq('status', 'pending')
-          .maybeSingle();
+      // 嘗試作為協作碼查詢（支持任意長度的碼）
+      console.log('嘗試作為協作碼查詢:', input);
+      const { data, error } = await supabase
+        .from('game_collaborations')
+        .select('*')
+        .eq('invite_code', input)
+        .eq('status', 'pending')
+        .maybeSingle();
 
-        if (error || !data) {
-          Alert.alert('錯誤', '協作碼無效或已過期');
-          return;
-        }
+      console.log('協作碼查詢結果:', { data, error });
 
-        // 檢查是否過期
-        if (data.expires_at && new Date(data.expires_at) < new Date()) {
-          Alert.alert('錯誤', '此邀請已過期');
-          return;
-        }
-
-        // 檢查是否是自己發的邀請
-        if (data.owner_id === user?.uid) {
-          Alert.alert('錯誤', '不能加入自己創建的牌局邀請');
-          return;
-        }
-
-        await fetchInviteDetails(data);
+      if (error) {
+        console.error('協作碼查詢錯誤:', error);
+        Alert.alert('錯誤', '查詢失敗，請稍後重試');
+        return;
+      }
+      
+      if (!data) {
+        Alert.alert('錯誤', '協作碼無效或已過期');
         return;
       }
 
-      Alert.alert('錯誤', '請輸入有效的6位數字協作碼或邀請連結');
+      // 檢查是否過期
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        Alert.alert('錯誤', '此邀請已過期');
+        return;
+      }
+
+      // 檢查是否是自己發的邀請
+      if (data.owner_id === user?.uid) {
+        Alert.alert('錯誤', '不能加入自己創建的牌局邀請');
+        return;
+      }
+
+      await fetchInviteDetails(data);
     } catch (error: any) {
       console.error('查詢邀請錯誤:', error);
-      Alert.alert('錯誤', '查詢失敗，請稍後重試');
+      Alert.alert('錯誤', error.message || '查詢失敗，請稍後重試');
     } finally {
       setLoading(false);
     }
