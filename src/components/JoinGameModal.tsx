@@ -108,8 +108,14 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
         }
 
         // 檢查是否過期
-        if (new Date(data.expires_at) < new Date()) {
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
           Alert.alert('錯誤', '此邀請已過期');
+          return;
+        }
+
+        // 檢查是否是自己發的邀請
+        if (data.owner_id === user?.uid) {
+          Alert.alert('錯誤', '不能加入自己創建的牌局邀請');
           return;
         }
 

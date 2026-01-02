@@ -115,19 +115,75 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
       loadCollaborators();
       generateInviteLink();
     }
-  }, [visible, loadCollaborators]);
+  }, [visible, loadCollaborators, generateInviteLink]);
+
+  // 保存協作碼到數據庫
+  const saveCollaborationCode = useCallback(async () => {
+    if (!collaborationCode || !user?.uid || !gameId) return;
+    
+    // 檢查是否已有此協作碼
+    const { data: existing } = await supabase
+      .from('game_collaborations')
+      .select('id')
+      .eq('invite_code', collaborationCode)
+      .maybeSingle();
+    
+    if (existing) return; // 已存在，不需要保存
+    
+    // 創建協作碼邀請記錄（不綁定 email）
+    const { error } = await supabase
+      .from('game_collaborations')
+      .insert({
+        game_id: gameId,
+        owner_id: user.uid,
+        collaborator_id: null,
+        collaborator_email: null,
+        status: 'pending',
+        chip_payer: chipPayer,
+        chip_consumed: chipPayer === 'owner',
+        invite_code: collaborationCode,
+      });
+    
+    if (error) {
+      console.error('保存協作碼失敗:', error);
+    } else {
+      // 如果擁有者付費，扣除 chip
+      if (chipPayer === 'owner' && chips >= 1) {
+        await supabase
+          .from('profiles')
+          .update({ chips: chips - 1 })
+          .eq('id', user.uid);
+        await loadChipsBalance();
+      }
+    }
+  }, [collaborationCode, user?.uid, gameId, chipPayer, chips, loadChipsBalance]);
 
   // 生成邀請連結和協作碼
-  const generateInviteLink = useCallback(() => {
+  const generateInviteLink = useCallback(async () => {
     const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined'
       ? window.location.origin
       : 'https://lunchips.com';
     const link = `${baseUrl}/invite?game=${gameId}`;
     setInviteLink(link);
-    // 生成6位數字協作碼
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setCollaborationCode(code);
-  }, [gameId]);
+    
+    // 檢查是否已有未使用的協作碼邀請
+    const { data: existingInvite } = await supabase
+      .from('game_collaborations')
+      .select('invite_code')
+      .eq('game_id', gameId)
+      .eq('owner_id', user?.uid)
+      .is('collaborator_email', null)
+      .eq('status', 'pending')
+      .maybeSingle();
+    
+    if (existingInvite?.invite_code) {
+      setCollaborationCode(existingInvite.invite_code);
+    } else {
+      // 生成新的6位數字協作碼
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setCollaborationCode(code);
+    }
+  }, [gameId, user?.uid]);
 
   // 發送邀請
   const handleSendInvite = async () => {
@@ -681,6 +737,8 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                     <TouchableOpacity 
                       onPress={async () => {
                         try {
+                          // 先保存協作碼到數據庫
+                          await saveCollaborationCode();
                           await Clipboard.setStringAsync(collaborationCode);
                           Alert.alert('已複製', '協作碼已複製到剪貼簿');
                         } catch (error) {
