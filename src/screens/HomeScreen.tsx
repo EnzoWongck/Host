@@ -34,6 +34,7 @@ const HomeScreen: React.FC = () => {
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
   const [joinGameModalVisible, setJoinGameModalVisible] = useState(false);
+  const [actionMenuVisible, setActionMenuVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -345,9 +346,7 @@ const HomeScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>{t('home.gameList')}</Text>
             <TouchableOpacity
               style={styles.addGameButton}
-              onPress={() => {
-                setNewGameModalVisible(true);
-              }}
+              onPress={() => setActionMenuVisible(true)}
               activeOpacity={0.7}
             >
               <Text style={styles.addGameButtonText}>+</Text>
@@ -465,6 +464,61 @@ const HomeScreen: React.FC = () => {
           navigation.navigate('Game', { gameId });
         }}
       />
+
+      {/* Action Menu Modal - 選擇加入或新增牌局 */}
+      <Modal
+        visible={actionMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setActionMenuVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.lg,
+              width: 280,
+              gap: theme.spacing.md,
+            }}
+          >
+            <Text style={{
+              fontSize: theme.fontSize.lg,
+              fontWeight: '600',
+              color: theme.colors.text,
+              textAlign: 'center',
+              marginBottom: theme.spacing.sm,
+            }}>
+              選擇操作
+            </Text>
+            <Button
+              title="加入牌局"
+              variant="secondary"
+              onPress={() => {
+                setActionMenuVisible(false);
+                setJoinGameModalVisible(true);
+              }}
+            />
+            <Button
+              title="新增牌局"
+              onPress={() => {
+                setActionMenuVisible(false);
+                setNewGameModalVisible(true);
+              }}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Language Selection Modal */}
       <Modal
