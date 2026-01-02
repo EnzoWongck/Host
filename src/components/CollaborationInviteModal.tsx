@@ -124,6 +124,49 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     return code.toString();
   };
 
+  // 保存協作碼到數據庫（直接傳入 code）
+  const ensureCollaborationCodeSaved = async (code: string) => {
+    if (!code || !user?.uid || !gameId) return;
+    
+    try {
+      // 檢查是否已存在
+      const { data: existing } = await supabase
+        .from('game_collaborations')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('invite_code', code)
+        .maybeSingle();
+      
+      if (existing) {
+        console.log('協作碼已存在於數據庫');
+        return;
+      }
+      
+      // 創建新記錄
+      console.log('自動保存協作碼:', code);
+      const { error } = await supabase
+        .from('game_collaborations')
+        .insert({
+          game_id: gameId,
+          owner_id: user.uid,
+          collaborator_id: null,
+          collaborator_email: null,
+          status: 'pending',
+          chip_payer: 'owner', // 預設擁有者付費
+          chip_consumed: false,
+          invite_code: code,
+        });
+      
+      if (error) {
+        console.error('自動保存協作碼失敗:', error);
+      } else {
+        console.log('協作碼自動保存成功');
+      }
+    } catch (err) {
+      console.error('ensureCollaborationCodeSaved 錯誤:', err);
+    }
+  };
+
   // 生成邀請連結和協作碼
   const generateInviteLink = useCallback(async () => {
     const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined'
@@ -135,7 +178,10 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     // 每個牌局使用固定的協作碼
     const fixedCode = generateFixedCode(gameId);
     setCollaborationCode(fixedCode);
-  }, [gameId]);
+    
+    // 自動保存協作碼到數據庫
+    await ensureCollaborationCodeSaved(fixedCode);
+  }, [gameId, user?.uid]);
 
   // 保存協作碼到數據庫
   const saveCollaborationCode = useCallback(async (): Promise<boolean> => {
@@ -765,15 +811,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                     <TouchableOpacity 
                       onPress={async () => {
                         const codeToCopy = collaborationCode;
-                        console.log('準備複製協作碼:', codeToCopy);
-                        
-                        // 先保存到數據庫
-                        const saved = await saveCollaborationCode();
-                        if (!saved) {
-                          console.error('協作碼保存失敗');
-                          return;
-                        }
-                        console.log('協作碼已保存到數據庫');
+                        console.log('複製協作碼:', codeToCopy);
                         
                         // 複製到剪貼簿
                         try {
@@ -784,10 +822,10 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                             await Clipboard.setStringAsync(codeToCopy);
                             console.log('Native 複製成功');
                           }
-                          Alert.alert('已複製', `協作碼 ${codeToCopy} 已複製並保存`);
+                          Alert.alert('已複製', `協作碼 ${codeToCopy} 已複製到剪貼簿`);
                         } catch (err) {
                           console.error('複製失敗:', err);
-                          Alert.alert('已保存', `協作碼已保存，請手動複製：${codeToCopy}`);
+                          Alert.alert('複製失敗', `請手動複製協作碼：${codeToCopy}`);
                         }
                       }} 
                       style={styles.copyButton}
