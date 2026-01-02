@@ -110,6 +110,20 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     }
   }, [gameId, user?.uid]);
 
+  // 根據 gameId 生成固定的6位協作碼
+  const generateFixedCode = (id: string): string => {
+    // 使用 gameId 的字符生成固定的6位數字
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      const char = id.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    // 確保是正數並取6位
+    const code = Math.abs(hash % 900000) + 100000;
+    return code.toString();
+  };
+
   // 生成邀請連結和協作碼
   const generateInviteLink = useCallback(async () => {
     const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined'
@@ -118,24 +132,10 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     const link = `${baseUrl}/invite?game=${gameId}`;
     setInviteLink(link);
     
-    // 檢查是否已有未使用的協作碼邀請
-    const { data: existingInvite } = await supabase
-      .from('game_collaborations')
-      .select('invite_code')
-      .eq('game_id', gameId)
-      .eq('owner_id', user?.uid)
-      .is('collaborator_email', null)
-      .eq('status', 'pending')
-      .maybeSingle();
-    
-    if (existingInvite?.invite_code) {
-      setCollaborationCode(existingInvite.invite_code);
-    } else {
-      // 生成新的6位數字協作碼
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setCollaborationCode(code);
-    }
-  }, [gameId, user?.uid]);
+    // 每個牌局使用固定的協作碼
+    const fixedCode = generateFixedCode(gameId);
+    setCollaborationCode(fixedCode);
+  }, [gameId]);
 
   // 保存協作碼到數據庫
   const saveCollaborationCode = useCallback(async (): Promise<boolean> => {
@@ -147,17 +147,18 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     }
     
     try {
-      // 檢查是否已有此協作碼
+      // 檢查此牌局是否已有協作碼邀請（無論狀態）
       const { data: existing, error: checkError } = await supabase
         .from('game_collaborations')
-        .select('id')
+        .select('id, status')
+        .eq('game_id', gameId)
         .eq('invite_code', collaborationCode)
         .maybeSingle();
       
       console.log('檢查現有協作碼:', { existing, checkError });
       
       if (existing) {
-        console.log('協作碼已存在，跳過保存');
+        console.log('此牌局協作碼已存在');
         return true; // 已存在，視為成功
       }
       
