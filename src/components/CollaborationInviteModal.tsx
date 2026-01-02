@@ -391,10 +391,12 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
       borderWidth: 1,
       borderColor: theme.colors.border,
       alignItems: 'center',
+      opacity: 0.5,
     },
     payerOptionActive: {
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primary + '20',
+      opacity: 1,
     },
     payerOptionText: {
       fontSize: theme.fontSize.sm,

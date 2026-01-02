@@ -34,6 +34,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
   const { t, language, setLanguage } = useLanguage();
   const { signInWithGoogle, signUpWithEmail } = useAuth();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -317,6 +318,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
   });
 
   const handleNameSignup = async () => {
+    if (!displayName.trim()) {
+      Alert.alert(t('common.error') || '錯誤', '請輸入用戶名稱');
+      return;
+    }
+
     if (!email.trim()) {
       Alert.alert(t('common.error') || '錯誤', t('auth.errorEmailRequired'));
       return;
@@ -334,7 +340,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
 
     setIsLoading(true);
     try {
-      await signUpWithEmail(email.trim(), password.trim());
+      await signUpWithEmail(email.trim(), password.trim(), displayName.trim());
       onSignupSuccess();
     } catch (error: any) {
       Alert.alert(t('auth.signupFailed'), error?.message || t('auth.signupFailed'));
@@ -394,6 +400,21 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
               keyboardShouldPersistTaps="handled"
             >
             <Text style={stylesCard.title}>{t('auth.signup')}</Text>
+
+          <View style={stylesCard.fieldContainer}>
+            <Text style={stylesCard.label}>用戶名稱</Text>
+            <View style={stylesCard.inputContainer}>
+              <TextInput
+                style={[stylesCard.emailInput, { borderWidth: displayName ? 2 : 1, borderColor: displayName ? '#007AFF' : (colorMode === 'dark' ? '#3A3A3C' : '#E5E5EA') }]}
+                value={displayName}
+                onChangeText={setDisplayName}
+                placeholder="輸入用戶名稱"
+                placeholderTextColor={colorMode === 'dark' ? '#6B7280' : '#6B7280'}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
 
           <View style={stylesCard.fieldContainer}>
             <Text style={stylesCard.label}>{t('auth.email')}</Text>
@@ -500,11 +521,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onBack, onLogin, onSignupSu
           <TouchableOpacity 
             style={[
               stylesCard.signupButton,
-              (email.trim() && password.trim() && acceptTerms && !isLoading) && stylesCard.signupButtonActive,
-              (isLoading || !email.trim() || !password.trim() || !acceptTerms) && stylesCard.disabledButton
+              (displayName.trim() && email.trim() && password.trim() && acceptTerms && !isLoading) && stylesCard.signupButtonActive,
+              (isLoading || !displayName.trim() || !email.trim() || !password.trim() || !acceptTerms) && stylesCard.disabledButton
             ]}
             onPress={handleNameSignup}
-            disabled={isLoading || !email.trim() || !password.trim() || !acceptTerms}
+            disabled={isLoading || !displayName.trim() || !email.trim() || !password.trim() || !acceptTerms}
             activeOpacity={0.8}
           >
             <Text style={stylesCard.signupButtonText}>{t('auth.signup')}</Text>

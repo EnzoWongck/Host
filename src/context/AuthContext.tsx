@@ -22,7 +22,7 @@ type AuthContextType = {
   loading: boolean;
   // 登入方法
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInWithPhone: (phone: string) => Promise<void>;
@@ -59,10 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const transformUser = useCallback(async (supabaseUser: User | null): Promise<AuthUser> => {
     if (!supabaseUser) return null;
 
-    // 獲取用戶的 profile（包含 chips 和 phone_verified）
+    // 獲取用戶的 profile（包含 chips、phone_verified 和 display_name）
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('phone_number, phone_verified, phone_verified_at, chips')
+      .select('phone_number, phone_verified, phone_verified_at, chips, display_name')
       .eq('id', supabaseUser.id)
       .single();
 
@@ -163,7 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       uid: supabaseUser.id,
       email: supabaseUser.email || null,
-      displayName: supabaseUser.user_metadata?.full_name || 
+      displayName: profile.display_name ||
+                   supabaseUser.user_metadata?.full_name || 
                    supabaseUser.user_metadata?.name || 
                    supabaseUser.email?.split('@')[0] || null,
       photoURL: supabaseUser.user_metadata?.avatar_url || null,
@@ -229,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [transformUser]);
 
   // Email 註冊
-  const signUpWithEmail = useCallback(async (email: string, password: string) => {
+  const signUpWithEmail = useCallback(async (email: string, password: string, displayName?: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -239,9 +240,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: Platform.OS === 'web' && typeof window !== 'undefined'
             ? `${window.location.origin}/auth/callback`
             : 'https://lunchips.com/auth/callback',
+          data: {
+            display_name: displayName || email.split('@')[0],
+          },
         },
       });
       if (error) throw error;
+      
+      // 更新 profiles 表的 display_name
+      if (data.user && displayName) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ display_name: displayName })
+          .eq('id', data.user.id);
+        
+        if (profileError) {
+          console.error('更新 display_name 失敗:', profileError);
+        }
+      }
       
       // 如果需要確認郵件，data.user 會存在但 session 為 null
       if (data.user && !data.session) {

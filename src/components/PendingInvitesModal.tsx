@@ -368,7 +368,7 @@ const PendingInvitesModal: React.FC<PendingInvitesModalProps> = ({
               <Text style={styles.title}>協作邀請</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={{ fontSize: 24, color: theme.colors.text, fontWeight: '600' }}>X</Text>
+              <Text style={{ fontSize: theme.fontSize.xl, color: theme.colors.textSecondary, fontWeight: '300' }}>×</Text>
             </TouchableOpacity>
           </View>
 

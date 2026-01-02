@@ -12,12 +12,14 @@ import {
   Linking,
   Image,
   Platform,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useChips } from '../context/ChipsContext';
+import { supabase } from '../config/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { useNavigationContext } from '../context/NavigationContext';
 import Button from '../components/Button';
@@ -32,7 +34,7 @@ import { Language } from '../types/language';
 const SettingsScreen: React.FC = () => {
   const { theme, colorMode, setColorMode } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { user, isSignedIn, signInWithGoogle, signInWithEmail, signOut } = useAuth();
+  const { user, isSignedIn, signInWithGoogle, signInWithEmail, signOut, refreshUser } = useAuth();
   const { chips, openPurchaseModal } = useChips();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
@@ -40,8 +42,35 @@ const SettingsScreen: React.FC = () => {
   const [phoneVerificationModalVisible, setPhoneVerificationModalVisible] = useState(false);
   const [chipsHistoryModalVisible, setChipsHistoryModalVisible] = useState(false);
   const [pendingInvitesModalVisible, setPendingInvitesModalVisible] = useState(false);
+  const [editNameModalVisible, setEditNameModalVisible] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState('');
   const [rememberLogin, setRememberLogin] = useState(true);
   const [allowAnalytics, setAllowAnalytics] = useState(false);
+
+  // 更新用戶名稱
+  const handleUpdateDisplayName = async () => {
+    if (!newDisplayName.trim()) {
+      Alert.alert('錯誤', '請輸入用戶名稱');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ display_name: newDisplayName.trim() })
+        .eq('id', user?.uid);
+
+      if (error) throw error;
+
+      Alert.alert('成功', '用戶名稱已更新');
+      setEditNameModalVisible(false);
+      setNewDisplayName('');
+      // 刷新用戶資料
+      await refreshUser();
+    } catch (error: any) {
+      Alert.alert('錯誤', error.message || '更新失敗');
+    }
+  };
 
   useEffect(() => {
     const loadPrivacy = async () => {
@@ -314,10 +343,24 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.authTitle}>{isSignedIn ? t('settings.loggedIn') : t('settings.login')}</Text>
             {isSignedIn ? (
               <>
-                <Text style={styles.authUserLine}>
-                  {user?.displayName || user?.email?.split('@')[0] || '用戶'}
-                  {user?.email ? ` ・ ${user.email}` : ''}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.authUserLine}>
+                    {user?.displayName || user?.email?.split('@')[0] || '用戶'}
+                    {user?.email ? ` ・ ${user.email}` : ''}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setNewDisplayName(user?.displayName || '');
+                      setEditNameModalVisible(true);
+                    }}
+                    style={{
+                      paddingHorizontal: theme.spacing.sm,
+                      paddingVertical: theme.spacing.xs,
+                    }}
+                  >
+                    <Text style={{ fontSize: theme.fontSize.sm, color: theme.colors.primary }}>編輯</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={styles.authRow}>
                   <Button
                     title={t('settings.logout')}
@@ -666,6 +709,78 @@ const SettingsScreen: React.FC = () => {
           // 可以在這裡導航到遊戲頁面
         }}
       />
+
+      {/* 編輯用戶名稱 Modal */}
+      <Modal
+        visible={editNameModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditNameModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setEditNameModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.xl,
+              width: '85%',
+              maxWidth: 400,
+            }}
+          >
+            <Text style={{
+              fontSize: theme.fontSize.xl,
+              fontWeight: '700',
+              color: theme.colors.text,
+              marginBottom: theme.spacing.lg,
+            }}>
+              編輯用戶名稱
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: colorMode === 'light' ? '#F8F9FA' : '#1E2023',
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                borderRadius: theme.borderRadius.md,
+                paddingHorizontal: theme.spacing.md,
+                paddingVertical: theme.spacing.md,
+                fontSize: theme.fontSize.md,
+                color: theme.colors.text,
+                marginBottom: theme.spacing.lg,
+              }}
+              value={newDisplayName}
+              onChangeText={setNewDisplayName}
+              placeholder="輸入新的用戶名稱"
+              placeholderTextColor={theme.colors.textSecondary}
+              autoFocus
+            />
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <Button
+                title="取消"
+                variant="secondary"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() => setEditNameModalVisible(false)}
+              />
+              <Button
+                title="儲存"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={handleUpdateDisplayName}
+              />
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
