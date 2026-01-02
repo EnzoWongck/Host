@@ -13,7 +13,6 @@ import {
   Image,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -53,9 +52,10 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [showQRCode, setShowQRCode] = useState(false);
+  const [showCodeLink, setShowCodeLink] = useState(false);
   const [chipPayer, setChipPayer] = useState<'owner' | 'collaborator'>('owner');
   const [inviteLink, setInviteLink] = useState('');
+  const [collaborationCode, setCollaborationCode] = useState('');
 
   // 檢測是否為手機
   const isMobile = Platform.OS !== 'web' || (typeof window !== 'undefined' && window.innerWidth < 768);
@@ -117,13 +117,16 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     }
   }, [visible, loadCollaborators]);
 
-  // 生成邀請連結
+  // 生成邀請連結和協作碼
   const generateInviteLink = useCallback(() => {
     const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined'
       ? window.location.origin
       : 'https://lunchips.com';
     const link = `${baseUrl}/invite?game=${gameId}`;
     setInviteLink(link);
+    // 生成6位數字協作碼
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setCollaborationCode(code);
   }, [gameId]);
 
   // 發送邀請
@@ -164,8 +167,8 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
 
     setLoading(true);
     try {
-      // 生成邀請碼
-      const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      // 生成6位數字邀請碼
+      const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       // 查找被邀請者的 user_id（如果已註冊）
       const { data: inviteeProfile } = await supabase
@@ -450,17 +453,32 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     copyButton: {
       padding: theme.spacing.sm,
     },
-    qrContainer: {
+    codeContainer: {
       alignItems: 'center',
-      paddingVertical: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
     },
-    qrCodeWrapper: {
-      padding: theme.spacing.md,
-      backgroundColor: '#FFFFFF',
+    codeLabel: {
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.sm,
+    },
+    codeDisplay: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : '#1E2023',
       borderRadius: theme.borderRadius.md,
-      marginBottom: theme.spacing.md,
+      paddingVertical: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.xl,
+      marginBottom: theme.spacing.sm,
     },
-    qrDescription: {
+    codeText: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: theme.colors.text,
+      letterSpacing: 8,
+    },
+    codeHint: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
       textAlign: 'center',
@@ -552,25 +570,25 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
             {/* 邀請方式切換 */}
             <View style={styles.toggleContainer}>
               <TouchableOpacity
-                style={[styles.toggleButton, !showQRCode && styles.toggleButtonActive]}
-                onPress={() => setShowQRCode(false)}
+                style={[styles.toggleButton, !showCodeLink && styles.toggleButtonActive]}
+                onPress={() => setShowCodeLink(false)}
               >
-                <Text style={[styles.toggleText, showQRCode && styles.toggleTextInactive]}>
+                <Text style={[styles.toggleText, showCodeLink && styles.toggleTextInactive]}>
                   Email 邀請
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.toggleButton, showQRCode && styles.toggleButtonActive]}
-                onPress={() => setShowQRCode(true)}
+                style={[styles.toggleButton, showCodeLink && styles.toggleButtonActive]}
+                onPress={() => setShowCodeLink(true)}
               >
-                <Text style={[styles.toggleText, !showQRCode && styles.toggleTextInactive]}>
-                  連結/QR Code
+                <Text style={[styles.toggleText, !showCodeLink && styles.toggleTextInactive]}>
+                  協作碼/連結
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Email 邀請 */}
-            {!showQRCode && (
+            {!showCodeLink && (
               <View style={styles.section}>
                 {/* 付費方選擇 */}
                 <View style={styles.payerSection}>
@@ -629,28 +647,63 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
               </View>
             )}
 
-            {/* 連結/QR Code */}
-            {showQRCode && (
+            {/* 協作碼/連結 */}
+            {showCodeLink && (
               <View style={styles.section}>
-                <View style={styles.linkContainer}>
-                  <Text style={styles.linkText} numberOfLines={1}>{inviteLink}</Text>
-                  <TouchableOpacity onPress={handleCopyLink} style={styles.copyButton}>
-                    <Icon name="copy" size={24} />
-                  </TouchableOpacity>
+                {/* 付費方選擇 */}
+                <View style={styles.payerSection}>
+                  <Text style={styles.payerLabel}>Chip 扣費方：</Text>
+                  <View style={styles.payerOptions}>
+                    <TouchableOpacity
+                      style={[styles.payerOption, chipPayer === 'owner' && styles.payerOptionActive]}
+                      onPress={() => setChipPayer('owner')}
+                    >
+                      <Text style={[styles.payerOptionText, chipPayer !== 'owner' && styles.payerOptionTextInactive]}>
+                        我付費
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.payerOption, chipPayer === 'collaborator' && styles.payerOptionActive]}
+                      onPress={() => setChipPayer('collaborator')}
+                    >
+                      <Text style={[styles.payerOptionText, chipPayer !== 'collaborator' && styles.payerOptionTextInactive]}>
+                        對方付費
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                <View style={styles.qrContainer}>
-                  <View style={styles.qrCodeWrapper}>
-                    <QRCode
-                      value={inviteLink}
-                      size={180}
-                      color="#000000"
-                      backgroundColor="#FFFFFF"
-                    />
+                {/* 6位協作碼 */}
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeLabel}>協作碼</Text>
+                  <View style={styles.codeDisplay}>
+                    <Text style={styles.codeText}>{collaborationCode}</Text>
+                    <TouchableOpacity 
+                      onPress={async () => {
+                        try {
+                          await Clipboard.setStringAsync(collaborationCode);
+                          Alert.alert('已複製', '協作碼已複製到剪貼簿');
+                        } catch (error) {
+                          console.error('複製失敗:', error);
+                        }
+                      }} 
+                      style={styles.copyButton}
+                    >
+                      <Icon name="copy" size={20} />
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.qrDescription}>
-                    掃描 QR Code 或分享連結邀請協作者
-                  </Text>
+                  <Text style={styles.codeHint}>將協作碼分享給對方，對方可在「加入牌局」中輸入</Text>
+                </View>
+
+                {/* 連結 */}
+                <View style={{ marginTop: theme.spacing.md }}>
+                  <Text style={styles.codeLabel}>或分享連結</Text>
+                  <View style={styles.linkContainer}>
+                    <Text style={styles.linkText} numberOfLines={1}>{inviteLink}</Text>
+                    <TouchableOpacity onPress={handleCopyLink} style={styles.copyButton}>
+                      <Icon name="copy" size={20} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}

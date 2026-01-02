@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import NewGameModal from '../components/NewGameModal';
+import JoinGameModal from '../components/JoinGameModal';
 import TopTabBar from '../components/TopTabBar';
 import { Language } from '../types/language';
 
@@ -32,6 +33,7 @@ const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
   const [newGameModalVisible, setNewGameModalVisible] = useState(false);
+  const [joinGameModalVisible, setJoinGameModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -440,13 +442,26 @@ const HomeScreen: React.FC = () => {
             ))
           )}
 
-          {/* New Game Button */}
-          <Button title={`+ ${t('home.newGame')}`} onPress={() => setNewGameModalVisible(true)} style={styles.newGameButton} />
+          {/* New Game & Join Game Buttons */}
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <Button title={`+ ${t('home.newGame')}`} onPress={() => setNewGameModalVisible(true)} style={[styles.newGameButton, { flex: 1 }]} />
+            <Button title="加入牌局" variant="secondary" onPress={() => setJoinGameModalVisible(true)} style={[styles.newGameButton, { flex: 1 }]} />
+          </View>
         </View>
       </ScrollView>
 
       {/* New Game Modal */}
       <NewGameModal visible={newGameModalVisible} onClose={() => setNewGameModalVisible(false)} />
+
+      {/* Join Game Modal */}
+      <JoinGameModal 
+        visible={joinGameModalVisible} 
+        onClose={() => setJoinGameModalVisible(false)}
+        onJoined={(gameId) => {
+          console.log('已加入牌局:', gameId);
+          loadGames();
+        }}
+      />
 
       {/* Language Selection Modal */}
       <Modal
