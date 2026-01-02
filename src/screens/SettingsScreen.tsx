@@ -454,7 +454,7 @@ const SettingsScreen: React.FC = () => {
               </Card>
 
               {/* 協作邀請入口 */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm, marginTop: theme.spacing.lg }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
                 <Text style={styles.sectionTitle}>協作牌局</Text>
               </View>
               <Card padding="md">

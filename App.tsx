@@ -234,7 +234,30 @@ const AppNavigator: React.FC = () => {
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false); // 標記是否正在註冊流程中
   const [isVerifyingPhone, setIsVerifyingPhone] = useState(false); // 標記是否正在驗證電話
+  const [pendingInviteGameId, setPendingInviteGameId] = useState<string | null>(null); // 待處理的邀請牌局 ID
   const { setNavigateToWelcomeCallback } = useNavigationContext();
+
+  // 處理邀請連結（/invite?game=xxx）
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    
+    const pathname = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (pathname === '/invite' || pathname.startsWith('/invite')) {
+      const gameId = urlParams.get('game');
+      if (gameId) {
+        console.log('檢測到邀請連結，牌局 ID:', gameId);
+        setPendingInviteGameId(gameId);
+        
+        // 清理 URL（移除 /invite 路徑）
+        window.history.replaceState({}, '', '/');
+        
+        // 如果用戶已登入，導航到設定頁面查看邀請
+        // 如果未登入，等用戶登入後再處理
+      }
+    }
+  }, []);
 
   // 在 Web 平台上，如果配置允許，自動設置一個模擬用戶以跳過登入
   useEffect(() => {
