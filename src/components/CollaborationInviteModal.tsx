@@ -427,10 +427,10 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     toggleText: {
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: colorMode === 'light' ? theme.colors.textSecondary : '#FFFFFF',
     },
     toggleTextInactive: {
-      color: theme.colors.textSecondary,
+      color: colorMode === 'light' ? '#FFFFFF' : theme.colors.textSecondary,
     },
     linkContainer: {
       flexDirection: 'row',
