@@ -457,9 +457,12 @@ const HomeScreen: React.FC = () => {
       <JoinGameModal 
         visible={joinGameModalVisible} 
         onClose={() => setJoinGameModalVisible(false)}
-        onJoined={(gameId) => {
+        onJoined={async (gameId) => {
           console.log('已加入牌局:', gameId);
-          loadGames();
+          await loadGames();
+          // 選擇並導航到該牌局
+          selectCurrentGame(gameId);
+          navigation.navigate('Game', { gameId });
         }}
       />
 

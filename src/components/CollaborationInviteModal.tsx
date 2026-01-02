@@ -138,22 +138,31 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
   }, [gameId, user?.uid]);
 
   // 保存協作碼到數據庫
-  const saveCollaborationCode = useCallback(async () => {
-    if (!collaborationCode || !user?.uid || !gameId) return;
+  const saveCollaborationCode = useCallback(async (): Promise<boolean> => {
+    console.log('saveCollaborationCode 開始:', { collaborationCode, userId: user?.uid, gameId, chipPayer });
     
-    // 檢查是否已有此協作碼
-    const { data: existing } = await supabase
-      .from('game_collaborations')
-      .select('id')
-      .eq('invite_code', collaborationCode)
-      .maybeSingle();
+    if (!collaborationCode || !user?.uid || !gameId) {
+      console.log('saveCollaborationCode 缺少必要參數');
+      return false;
+    }
     
-    if (existing) return; // 已存在，不需要保存
-    
-    // 創建協作碼邀請記錄（不綁定 email）
-    const { error } = await supabase
-      .from('game_collaborations')
-      .insert({
+    try {
+      // 檢查是否已有此協作碼
+      const { data: existing, error: checkError } = await supabase
+        .from('game_collaborations')
+        .select('id')
+        .eq('invite_code', collaborationCode)
+        .maybeSingle();
+      
+      console.log('檢查現有協作碼:', { existing, checkError });
+      
+      if (existing) {
+        console.log('協作碼已存在，跳過保存');
+        return true; // 已存在，視為成功
+      }
+      
+      // 創建協作碼邀請記錄（不綁定 email）
+      const insertData = {
         game_id: gameId,
         owner_id: user.uid,
         collaborator_id: null,
@@ -162,11 +171,25 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
         chip_payer: chipPayer,
         chip_consumed: chipPayer === 'owner',
         invite_code: collaborationCode,
-      });
-    
-    if (error) {
-      console.error('保存協作碼失敗:', error);
-    } else {
+      };
+      
+      console.log('插入協作碼記錄:', insertData);
+      
+      const { data: insertedData, error } = await supabase
+        .from('game_collaborations')
+        .insert(insertData)
+        .select();
+      
+      console.log('插入結果:', { insertedData, error });
+      
+      if (error) {
+        console.error('保存協作碼失敗:', error);
+        Alert.alert('保存失敗', '協作碼保存失敗：' + error.message);
+        return false;
+      }
+      
+      console.log('協作碼保存成功！');
+      
       // 如果擁有者付費，扣除 chip
       if (chipPayer === 'owner' && chips >= 1) {
         await supabase
@@ -175,6 +198,11 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
           .eq('id', user.uid);
         await loadChipsBalance();
       }
+      
+      return true;
+    } catch (err) {
+      console.error('saveCollaborationCode 錯誤:', err);
+      return false;
     }
   }, [collaborationCode, user?.uid, gameId, chipPayer, chips, loadChipsBalance]);
 
@@ -734,34 +762,31 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                   <View style={styles.codeDisplay}>
                     <Text style={styles.codeText} selectable>{collaborationCode}</Text>
                     <TouchableOpacity 
-                      onPress={() => {
+                      onPress={async () => {
                         const codeToCopy = collaborationCode;
                         console.log('準備複製協作碼:', codeToCopy);
                         
                         // 先保存到數據庫
-                        saveCollaborationCode().then(() => {
-                          console.log('協作碼已保存到數據庫');
-                        }).catch((err) => {
-                          console.error('保存協作碼失敗:', err);
-                        });
+                        const saved = await saveCollaborationCode();
+                        if (!saved) {
+                          console.error('協作碼保存失敗');
+                          return;
+                        }
+                        console.log('協作碼已保存到數據庫');
                         
                         // 複製到剪貼簿
-                        if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-                          navigator.clipboard.writeText(codeToCopy).then(() => {
+                        try {
+                          if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+                            await navigator.clipboard.writeText(codeToCopy);
                             console.log('Web 複製成功');
-                            Alert.alert('已複製', '協作碼已複製到剪貼簿');
-                          }).catch((err) => {
-                            console.error('Web 複製失敗:', err);
-                            Alert.alert('複製失敗', '請手動複製協作碼：' + codeToCopy);
-                          });
-                        } else {
-                          Clipboard.setStringAsync(codeToCopy).then(() => {
+                          } else {
+                            await Clipboard.setStringAsync(codeToCopy);
                             console.log('Native 複製成功');
-                            Alert.alert('已複製', '協作碼已複製到剪貼簿');
-                          }).catch((err) => {
-                            console.error('Native 複製失敗:', err);
-                            Alert.alert('複製失敗', '請手動複製協作碼：' + codeToCopy);
-                          });
+                          }
+                          Alert.alert('已複製', `協作碼 ${codeToCopy} 已複製並保存`);
+                        } catch (err) {
+                          console.error('複製失敗:', err);
+                          Alert.alert('已保存', `協作碼已保存，請手動複製：${codeToCopy}`);
                         }
                       }} 
                       style={styles.copyButton}
