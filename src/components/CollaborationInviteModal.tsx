@@ -398,12 +398,12 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     },
     payerOptionText: {
       fontSize: theme.fontSize.sm,
-      fontWeight: '600',
-      color: theme.colors.primary,
-    },
-    payerOptionTextInactive: {
       fontWeight: '500',
       color: theme.colors.textSecondary,
+    },
+    payerOptionTextActive: {
+      fontWeight: '600',
+      color: theme.colors.primary,
     },
     toggleContainer: {
       flexDirection: 'row',
@@ -578,7 +578,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                       style={[styles.payerOption, chipPayer === 'owner' && styles.payerOptionActive]}
                       onPress={() => setChipPayer('owner')}
                     >
-                      <Text style={[styles.payerOptionText, chipPayer !== 'owner' && styles.payerOptionTextInactive]}>
+                      <Text style={[styles.payerOptionText, chipPayer === 'owner' && styles.payerOptionTextActive]}>
                         我付費
                       </Text>
                     </TouchableOpacity>
@@ -586,7 +586,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                       style={[styles.payerOption, chipPayer === 'collaborator' && styles.payerOptionActive]}
                       onPress={() => setChipPayer('collaborator')}
                     >
-                      <Text style={[styles.payerOptionText, chipPayer !== 'collaborator' && styles.payerOptionTextInactive]}>
+                      <Text style={[styles.payerOptionText, chipPayer === 'collaborator' && styles.payerOptionTextActive]}>
                         對方付費
                       </Text>
                     </TouchableOpacity>
