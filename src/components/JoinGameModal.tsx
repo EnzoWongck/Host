@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
@@ -291,9 +290,7 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       paddingVertical: theme.spacing.md,
       color: theme.colors.text,
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : '#1E2023',
-      fontSize: theme.fontSize.lg,
-      textAlign: 'center',
-      letterSpacing: 4,
+      fontSize: theme.fontSize.md,
     },
     pasteButton: {
       paddingHorizontal: theme.spacing.md,
@@ -368,10 +365,10 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
                     style={styles.input}
                     value={codeOrLink}
                     onChangeText={setCodeOrLink}
-                    placeholder="輸入6位協作碼"
+                    placeholder="協作碼或連結"
                     placeholderTextColor={theme.colors.textSecondary}
-                    keyboardType="number-pad"
-                    maxLength={6}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     autoFocus
                   />
                   <TouchableOpacity style={styles.pasteButton} onPress={handlePaste}>
@@ -379,12 +376,12 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.hint}>
-                  輸入協作碼或貼上邀請連結加入牌局
+                  輸入6位協作碼或貼上邀請連結加入牌局
                 </Text>
                 <Button
                   title={loading ? '查詢中...' : '查詢'}
                   onPress={handleLookup}
-                  disabled={loading || !codeOrLink.trim()}
+                  disabled={loading}
                 />
               </>
             ) : (

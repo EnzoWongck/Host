@@ -442,10 +442,10 @@ const HomeScreen: React.FC = () => {
             ))
           )}
 
-          {/* New Game & Join Game Buttons */}
+          {/* Join Game & New Game Buttons */}
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Button title={`+ ${t('home.newGame')}`} onPress={() => setNewGameModalVisible(true)} style={[styles.newGameButton, { flex: 1 }]} />
             <Button title="加入牌局" variant="secondary" onPress={() => setJoinGameModalVisible(true)} style={[styles.newGameButton, { flex: 1 }]} />
+            <Button title={`+ ${t('home.newGame')}`} onPress={() => setNewGameModalVisible(true)} style={[styles.newGameButton, { flex: 1 }]} />
           </View>
         </View>
       </ScrollView>
