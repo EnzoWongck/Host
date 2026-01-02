@@ -398,12 +398,12 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     },
     payerOptionText: {
       fontSize: theme.fontSize.sm,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    payerOptionTextInactive: {
       fontWeight: '500',
       color: theme.colors.textSecondary,
-    },
-    payerOptionTextActive: {
-      fontWeight: '700',
-      color: theme.colors.text,
     },
     toggleContainer: {
       flexDirection: 'row',
@@ -537,7 +537,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
               <Text style={styles.title}>邀請協作</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={{ fontSize: theme.fontSize.xl, color: theme.colors.text, fontWeight: '600' }}>X</Text>
+              <Text style={{ fontSize: theme.fontSize.xl, color: theme.colors.textSecondary, fontWeight: '300' }}>×</Text>
             </TouchableOpacity>
           </View>
 
@@ -578,7 +578,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                       style={[styles.payerOption, chipPayer === 'owner' && styles.payerOptionActive]}
                       onPress={() => setChipPayer('owner')}
                     >
-                      <Text style={[styles.payerOptionText, chipPayer === 'owner' && styles.payerOptionTextActive]}>
+                      <Text style={[styles.payerOptionText, chipPayer !== 'owner' && styles.payerOptionTextInactive]}>
                         我付費
                       </Text>
                     </TouchableOpacity>
@@ -586,7 +586,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                       style={[styles.payerOption, chipPayer === 'collaborator' && styles.payerOptionActive]}
                       onPress={() => setChipPayer('collaborator')}
                     >
-                      <Text style={[styles.payerOptionText, chipPayer === 'collaborator' && styles.payerOptionTextActive]}>
+                      <Text style={[styles.payerOptionText, chipPayer !== 'collaborator' && styles.payerOptionTextInactive]}>
                         對方付費
                       </Text>
                     </TouchableOpacity>
@@ -621,7 +621,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                     title={loading ? '發送中...' : '邀請'}
                     onPress={handleSendInvite}
                     size="sm"
-                    disabled={loading || !email.trim()}
+                    disabled={loading}
                   />
                 </View>
               </View>
