@@ -113,25 +113,47 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
 
       // 嘗試作為協作碼查詢（支持任意長度的碼）
       console.log('嘗試作為協作碼查詢:', input);
-      const { data, error } = await supabase
+      
+      // 使用更寬鬆的查詢（不限制 status 和 email）
+      const { data: allData, error: allError } = await supabase
         .from('game_collaborations')
         .select('*')
-        .eq('invite_code', input)
-        .eq('status', 'pending')
-        .maybeSingle();
+        .eq('invite_code', input);
+      
+      console.log('所有協作碼結果:', { allData, allError });
+      
+      // 過濾出有效的邀請
+      const validInvite = allData?.find(d => 
+        d.status === 'pending' && 
+        (!d.collaborator_email || d.collaborator_email === user?.email?.toLowerCase())
+      );
+      
+      console.log('有效邀請:', validInvite);
 
-      console.log('協作碼查詢結果:', { data, error });
-
-      if (error) {
-        console.error('協作碼查詢錯誤:', error);
-        Alert.alert('錯誤', '查詢失敗，請稍後重試');
+      if (allError) {
+        console.error('協作碼查詢錯誤:', allError);
+        Alert.alert('錯誤', '查詢失敗：' + allError.message);
         return;
       }
       
-      if (!data) {
-        Alert.alert('錯誤', '協作碼無效或已過期');
+      if (!validInvite) {
+        if (allData && allData.length > 0) {
+          // 有找到但不符合條件
+          const invite = allData[0];
+          if (invite.status !== 'pending') {
+            Alert.alert('錯誤', '此協作碼已被使用或已過期');
+          } else if (invite.collaborator_email && invite.collaborator_email !== user?.email?.toLowerCase()) {
+            Alert.alert('錯誤', '此協作碼是發給其他用戶的');
+          } else {
+            Alert.alert('錯誤', '協作碼無效');
+          }
+        } else {
+          Alert.alert('錯誤', '找不到此協作碼，請確認輸入正確');
+        }
         return;
       }
+      
+      const data = validInvite;
 
       // 檢查是否過期
       if (data.expires_at && new Date(data.expires_at) < new Date()) {

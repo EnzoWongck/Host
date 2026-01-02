@@ -732,23 +732,36 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                 {/* 6位協作碼 */}
                 <View style={styles.codeContainer}>
                   <View style={styles.codeDisplay}>
-                    <Text style={styles.codeText}>{collaborationCode}</Text>
+                    <Text style={styles.codeText} selectable>{collaborationCode}</Text>
                     <TouchableOpacity 
-                      onPress={async () => {
-                        try {
-                          console.log('複製協作碼:', collaborationCode);
-                          // 先保存協作碼到數據庫
-                          await saveCollaborationCode();
-                          // 使用 Clipboard API
-                          if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-                            await navigator.clipboard.writeText(collaborationCode);
-                          } else {
-                            await Clipboard.setStringAsync(collaborationCode);
-                          }
-                          Alert.alert('已複製', '協作碼已複製到剪貼簿');
-                        } catch (error) {
-                          console.error('複製失敗:', error);
-                          Alert.alert('複製失敗', '請手動複製協作碼');
+                      onPress={() => {
+                        const codeToCopy = collaborationCode;
+                        console.log('準備複製協作碼:', codeToCopy);
+                        
+                        // 先保存到數據庫
+                        saveCollaborationCode().then(() => {
+                          console.log('協作碼已保存到數據庫');
+                        }).catch((err) => {
+                          console.error('保存協作碼失敗:', err);
+                        });
+                        
+                        // 複製到剪貼簿
+                        if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+                          navigator.clipboard.writeText(codeToCopy).then(() => {
+                            console.log('Web 複製成功');
+                            Alert.alert('已複製', '協作碼已複製到剪貼簿');
+                          }).catch((err) => {
+                            console.error('Web 複製失敗:', err);
+                            Alert.alert('複製失敗', '請手動複製協作碼：' + codeToCopy);
+                          });
+                        } else {
+                          Clipboard.setStringAsync(codeToCopy).then(() => {
+                            console.log('Native 複製成功');
+                            Alert.alert('已複製', '協作碼已複製到剪貼簿');
+                          }).catch((err) => {
+                            console.error('Native 複製失敗:', err);
+                            Alert.alert('複製失敗', '請手動複製協作碼：' + codeToCopy);
+                          });
                         }
                       }} 
                       style={styles.copyButton}
