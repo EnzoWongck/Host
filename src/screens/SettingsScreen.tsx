@@ -26,6 +26,7 @@ import Icon from '../components/Icon';
 import TopTabBar from '../components/TopTabBar';
 import PhoneVerificationModal from '../components/PhoneVerificationModal';
 import ChipsHistoryModal from '../components/ChipsHistoryModal';
+import PendingInvitesModal from '../components/PendingInvitesModal';
 import { Language } from '../types/language';
 
 const SettingsScreen: React.FC = () => {
@@ -38,6 +39,7 @@ const SettingsScreen: React.FC = () => {
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [phoneVerificationModalVisible, setPhoneVerificationModalVisible] = useState(false);
   const [chipsHistoryModalVisible, setChipsHistoryModalVisible] = useState(false);
+  const [pendingInvitesModalVisible, setPendingInvitesModalVisible] = useState(false);
   const [rememberLogin, setRememberLogin] = useState(true);
   const [allowAnalytics, setAllowAnalytics] = useState(false);
 
@@ -407,6 +409,29 @@ const SettingsScreen: React.FC = () => {
                   />
                 </View>
               </Card>
+
+              {/* 協作邀請入口 */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm, marginTop: theme.spacing.lg }}>
+                <Text style={styles.sectionTitle}>協作牌局</Text>
+              </View>
+              <Card padding="md">
+                <TouchableOpacity
+                  style={styles.dataManagementItem}
+                  onPress={() => setPendingInvitesModalVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.dataItemContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Icon name="connect2" size={24} />
+                      <Text style={styles.dataItemTitle}>協作邀請</Text>
+                    </View>
+                    <Text style={styles.dataItemSubtitle}>
+                      查看收到的協作邀請
+                    </Text>
+                  </View>
+                  <Text style={styles.arrow}>›</Text>
+                </TouchableOpacity>
+              </Card>
             </>
           )}
           {/* General Settings */}
@@ -630,6 +655,16 @@ const SettingsScreen: React.FC = () => {
       <ChipsHistoryModal
         visible={chipsHistoryModalVisible}
         onClose={() => setChipsHistoryModalVisible(false)}
+      />
+
+      {/* 協作邀請 Modal */}
+      <PendingInvitesModal
+        visible={pendingInvitesModalVisible}
+        onClose={() => setPendingInvitesModalVisible(false)}
+        onAccepted={(gameId) => {
+          console.log('已接受協作邀請，遊戲ID:', gameId);
+          // 可以在這裡導航到遊戲頁面
+        }}
       />
     </SafeAreaView>
   );

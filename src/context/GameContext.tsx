@@ -1440,6 +1440,109 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.uid, loadGames]);
 
+  // ============================================
+  // Supabase Realtime 訂閱（協作同步）
+  // ============================================
+  useEffect(() => {
+    if (!user?.uid || !state.currentGame?.id) return;
+
+    const gameId = state.currentGame.id;
+    console.log('設置 Realtime 訂閱，遊戲ID:', gameId);
+
+    // 訂閱 games 表變更
+    const gamesChannel = supabase
+      .channel(`game-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload) => {
+          console.log('遊戲更新:', payload);
+          if (payload.eventType === 'UPDATE') {
+            // 重新載入遊戲數據
+            loadGames();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          console.log('玩家變更:', payload);
+          loadGames();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dealers',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          console.log('發牌員變更:', payload);
+          loadGames();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          console.log('支出變更:', payload);
+          loadGames();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rakes',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          console.log('抽水變更:', payload);
+          loadGames();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'insurances',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          console.log('保險變更:', payload);
+          loadGames();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Realtime 訂閱狀態:', status);
+      });
+
+    return () => {
+      console.log('取消 Realtime 訂閱');
+      supabase.removeChannel(gamesChannel);
+    };
+  }, [user?.uid, state.currentGame?.id, loadGames]);
+
   const contextValue: GameContextType = useMemo(() => ({
     state,
     createGame,

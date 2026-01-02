@@ -3,7 +3,9 @@ import { View, StyleSheet, TouchableOpacity, Image, Modal, Text, Pressable, Plat
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigationContext } from '../context/NavigationContext';
+import { useGame } from '../context/GameContext';
 import Icon from './Icon';
+import CollaborationInviteModal from './CollaborationInviteModal';
 import { Language } from '../types/language';
 // 靜態導入圖片
 import ChangeIconImage from '../../assets/icons/change.png';
@@ -12,13 +14,18 @@ interface TopTabBarProps {
   title?: string | React.ReactNode;
   rightComponent?: React.ReactNode;
   transparent?: boolean;
+  showCollaborationButton?: boolean;
 }
 
-const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparent = false }) => {
+const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparent = false, showCollaborationButton = false }) => {
   const { theme, colorMode, toggleColorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { navigateToWelcome } = useNavigationContext();
+  const { state: gameState } = useGame();
   const [settingsModalVisible, setSettingsModalVisible] = React.useState(false);
+  const [collaborationModalVisible, setCollaborationModalVisible] = React.useState(false);
+  
+  const currentGame = gameState.currentGame;
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -181,6 +188,13 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
       marginBottom: theme.spacing.sm,
       marginTop: theme.spacing.xs,
     },
+    collaborationButton: {
+      padding: theme.spacing.sm,
+      minWidth: 44,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
   });
 
   return (
@@ -197,6 +211,15 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
         )}
         <View style={styles.rightContainer}>
           {rightComponent}
+          {showCollaborationButton && currentGame && (
+            <TouchableOpacity
+              style={styles.collaborationButton}
+              onPress={() => setCollaborationModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Icon name="connect2" size={32} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => setSettingsModalVisible(true)}
@@ -266,6 +289,16 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* 協作邀請 Modal */}
+      {currentGame && (
+        <CollaborationInviteModal
+          visible={collaborationModalVisible}
+          onClose={() => setCollaborationModalVisible(false)}
+          gameId={currentGame.id}
+          gameName={currentGame.name}
+        />
+      )}
     </>
   );
 };

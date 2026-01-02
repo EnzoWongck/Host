@@ -739,7 +739,7 @@ const GameScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TopTabBar />
+      <TopTabBar showCollaborationButton={true} />
 
       <ScrollView 
         ref={mainScrollRef}
