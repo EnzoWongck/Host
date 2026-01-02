@@ -156,27 +156,58 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
 
   // 獲取邀請詳細信息
   const fetchInviteDetails = async (data: any) => {
-    // 獲取遊戲名稱
-    const { data: gameData } = await supabase
-      .from('games')
-      .select('name')
-      .eq('id', data.game_id)
-      .maybeSingle();
+    try {
+      console.log('獲取邀請詳情:', data);
+      
+      // 獲取遊戲名稱（可能因 RLS 失敗）
+      let gameName = data.game_id;
+      try {
+        const { data: gameData } = await supabase
+          .from('games')
+          .select('name')
+          .eq('id', data.game_id)
+          .maybeSingle();
+        if (gameData?.name) {
+          gameName = gameData.name;
+        }
+      } catch (e) {
+        console.log('無法獲取遊戲名稱（可能是 RLS 限制）');
+      }
 
-    // 獲取邀請者名稱
-    const { data: ownerData } = await supabase
-      .from('profiles')
-      .select('display_name, email')
-      .eq('id', data.owner_id)
-      .maybeSingle();
+      // 獲取邀請者名稱
+      let ownerName = '用戶';
+      try {
+        const { data: ownerData } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('id', data.owner_id)
+          .maybeSingle();
+        if (ownerData) {
+          ownerName = ownerData.display_name || ownerData.email || '用戶';
+        }
+      } catch (e) {
+        console.log('無法獲取邀請者名稱');
+      }
 
-    setInviteInfo({
-      id: data.id,
-      game_name: gameData?.name || data.game_id,
-      owner_name: ownerData?.display_name || ownerData?.email || '未知用戶',
-      chip_payer: data.chip_payer,
-      chip_consumed: data.chip_consumed,
-    });
+      console.log('設置邀請信息:', { gameName, ownerName });
+      setInviteInfo({
+        id: data.id,
+        game_name: gameName,
+        owner_name: ownerName,
+        chip_payer: data.chip_payer,
+        chip_consumed: data.chip_consumed,
+      });
+    } catch (error) {
+      console.error('fetchInviteDetails 錯誤:', error);
+      // 即使獲取詳情失敗，也設置基本信息
+      setInviteInfo({
+        id: data.id,
+        game_name: '牌局',
+        owner_name: '用戶',
+        chip_payer: data.chip_payer,
+        chip_consumed: data.chip_consumed,
+      });
+    }
   };
 
   // 接受邀請

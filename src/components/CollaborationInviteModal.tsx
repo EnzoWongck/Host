@@ -731,18 +731,24 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
 
                 {/* 6位協作碼 */}
                 <View style={styles.codeContainer}>
-                  <Text style={styles.codeLabel}>協作碼</Text>
                   <View style={styles.codeDisplay}>
                     <Text style={styles.codeText}>{collaborationCode}</Text>
                     <TouchableOpacity 
                       onPress={async () => {
                         try {
+                          console.log('複製協作碼:', collaborationCode);
                           // 先保存協作碼到數據庫
                           await saveCollaborationCode();
-                          await Clipboard.setStringAsync(collaborationCode);
+                          // 使用 Clipboard API
+                          if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+                            await navigator.clipboard.writeText(collaborationCode);
+                          } else {
+                            await Clipboard.setStringAsync(collaborationCode);
+                          }
                           Alert.alert('已複製', '協作碼已複製到剪貼簿');
                         } catch (error) {
                           console.error('複製失敗:', error);
+                          Alert.alert('複製失敗', '請手動複製協作碼');
                         }
                       }} 
                       style={styles.copyButton}
