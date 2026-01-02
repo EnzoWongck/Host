@@ -398,12 +398,12 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     },
     payerOptionText: {
       fontSize: theme.fontSize.sm,
-      fontWeight: '500',
-      color: theme.colors.textSecondary,
-    },
-    payerOptionTextActive: {
       fontWeight: '600',
       color: theme.colors.primary,
+    },
+    payerOptionTextInactive: {
+      fontWeight: '500',
+      color: theme.colors.textSecondary,
     },
     toggleContainer: {
       flexDirection: 'row',
@@ -425,10 +425,10 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     toggleText: {
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
-      color: theme.colors.textSecondary,
-    },
-    toggleTextActive: {
       color: '#FFFFFF',
+    },
+    toggleTextInactive: {
+      color: theme.colors.textSecondary,
     },
     linkContainer: {
       flexDirection: 'row',
@@ -553,7 +553,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                 style={[styles.toggleButton, !showQRCode && styles.toggleButtonActive]}
                 onPress={() => setShowQRCode(false)}
               >
-                <Text style={[styles.toggleText, !showQRCode && styles.toggleTextActive]}>
+                <Text style={[styles.toggleText, showQRCode && styles.toggleTextInactive]}>
                   Email 邀請
                 </Text>
               </TouchableOpacity>
@@ -561,7 +561,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                 style={[styles.toggleButton, showQRCode && styles.toggleButtonActive]}
                 onPress={() => setShowQRCode(true)}
               >
-                <Text style={[styles.toggleText, showQRCode && styles.toggleTextActive]}>
+                <Text style={[styles.toggleText, !showQRCode && styles.toggleTextInactive]}>
                   連結/QR Code
                 </Text>
               </TouchableOpacity>
@@ -578,7 +578,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                       style={[styles.payerOption, chipPayer === 'owner' && styles.payerOptionActive]}
                       onPress={() => setChipPayer('owner')}
                     >
-                      <Text style={[styles.payerOptionText, chipPayer === 'owner' && styles.payerOptionTextActive]}>
+                      <Text style={[styles.payerOptionText, chipPayer !== 'owner' && styles.payerOptionTextInactive]}>
                         我付費
                       </Text>
                     </TouchableOpacity>
@@ -586,7 +586,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                       style={[styles.payerOption, chipPayer === 'collaborator' && styles.payerOptionActive]}
                       onPress={() => setChipPayer('collaborator')}
                     >
-                      <Text style={[styles.payerOptionText, chipPayer === 'collaborator' && styles.payerOptionTextActive]}>
+                      <Text style={[styles.payerOptionText, chipPayer !== 'collaborator' && styles.payerOptionTextInactive]}>
                         對方付費
                       </Text>
                     </TouchableOpacity>
