@@ -398,11 +398,12 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     },
     payerOptionText: {
       fontSize: theme.fontSize.sm,
-      fontWeight: '600',
+      fontWeight: '500',
       color: theme.colors.textSecondary,
     },
     payerOptionTextActive: {
-      color: theme.colors.primary,
+      fontWeight: '700',
+      color: theme.colors.text,
     },
     toggleContainer: {
       flexDirection: 'row',
@@ -536,7 +537,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
               <Text style={styles.title}>邀請協作</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={{ fontSize: 24, color: theme.colors.text, fontWeight: '600' }}>X</Text>
+              <Text style={{ fontSize: theme.fontSize.xl, color: theme.colors.text, fontWeight: '600' }}>X</Text>
             </TouchableOpacity>
           </View>
 
@@ -641,7 +642,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                     <QRCode
                       value={inviteLink}
                       size={180}
-                      color={theme.colors.text}
+                      color="#000000"
                       backgroundColor="#FFFFFF"
                     />
                   </View>
