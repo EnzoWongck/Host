@@ -399,7 +399,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     payerOptionText: {
       fontSize: theme.fontSize.sm,
       fontWeight: '600',
-      color: theme.colors.primary,
+      color: theme.colors.text,
     },
     payerOptionTextInactive: {
       fontWeight: '500',
