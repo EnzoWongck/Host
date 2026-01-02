@@ -110,12 +110,32 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     }
   }, [gameId, user?.uid]);
 
-  useEffect(() => {
-    if (visible) {
-      loadCollaborators();
-      generateInviteLink();
+  // 生成邀請連結和協作碼
+  const generateInviteLink = useCallback(async () => {
+    const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://lunchips.com';
+    const link = `${baseUrl}/invite?game=${gameId}`;
+    setInviteLink(link);
+    
+    // 檢查是否已有未使用的協作碼邀請
+    const { data: existingInvite } = await supabase
+      .from('game_collaborations')
+      .select('invite_code')
+      .eq('game_id', gameId)
+      .eq('owner_id', user?.uid)
+      .is('collaborator_email', null)
+      .eq('status', 'pending')
+      .maybeSingle();
+    
+    if (existingInvite?.invite_code) {
+      setCollaborationCode(existingInvite.invite_code);
+    } else {
+      // 生成新的6位數字協作碼
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setCollaborationCode(code);
     }
-  }, [visible, loadCollaborators, generateInviteLink]);
+  }, [gameId, user?.uid]);
 
   // 保存協作碼到數據庫
   const saveCollaborationCode = useCallback(async () => {
@@ -158,32 +178,12 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     }
   }, [collaborationCode, user?.uid, gameId, chipPayer, chips, loadChipsBalance]);
 
-  // 生成邀請連結和協作碼
-  const generateInviteLink = useCallback(async () => {
-    const baseUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-      ? window.location.origin
-      : 'https://lunchips.com';
-    const link = `${baseUrl}/invite?game=${gameId}`;
-    setInviteLink(link);
-    
-    // 檢查是否已有未使用的協作碼邀請
-    const { data: existingInvite } = await supabase
-      .from('game_collaborations')
-      .select('invite_code')
-      .eq('game_id', gameId)
-      .eq('owner_id', user?.uid)
-      .is('collaborator_email', null)
-      .eq('status', 'pending')
-      .maybeSingle();
-    
-    if (existingInvite?.invite_code) {
-      setCollaborationCode(existingInvite.invite_code);
-    } else {
-      // 生成新的6位數字協作碼
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setCollaborationCode(code);
+  useEffect(() => {
+    if (visible) {
+      loadCollaborators();
+      generateInviteLink();
     }
-  }, [gameId, user?.uid]);
+  }, [visible, loadCollaborators, generateInviteLink]);
 
   // 發送邀請
   const handleSendInvite = async () => {
