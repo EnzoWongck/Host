@@ -60,28 +60,25 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 3, // 手機版增加 paddingTop，向下移動
-      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3,
-      minHeight: isMobile ? undefined : '100%', // 電腦版確保最小高度
+      paddingTop: '15%', // 使用百分比確保不同螢幕大小位置一致
+      paddingBottom: '10%',
     },
     logoContainer: {
       alignItems: 'center',
-      marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
-      marginTop: isMobile ? theme.spacing.xl * 2 : 0, // 手機版 logo 向上移動
+      marginBottom: theme.spacing.md,
     },
     logoImage: {
-      width: isMobile ? 140 : 280, // 電腦版稍微縮小
-      height: isMobile ? 140 : 280,
-      marginBottom: theme.spacing.xs, // 減少與文字的距離
-      marginTop: isMobile ? 0 : theme.spacing.xl,
+      width: isMobile ? 120 : 180, // 統一比例
+      height: isMobile ? 120 : 180,
+      marginBottom: theme.spacing.xs,
     },
     hostTitle: {
-      fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
+      fontSize: isMobile ? 42 : 48,
       fontWeight: '700',
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
-      color: '#FFFFFF', // 兩種模式都固定白色
+      color: '#FFFFFF',
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.xl * 2.7 : theme.spacing.xl * 1.5, // 手機版 LunChips 微調
+      marginTop: theme.spacing.lg,
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
@@ -96,9 +93,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     featureList: {
       width: '100%',
       maxWidth: 400,
-      marginBottom: isMobile ? theme.spacing.lg : theme.spacing.xl, // 手機版：與按鈕之間距離縮小
+      marginBottom: theme.spacing.lg,
       paddingHorizontal: theme.spacing.lg,
-      marginTop: isMobile ? theme.spacing.xs : theme.spacing.md, // 回復之前位置
+      marginTop: theme.spacing.md,
     },
     featureItem: {
       flexDirection: 'row',
