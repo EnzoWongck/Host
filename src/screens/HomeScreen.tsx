@@ -28,7 +28,7 @@ import { Language } from '../types/language';
 const HomeScreen: React.FC = () => {
   const { theme, colorMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
-  const { state, selectCurrentGame, deleteGame, updateGame } = useGame();
+  const { state, selectCurrentGame, deleteGame, updateGame, loadGames } = useGame();
   const { loadChipsBalance } = useChips();
   const navigation = useNavigation<any>();
   const { navigateToWelcome } = useNavigationContext();
