@@ -587,7 +587,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     },
     codeContainer: {
       alignItems: 'center',
-      paddingVertical: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
     },
     codeLabel: {
       fontSize: theme.fontSize.sm,
@@ -752,7 +752,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                         />
                       )}
                       <Text style={styles.chipsText}>
-                        目前餘額：{chips} Chips（邀請將消耗 1 Chip）
+                        目前餘額：{chips} Chips（加入後將消耗 1 Chip）
                       </Text>
                     </View>
                   )}

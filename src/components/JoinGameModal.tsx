@@ -150,6 +150,8 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       // 獲取擁有者名稱
       let ownerName = '用戶';
       console.log('查詢擁有者資料, user_id:', gameData.user_id);
+      
+      // 先嘗試從 profiles 表查詢
       const { data: ownerData, error: ownerError } = await supabase
         .from('profiles')
         .select('display_name, email')
@@ -159,9 +161,27 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       console.log('擁有者查詢結果:', { ownerData, ownerError });
       
       if (ownerData) {
-        ownerName = ownerData.display_name || ownerData.email || '用戶';
-      } else if (ownerError) {
-        console.error('查詢擁有者失敗:', ownerError);
+        // 優先使用 display_name，如果沒有則使用 email 的用戶名部分
+        if (ownerData.display_name && ownerData.display_name.trim()) {
+          ownerName = ownerData.display_name;
+        } else if (ownerData.email) {
+          ownerName = ownerData.email.split('@')[0];
+        }
+      }
+      
+      // 如果 profiles 查詢失敗，嘗試從 auth.users 的 metadata 獲取
+      if (ownerName === '用戶' && !ownerError) {
+        try {
+          // 嘗試從 games 表獲取更多信息
+          const { data: authData } = await supabase.auth.admin?.getUserById?.(gameData.user_id) || {};
+          if (authData?.user?.user_metadata?.display_name) {
+            ownerName = authData.user.user_metadata.display_name;
+          } else if (authData?.user?.email) {
+            ownerName = authData.user.email.split('@')[0];
+          }
+        } catch (e) {
+          // admin API 可能不可用，忽略錯誤
+        }
       }
       
       console.log('最終擁有者名稱:', ownerName);

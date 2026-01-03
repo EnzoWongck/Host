@@ -248,14 +248,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       
       // 更新 profiles 表的 display_name
-      if (data.user && displayName) {
-        const { error: profileError } = await supabase
+      if (data.user) {
+        const nameToSave = displayName || email.split('@')[0];
+        
+        // 先嘗試更新
+        const { error: updateError } = await supabase
           .from('profiles')
-          .update({ display_name: displayName })
+          .update({ display_name: nameToSave })
           .eq('id', data.user.id);
         
-        if (profileError) {
-          console.error('更新 display_name 失敗:', profileError);
+        if (updateError) {
+          console.log('更新 display_name 失敗，嘗試 upsert:', updateError);
+          // 如果更新失敗（可能是記錄不存在），嘗試 upsert
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({ 
+              id: data.user.id, 
+              display_name: nameToSave,
+              email: email.toLowerCase(),
+            });
+          
+          if (upsertError) {
+            console.error('upsert display_name 失敗:', upsertError);
+          } else {
+            console.log('display_name 已保存:', nameToSave);
+          }
+        } else {
+          console.log('display_name 已更新:', nameToSave);
         }
       }
       
