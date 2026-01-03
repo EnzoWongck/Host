@@ -126,11 +126,11 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
         }
       }
       
-      // 直接查詢遊戲資訊
+      // 直接查詢遊戲資訊（包含 hosts）
       console.log('查詢遊戲:', targetGameId);
       const { data: gameData, error: gameError } = await supabase
         .from('games')
-        .select('id, name, user_id')
+        .select('id, name, user_id, hosts')
         .eq('id', targetGameId)
         .maybeSingle();
       
@@ -147,33 +147,39 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
         return;
       }
       
-      // 獲取擁有者名稱
+      // 獲取擁有者名稱（多種備用方案）
       let ownerName = '用戶';
       console.log('查詢擁有者資料, user_id:', gameData.user_id);
       
-      // 從 profiles 表查詢（需要確保 RLS 允許）
+      // 方案 1: 從 profiles 表查詢
       const { data: ownerData, error: ownerError } = await supabase
         .from('profiles')
         .select('display_name, email')
         .eq('id', gameData.user_id)
         .maybeSingle();
       
-      console.log('擁有者查詢結果:', JSON.stringify({ ownerData, ownerError }));
+      console.log('擁有者 profiles 查詢結果:', JSON.stringify({ ownerData, ownerError }));
       
       if (ownerData) {
-        // 優先使用 display_name
         if (ownerData.display_name && ownerData.display_name.trim() !== '') {
           ownerName = ownerData.display_name.trim();
-          console.log('使用 display_name:', ownerName);
+          console.log('使用 profiles.display_name:', ownerName);
         } else if (ownerData.email && ownerData.email.includes('@')) {
-          // 使用 email 的用戶名部分
           ownerName = ownerData.email.split('@')[0];
-          console.log('使用 email 用戶名:', ownerName);
+          console.log('使用 profiles.email:', ownerName);
         }
-      } else if (ownerError) {
-        console.error('查詢擁有者失敗:', ownerError);
-      } else {
-        console.log('擁有者資料為空');
+      }
+      
+      // 方案 2: 如果 profiles 查詢失敗，使用 games.hosts 中的第一個 host 名稱
+      if (ownerName === '用戶' && gameData.hosts && Array.isArray(gameData.hosts) && gameData.hosts.length > 0) {
+        const firstHost = gameData.hosts[0];
+        if (firstHost && typeof firstHost === 'object' && firstHost.name) {
+          ownerName = firstHost.name;
+          console.log('使用 hosts[0].name:', ownerName);
+        } else if (typeof firstHost === 'string') {
+          ownerName = firstHost;
+          console.log('使用 hosts[0] (string):', ownerName);
+        }
       }
       
       console.log('最終擁有者名稱:', ownerName);
