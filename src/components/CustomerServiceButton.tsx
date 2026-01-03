@@ -15,8 +15,8 @@ import { useTheme } from '../context/ThemeContext';
 const WHATSAPP_NUMBER = '+85264658664';
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER.replace(/[^0-9]/g, '')}`;
 
-// WhatsApp icon
-const whatsappIcon = require('../../assets/icons/whatsapp.png');
+// Customer service icon
+const csIcon = require('../../assets/icons/cs.png');
 
 const CustomerServiceButton: React.FC = () => {
   const { theme } = useTheme();
@@ -159,7 +159,7 @@ const CustomerServiceButton: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={styles.whatsappIconContainer}>
-                <Image source={whatsappIcon} style={styles.whatsappIcon} />
+                <Image source={csIcon} style={styles.whatsappIcon} />
               </View>
               <Text style={styles.phoneNumber}>+852 6465 8664</Text>
             </TouchableOpacity>
