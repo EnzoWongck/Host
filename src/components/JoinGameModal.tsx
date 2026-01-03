@@ -148,18 +148,22 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       
       // 獲取擁有者名稱
       let ownerName = '用戶';
-      try {
-        const { data: ownerData } = await supabase
-          .from('profiles')
-          .select('display_name, email')
-          .eq('id', gameData.user_id)
-          .maybeSingle();
-        if (ownerData) {
-          ownerName = ownerData.display_name || ownerData.email || '用戶';
-        }
-      } catch (e) {
-        console.log('無法獲取擁有者名稱');
+      console.log('查詢擁有者資料, user_id:', gameData.user_id);
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('profiles')
+        .select('display_name, email')
+        .eq('id', gameData.user_id)
+        .maybeSingle();
+      
+      console.log('擁有者查詢結果:', { ownerData, ownerError });
+      
+      if (ownerData) {
+        ownerName = ownerData.display_name || ownerData.email || '用戶';
+      } else if (ownerError) {
+        console.error('查詢擁有者失敗:', ownerError);
       }
+      
+      console.log('最終擁有者名稱:', ownerName);
       
       // 設置邀請信息（不需要從 game_collaborations 查詢）
       setInviteInfo({
