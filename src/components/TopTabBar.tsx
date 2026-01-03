@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Modal, Text, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, Modal, Text, Pressable, Platform, Alert } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigationContext } from '../context/NavigationContext';
 import { useGame } from '../context/GameContext';
+import { useAuth } from '../context/AuthContext';
 import Icon from './Icon';
 import CollaborationInviteModal from './CollaborationInviteModal';
 import { Language } from '../types/language';
@@ -22,6 +23,7 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
   const { t, language, setLanguage } = useLanguage();
   const { navigateToWelcome } = useNavigationContext();
   const { state: gameState } = useGame();
+  const { signOut, isSignedIn } = useAuth();
   const [settingsModalVisible, setSettingsModalVisible] = React.useState(false);
   const [collaborationModalVisible, setCollaborationModalVisible] = React.useState(false);
   
@@ -33,6 +35,25 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
 
   const handleColorModeToggle = () => {
     toggleColorMode();
+  };
+
+  const handleLogout = async () => {
+    setSettingsModalVisible(false);
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('確定要登出嗎？');
+      if (confirmed) {
+        await signOut();
+      }
+    } else {
+      Alert.alert(
+        '登出',
+        '確定要登出嗎？',
+        [
+          { text: '取消', style: 'cancel' },
+          { text: '確定', onPress: () => signOut(), style: 'destructive' },
+        ]
+      );
+    }
   };
 
   const styles = StyleSheet.create({
@@ -286,6 +307,21 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
                 </View>
               </View>
             </TouchableOpacity>
+
+            {isSignedIn && (
+              <TouchableOpacity
+                style={[styles.option, { backgroundColor: theme.colors.danger + '15', marginTop: theme.spacing.sm }]}
+                onPress={handleLogout}
+              >
+                <View style={styles.optionRow}>
+                  <View style={styles.optionContent}>
+                    <Text style={[styles.optionText, { color: theme.colors.danger }]}>
+                      登出
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
