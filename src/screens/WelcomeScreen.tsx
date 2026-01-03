@@ -42,11 +42,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     return Platform.OS !== 'web';
   }, []);
 
-  // 獲取視窗高度用於計算固定位置
-  const windowHeight = Platform.OS === 'web' && typeof window !== 'undefined' 
-    ? window.innerHeight 
-    : 800;
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -64,12 +59,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       flex: 1,
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      // 使用固定百分比定位，讓內容在背景圖片上保持相同位置
-      paddingTop: windowHeight * 0.12, // 從頂部 12% 開始
+      // 使用固定像素值，確保與背景圖片位置一致
+      paddingTop: isMobile ? 120 : 100,
     },
     logoContainer: {
       alignItems: 'center',
-      marginTop: windowHeight * 0.08, // Logo 額外下移 8%
+      marginTop: isMobile ? 60 : 80,
     },
     logoImage: {
       width: isMobile ? 130 : 200,
@@ -81,7 +76,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF',
       letterSpacing: -1,
-      marginTop: windowHeight * 0.12, // 從 Logo 下方 12% 視窗高度
+      marginTop: isMobile ? 100 : 80,
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
@@ -98,7 +93,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       maxWidth: 400,
       marginBottom: theme.spacing.lg,
       paddingHorizontal: theme.spacing.lg,
-      marginTop: windowHeight * 0.03, // 從標題下方 3% 視窗高度
+      marginTop: isMobile ? 24 : 32,
     },
     featureItem: {
       flexDirection: 'row',
