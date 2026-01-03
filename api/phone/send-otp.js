@@ -87,18 +87,23 @@ module.exports = async (req, res) => {
     }
 
     // 檢查電話號碼是否已被其他帳戶使用
+    console.log('檢查電話號碼是否已被使用:', phoneNumber, 'userId:', userId);
     const { data: existingProfiles, error: checkError } = await supabase
       .from('profiles')
-      .select('id, phone')
-      .eq('phone', phoneNumber);
+      .select('id, phone_number')
+      .eq('phone_number', phoneNumber)
+      .eq('phone_verified', true);
+    
+    console.log('檢查結果:', { existingProfiles, checkError });
     
     if (checkError) {
       console.error('檢查電話號碼失敗:', checkError);
     } else if (existingProfiles && existingProfiles.length > 0) {
       // 如果有用戶使用此號碼，檢查是否是當前用戶
       const isCurrentUser = userId && existingProfiles.some(p => p.id === userId);
+      console.log('是否為當前用戶:', isCurrentUser, '找到的用戶:', existingProfiles.map(p => p.id));
       if (!isCurrentUser) {
-        console.log('電話號碼已被使用:', phoneNumber);
+        console.log('電話號碼已被其他帳戶使用:', phoneNumber);
         res.writeHead(409, { ...corsHeaders, 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           error: 'phone_already_used',
