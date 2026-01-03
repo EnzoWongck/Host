@@ -577,16 +577,43 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // 獲取用戶的所有遊戲
-      const { data: gamesData, error: gamesError } = await supabase
+      // 獲取用戶創建的遊戲
+      const { data: ownGamesData, error: ownGamesError } = await supabase
         .from('games')
         .select('*')
         .eq('user_id', user.uid)
         .order('created_at', { ascending: false });
 
-      if (gamesError) throw gamesError;
+      if (ownGamesError) throw ownGamesError;
 
-      if (!gamesData || gamesData.length === 0) {
+      // 獲取用戶作為協作者的遊戲
+      const { data: collabData } = await supabase
+        .from('game_collaborations')
+        .select('game_id')
+        .eq('collaborator_id', user.uid)
+        .eq('status', 'accepted');
+      
+      let collabGamesData: any[] = [];
+      if (collabData && collabData.length > 0) {
+        const collabGameIds = collabData.map(c => c.game_id);
+        const { data: collabGames } = await supabase
+          .from('games')
+          .select('*')
+          .in('id', collabGameIds)
+          .order('created_at', { ascending: false });
+        collabGamesData = collabGames || [];
+      }
+
+      // 合併兩種遊戲（去重）
+      const allGamesMap = new Map<string, any>();
+      [...(ownGamesData || []), ...collabGamesData].forEach(game => {
+        if (!allGamesMap.has(game.id)) {
+          allGamesMap.set(game.id, game);
+        }
+      });
+      const gamesData = Array.from(allGamesMap.values());
+
+      if (gamesData.length === 0) {
         dispatch({ type: 'SET_GAMES', payload: [] });
         return;
       }
