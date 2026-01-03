@@ -643,100 +643,91 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
   // 監聽支付成功
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    if (!user?.uid) return;
+    
+    const currentUserId = user.uid;
+    let hasProcessed = false;
 
     const handlePaymentSuccess = async () => {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('payment') === 'success') {
-        console.log('支付成功，重新載入餘額和遊戲狀態');
+      if (urlParams.get('payment') !== 'success' || hasProcessed) return;
+      
+      hasProcessed = true;
+      console.log('💰 支付成功，開始輪詢餘額更新...');
+      
+      // 清除本地緩存，強制從服務器重新載入
+      try {
+        localStorage.removeItem(`chips_${currentUserId}`);
+      } catch (e) {
+        console.error('清除本地緩存失敗:', e);
+      }
+      
+      // 獲取初始餘額
+      const { data: initialProfile } = await supabase
+        .from('profiles')
+        .select('chips')
+        .eq('id', currentUserId)
+        .maybeSingle();
+      
+      const initialChips = initialProfile?.chips || 0;
+      console.log('💰 初始餘額:', initialChips);
+      
+      // 多次嘗試獲取更新後的餘額（Stripe webhook 可能需要時間處理）
+      const delays = [500, 1000, 2000, 3000, 5000, 8000, 10000, 15000]; // 更多重試
+      let updated = false;
+      
+      for (let i = 0; i < delays.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, delays[i]));
         
-        // 清除本地緩存，強制從服務器重新載入
-        if (Platform.OS === 'web' && typeof window !== 'undefined' && user?.uid) {
-          try {
-            localStorage.removeItem(`chips_${user.uid}`);
-          } catch (e) {
-            console.error('清除本地緩存失敗:', e);
-          }
-        }
-        
-        // 記錄原始餘額以檢測變化
-        const originalChips = chips;
-        
-        // 多次嘗試獲取更新後的餘額（Stripe webhook 可能需要時間處理）
-        const delays = [1000, 2000, 3000, 5000, 8000]; // 遞增延遲
-        
-        for (let i = 0; i < delays.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, delays[i]));
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('chips')
+            .eq('id', currentUserId)
+            .maybeSingle();
           
-          // 直接從 Supabase 查詢最新餘額
-          if (user?.uid) {
-            try {
-              const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('chips')
-                .eq('id', user.uid)
-                .maybeSingle();
-              
-              if (!profileError && profile) {
-                const newChips = profile.chips || 0;
-                console.log(`第 ${i + 1} 次查詢餘額:`, newChips, '(原始:', originalChips, ')');
-                setChips(newChips);
-                
-                // 如果餘額有變化，表示 webhook 已處理，可以停止輪詢
-                if (newChips !== originalChips) {
-                  console.log('餘額已更新，停止輪詢');
-                  break;
-                }
-              }
-            } catch (error) {
-              console.error('查詢 Supabase 失敗:', error);
+          if (!profileError && profile) {
+            const newChips = profile.chips || 0;
+            console.log(`💰 第 ${i + 1} 次查詢餘額: ${newChips} (初始: ${initialChips})`);
+            setChips(newChips);
+            
+            // 如果餘額有變化，表示 webhook 已處理
+            if (newChips > initialChips) {
+              console.log('✅ 餘額已更新！');
+              updated = true;
+              break;
             }
           }
-        }
-        
-        // 最後再載入一次確保狀態同步
-        await loadChipsBalance();
-        
-        // 清除 URL 參數
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // 顯示提示
-        if (typeof window !== 'undefined') {
-          // 可以在這裡添加 Toast 提示
-          console.log('付款處理完成');
+        } catch (error) {
+          console.error('查詢 Supabase 失敗:', error);
         }
       }
+      
+      if (!updated) {
+        console.warn('⚠️ 餘額未更新，可能 Stripe Webhook 尚未處理。請稍後手動刷新。');
+        // 顯示提示
+        alert('支付已完成，但餘額更新可能需要幾分鐘。如果餘額未更新，請稍後刷新頁面或進入設定頁面重新載入。');
+      }
+      
+      // 清除 URL 參數
+      window.history.replaceState({}, document.title, window.location.pathname);
+      console.log('💰 付款處理完成');
     };
 
-    // 立即檢查一次（處理從 Stripe 返回的情況）
+    // 立即檢查一次
     handlePaymentSuccess();
     
-    // 監聽 URL 變化
-    window.addEventListener('popstate', handlePaymentSuccess);
-    
-    // 監聽頁面可見性變化（當用戶從 Stripe 返回時）
+    // 監聽頁面可見性變化
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        handlePaymentSuccess();
+        // 重新載入餘額（用戶可能從 Stripe 返回）
+        loadChipsBalance();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // 定期檢查 URL 參數（每 2 秒檢查一次，持續 30 秒）
-    let checkCount = 0;
-    const maxChecks = 15; // 30 秒 / 2 秒
-    const checkInterval = setInterval(() => {
-      checkCount++;
-      if (checkCount > maxChecks) {
-        clearInterval(checkInterval);
-        return;
-      }
-      handlePaymentSuccess();
-    }, 2000);
 
     return () => {
-      window.removeEventListener('popstate', handlePaymentSuccess);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(checkInterval);
     };
   }, [loadChipsBalance, user?.uid]);
 
