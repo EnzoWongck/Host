@@ -658,36 +658,52 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           }
         }
         
-        // 直接從 Supabase 查詢最新餘額（繞過 API 緩存）
-        if (user?.uid) {
-          try {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('chips')
-              .eq('id', user.uid)
-              .maybeSingle();
-            
-            if (!profileError && profile) {
-              console.log('直接從 Supabase 獲取餘額:', profile.chips);
-              setChips(profile.chips || 0);
+        // 記錄原始餘額以檢測變化
+        const originalChips = chips;
+        
+        // 多次嘗試獲取更新後的餘額（Stripe webhook 可能需要時間處理）
+        const delays = [1000, 2000, 3000, 5000, 8000]; // 遞增延遲
+        
+        for (let i = 0; i < delays.length; i++) {
+          await new Promise(resolve => setTimeout(resolve, delays[i]));
+          
+          // 直接從 Supabase 查詢最新餘額
+          if (user?.uid) {
+            try {
+              const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('chips')
+                .eq('id', user.uid)
+                .maybeSingle();
+              
+              if (!profileError && profile) {
+                const newChips = profile.chips || 0;
+                console.log(`第 ${i + 1} 次查詢餘額:`, newChips, '(原始:', originalChips, ')');
+                setChips(newChips);
+                
+                // 如果餘額有變化，表示 webhook 已處理，可以停止輪詢
+                if (newChips !== originalChips) {
+                  console.log('餘額已更新，停止輪詢');
+                  break;
+                }
+              }
+            } catch (error) {
+              console.error('查詢 Supabase 失敗:', error);
             }
-          } catch (error) {
-            console.error('直接查詢 Supabase 失敗:', error);
           }
         }
         
-        // 等待一下確保 Stripe webhook 已處理完成
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // 重新載入 chips 餘額（強制從服務器獲取）
-        await loadChipsBalance();
-        
-        // 再等待一下，然後再次載入確保狀態同步
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 最後再載入一次確保狀態同步
         await loadChipsBalance();
         
         // 清除 URL 參數
         window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // 顯示提示
+        if (typeof window !== 'undefined') {
+          // 可以在這裡添加 Toast 提示
+          console.log('付款處理完成');
+        }
       }
     };
 
