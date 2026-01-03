@@ -124,7 +124,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
     return code.toString();
   };
 
-  // 保存協作碼到數據庫（直接傳入 code）
+  // 保存協作碼到數據庫（直接傳入 code）- 不扣費，等對方接受時再扣
   const ensureCollaborationCodeSaved = async (code: string) => {
     if (!code || !user?.uid || !gameId) return;
     
@@ -142,7 +142,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
         return;
       }
       
-      // 創建新記錄
+      // 創建新記錄（不立即扣費）
       console.log('自動保存協作碼:', code);
       const { error } = await supabase
         .from('game_collaborations')
@@ -152,8 +152,8 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
           collaborator_id: null,
           collaborator_email: null,
           status: 'pending',
-          chip_payer: 'owner', // 預設擁有者付費
-          chip_consumed: false,
+          chip_payer: chipPayer, // 使用當前選擇的付費方
+          chip_consumed: false, // 不立即扣費
           invite_code: code,
         });
       
@@ -237,14 +237,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
       
       console.log('協作碼保存成功！');
       
-      // 如果擁有者付費，扣除 chip
-      if (chipPayer === 'owner' && chips >= 1) {
-        await supabase
-          .from('profiles')
-          .update({ chips: chips - 1 })
-          .eq('id', user.uid);
-        await loadChipsBalance();
-      }
+      // 不在這裡扣費，改為對方接受時扣費
       
       return true;
     } catch (err) {
@@ -292,7 +285,14 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
 
     // 如果由擁有者付費，檢查 chips 餘額
     if (chipPayer === 'owner' && chips < 1) {
-      Alert.alert('Chips 不足', '你的 Chips 餘額不足，請先購買 Chips 或選擇由對方支付。');
+      Alert.alert(
+        'Chips 不足', 
+        '你的 Chips 餘額不足，請先購買 Chips 或選擇由對方支付。',
+        [
+          { text: '取消', style: 'cancel' },
+          { text: '購買 Chips', onPress: () => openPurchaseModal() },
+        ]
+      );
       return;
     }
 
@@ -308,7 +308,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
         .eq('email', email.trim().toLowerCase())
         .maybeSingle();
 
-      // 創建邀請記錄
+      // 創建邀請記錄（不立即扣費，等對方接受時再扣）
       const { error: insertError } = await supabase
         .from('game_collaborations')
         .insert({
@@ -318,7 +318,7 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
           collaborator_email: email.trim().toLowerCase(),
           status: 'pending',
           chip_payer: chipPayer,
-          chip_consumed: false,
+          chip_consumed: false, // 不立即扣費
           invite_code: inviteCode,
         });
 
@@ -328,8 +328,9 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
         return;
       }
 
-      // 如果由擁有者付費，立即扣除 chip
-      if (chipPayer === 'owner') {
+      // 不在邀請時扣費，改為對方接受時扣費
+      // 移除立即扣費的邏輯
+      if (false) {
         const { error: chipError } = await supabase
           .from('profiles')
           .update({ chips: chips - 1 })
@@ -860,11 +861,11 @@ const CollaborationInviteModal: React.FC<CollaborationInviteModalProps> = ({
                     <View key={collaborator.id} style={styles.collaboratorItem}>
                       <View style={styles.collaboratorInfo}>
                         <Text style={styles.collaboratorEmail}>
-                          {collaborator.collaborator_name || collaborator.email}
+                          {collaborator.collaborator_name || collaborator.email || '協作碼邀請'}
                         </Text>
                         <Text style={styles.collaboratorMeta}>
-                          {collaborator.chip_payer === 'owner' ? '你付費' : '對方付費'}
-                          {collaborator.chip_consumed && ' · 已扣費'}
+                          扣費方：{collaborator.chip_payer === 'owner' ? '你' : collaborator.collaborator_name || collaborator.email || '對方'}
+                          {collaborator.chip_consumed ? ' · 已扣費' : ' · 待扣費'}
                         </Text>
                       </View>
                       <Text style={[styles.collaboratorStatus, { color: getStatusColor(collaborator.status) }]}>
