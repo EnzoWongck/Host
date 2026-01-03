@@ -151,37 +151,29 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       let ownerName = '用戶';
       console.log('查詢擁有者資料, user_id:', gameData.user_id);
       
-      // 先嘗試從 profiles 表查詢
+      // 從 profiles 表查詢（需要確保 RLS 允許）
       const { data: ownerData, error: ownerError } = await supabase
         .from('profiles')
         .select('display_name, email')
         .eq('id', gameData.user_id)
         .maybeSingle();
       
-      console.log('擁有者查詢結果:', { ownerData, ownerError });
+      console.log('擁有者查詢結果:', JSON.stringify({ ownerData, ownerError }));
       
       if (ownerData) {
-        // 優先使用 display_name，如果沒有則使用 email 的用戶名部分
-        if (ownerData.display_name && ownerData.display_name.trim()) {
-          ownerName = ownerData.display_name;
-        } else if (ownerData.email) {
+        // 優先使用 display_name
+        if (ownerData.display_name && ownerData.display_name.trim() !== '') {
+          ownerName = ownerData.display_name.trim();
+          console.log('使用 display_name:', ownerName);
+        } else if (ownerData.email && ownerData.email.includes('@')) {
+          // 使用 email 的用戶名部分
           ownerName = ownerData.email.split('@')[0];
+          console.log('使用 email 用戶名:', ownerName);
         }
-      }
-      
-      // 如果 profiles 查詢失敗，嘗試從 auth.users 的 metadata 獲取
-      if (ownerName === '用戶' && !ownerError) {
-        try {
-          // 嘗試從 games 表獲取更多信息
-          const { data: authData } = await supabase.auth.admin?.getUserById?.(gameData.user_id) || {};
-          if (authData?.user?.user_metadata?.display_name) {
-            ownerName = authData.user.user_metadata.display_name;
-          } else if (authData?.user?.email) {
-            ownerName = authData.user.email.split('@')[0];
-          }
-        } catch (e) {
-          // admin API 可能不可用，忽略錯誤
-        }
+      } else if (ownerError) {
+        console.error('查詢擁有者失敗:', ownerError);
+      } else {
+        console.log('擁有者資料為空');
       }
       
       console.log('最終擁有者名稱:', ownerName);
@@ -291,23 +283,50 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
         }
       }
       
-      // 創建協作記錄
-      const { error: insertError } = await supabase
+      // 檢查是否已有該遊戲的協作碼記錄
+      const inviteCode = generateFixedCode(gameId);
+      const { data: existingInvite } = await supabase
         .from('game_collaborations')
-        .insert({
-          game_id: gameId,
-          owner_id: ownerId,
-          collaborator_id: user?.uid,
-          collaborator_email: user?.email?.toLowerCase(),
-          status: 'accepted',
-          chip_payer: chipPayer,
-          chip_consumed: true,
-          invite_code: generateFixedCode(gameId),
-        });
+        .select('id')
+        .eq('invite_code', inviteCode)
+        .maybeSingle();
       
-      if (insertError) {
-        console.error('創建協作記錄失敗:', insertError);
-        throw new Error('加入牌局失敗：' + insertError.message);
+      if (existingInvite) {
+        // 更新現有記錄
+        const { error: updateError } = await supabase
+          .from('game_collaborations')
+          .update({
+            collaborator_id: user?.uid,
+            collaborator_email: user?.email?.toLowerCase(),
+            status: 'accepted',
+            chip_payer: chipPayer,
+            chip_consumed: true,
+          })
+          .eq('id', existingInvite.id);
+        
+        if (updateError) {
+          console.error('更新協作記錄失敗:', updateError);
+          throw new Error('加入牌局失敗：' + updateError.message);
+        }
+      } else {
+        // 創建新協作記錄（不使用 invite_code 避免衝突）
+        const { error: insertError } = await supabase
+          .from('game_collaborations')
+          .insert({
+            game_id: gameId,
+            owner_id: ownerId,
+            collaborator_id: user?.uid,
+            collaborator_email: user?.email?.toLowerCase(),
+            status: 'accepted',
+            chip_payer: chipPayer,
+            chip_consumed: true,
+            invite_code: null, // 不設置 invite_code 避免唯一約束衝突
+          });
+        
+        if (insertError) {
+          console.error('創建協作記錄失敗:', insertError);
+          throw new Error('加入牌局失敗：' + insertError.message);
+        }
       }
       
       console.log('協作記錄創建成功');
