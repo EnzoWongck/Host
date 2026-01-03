@@ -1,6 +1,6 @@
 // react-native-gesture-handler 必須在所有其他導入之前
 import 'react-native-gesture-handler';
-import { Platform } from 'react-native';
+import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -654,6 +654,15 @@ const AppNavigator: React.FC = () => {
     return <MainTabNavigator />;
   }
 
+  // 顯示全局加載動畫（認證狀態加載中）
+  if (loading) {
+    return (
+      <View style={loadingStyles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   // 如果未登入但當前畫面是 main，強制返回 welcome
   // 這是一個安全檢查，防止在認證狀態加載完成前顯示主畫面
   if (!loading && !isSignedIn && currentScreen === 'main') {
@@ -858,6 +867,16 @@ const AppWithFont: React.FC = () => {
 
   return <AppNavigator />;
 };
+
+// 加載動畫樣式
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A0A0B',
+  },
+});
 
 // Chips 不足 Paywall 檢查組件
 const PaywallGuard: React.FC = () => {

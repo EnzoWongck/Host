@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -42,6 +43,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   const [bigBlindInput, setBigBlindInput] = useState('10');
   const [gameMode, setGameMode] = useState<'rake' | 'noRake'>('rake'); // 預設抽水
   const [pendingNavigation, setPendingNavigation] = useState(false);
+  const [isCreating, setIsCreating] = useState(false); // 創建中狀態
 
   // 使用固定的螢幕尺寸，避免鍵盤彈出時重新計算
   const screenWidth = INITIAL_SCREEN_WIDTH;
@@ -372,6 +374,8 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
   };
 
   const handleCreateGame = async () => {
+    if (isCreating) return; // 防止重複點擊
+    
     console.log('開始創建牌局，當前 chips:', chips);
     console.log('consumeChip 函數:', typeof consumeChip);
     console.log('loadChipsBalance 函數:', typeof loadChipsBalance);
@@ -519,6 +523,9 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       
       console.log('Chips 餘額充足，繼續創建牌局');
       
+      // 開始創建
+      setIsCreating(true);
+      
       // 創建新牌局
       const gameId = await createGame({
         name: gameName.trim(),
@@ -531,6 +538,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       });
 
       if (!gameId) {
+        setIsCreating(false);
         Alert.alert('錯誤', '創建牌局失敗，請稍後再試');
         return;
       }
@@ -539,6 +547,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       console.log('開始消耗 chip，gameId:', gameId);
       if (!consumeChip) {
         console.error('consumeChip 函數未定義');
+        setIsCreating(false);
         Alert.alert('錯誤', '無法消耗 Chip，請刷新頁面後重試。');
         // 刪除已創建的牌局
         try {
@@ -555,6 +564,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
         console.log('消耗 chip 結果:', success);
       } catch (chipError) {
         console.error('消耗 chip 時發生錯誤:', chipError);
+        setIsCreating(false);
         // 刪除已創建的牌局
         try {
           await deleteGame(gameId);
@@ -571,6 +581,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       }
       
       if (!success) {
+        setIsCreating(false);
         // 如果消耗 chip 失敗，刪除已創建的牌局（回滾）
         try {
           await deleteGame(gameId);
@@ -606,7 +617,9 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       
       // 設置導航標記，等待 state 更新
       setPendingNavigation(true);
+      setIsCreating(false);
     } catch (error) {
+      setIsCreating(false);
       Alert.alert(t('common.error') || '錯誤', t('newGame.errorCreateFailed'));
     }
   };
@@ -780,11 +793,25 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
 
         {/* 建立按鈕 */}
         <View style={styles.createButtonContainer}>
-          <Button
-            title={t('newGame.createGame')}
-            onPress={handleCreateGame}
-            size="md"
-          />
+          {isCreating ? (
+            <View style={{ alignItems: 'center', paddingVertical: theme.spacing.md }}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm, marginTop: theme.spacing.sm }}>
+                建立中...
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Button
+                title={t('newGame.createGame')}
+                onPress={handleCreateGame}
+                size="md"
+              />
+              <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.xs, textAlign: 'center', marginTop: theme.spacing.xs }}>
+                建立牌局將消耗 1 Chip
+              </Text>
+            </>
+          )}
         </View>
       </View>
     </Modal>
