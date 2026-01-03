@@ -83,12 +83,14 @@ module.exports = async (req, res) => {
           break;
         }
 
-        // 檢查用戶是否存在
+        // 檢查用戶是否存在（使用 profiles 表）
         const { data: existingUser, error: fetchError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('chips')
           .eq('id', userId)
           .single();
+
+        console.log('查詢用戶資料:', { userId, existingUser, fetchError });
 
         if (fetchError && fetchError.code !== 'PGRST116') {
           // PGRST116 = 找不到記錄，其他錯誤需要處理
@@ -98,11 +100,14 @@ module.exports = async (req, res) => {
 
         if (existingUser) {
           // 更新現有用戶的 Chips
+          const newChips = (existingUser.chips || 0) + chipsToAdd;
+          console.log('更新 Chips:', { 原始: existingUser.chips, 增加: chipsToAdd, 新餘額: newChips });
+          
           const { error: updateError } = await supabase
-            .from('users')
+            .from('profiles')
             .update({ 
-              chips: existingUser.chips + chipsToAdd,
-              last_purchase: new Date().toISOString()
+              chips: newChips,
+              updated_at: new Date().toISOString()
             })
             .eq('id', userId);
 
@@ -110,21 +115,26 @@ module.exports = async (req, res) => {
             console.error('更新用戶 Chips 失敗:', updateError);
             break;
           }
+          
+          console.log(`成功更新用戶 ${userId} 的 Chips 餘額為 ${newChips}`);
         } else {
-          // 創建新用戶記錄
+          // 創建新用戶記錄（profiles 表）
+          console.log('用戶不存在，創建新記錄');
           const { error: insertError } = await supabase
-            .from('users')
+            .from('profiles')
             .insert({
               id: userId,
               chips: chipsToAdd,
               created_at: new Date().toISOString(),
-              last_purchase: new Date().toISOString()
+              updated_at: new Date().toISOString()
             });
 
           if (insertError) {
             console.error('創建用戶記錄失敗:', insertError);
             break;
           }
+          
+          console.log(`成功為新用戶 ${userId} 創建記錄，Chips: ${chipsToAdd}`);
         }
 
         // 記錄交易
