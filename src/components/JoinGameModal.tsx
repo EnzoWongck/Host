@@ -56,6 +56,18 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
     }
   };
 
+  // 根據 gameId 生成固定的6位協作碼（與 CollaborationInviteModal 相同算法）
+  const generateFixedCode = (id: string): string => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      const char = id.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    const code = Math.abs(hash % 900000) + 100000;
+    return code.toString();
+  };
+
   // 查詢邀請資訊
   const handleLookup = async () => {
     const input = codeOrLink.trim();
@@ -68,106 +80,99 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
     try {
       console.log('查詢協作碼/連結:', input);
       
+      let targetGameId: string | null = null;
+      
       // 如果是連結，提取 game ID
       if (input.includes('/invite') || input.includes('game=')) {
-        try {
-          let gameId: string | null = null;
-          if (input.includes('game=')) {
-            // 從 URL 參數提取
-            const match = input.match(/game=([a-zA-Z0-9-]+)/);
-            gameId = match ? match[1] : null;
-          }
-          
-          if (gameId) {
-            console.log('從連結提取的 gameId:', gameId);
-            // 透過 game_id 查詢（允許無 email 的邀請）
-            const { data, error } = await supabase
-              .from('game_collaborations')
-              .select('*')
-              .eq('game_id', gameId)
-              .eq('status', 'pending')
-              .or(`collaborator_email.eq.${user?.email?.toLowerCase()},collaborator_email.is.null`)
-              .limit(1)
-              .maybeSingle();
-
-            console.log('連結查詢結果:', { data, error });
-
-            if (error) {
-              console.error('查詢錯誤:', error);
-              Alert.alert('錯誤', '查詢失敗');
-              return;
+        const match = input.match(/game=([a-zA-Z0-9-]+)/);
+        targetGameId = match ? match[1] : null;
+        console.log('從連結提取的 gameId:', targetGameId);
+      }
+      
+      // 如果是6位數字協作碼，遍歷用戶的遊戲找匹配的
+      if (!targetGameId && /^\d{6}$/.test(input)) {
+        console.log('嘗試匹配協作碼:', input);
+        
+        // 查詢所有遊戲（公開查詢，不受 RLS 限制）
+        const { data: allGames } = await supabase
+          .from('games')
+          .select('id, name, user_id');
+        
+        if (allGames) {
+          for (const game of allGames) {
+            const gameCode = generateFixedCode(game.id);
+            if (gameCode === input) {
+              targetGameId = game.id;
+              console.log('找到匹配的遊戲:', game.id, game.name);
+              break;
             }
-            
-            if (!data) {
-              Alert.alert('錯誤', '找不到該邀請或邀請已過期');
-              return;
-            }
-
-            await fetchInviteDetails(data);
-            return;
           }
-        } catch (urlError) {
-          console.error('解析連結失敗:', urlError);
+        }
+        
+        if (!targetGameId) {
+          Alert.alert('錯誤', '找不到此協作碼對應的牌局');
+          return;
         }
       }
-
-      // 嘗試作為協作碼查詢（支持任意長度的碼）
-      console.log('嘗試作為協作碼查詢:', input);
       
-      // 使用更寬鬆的查詢（不限制 status 和 email）
-      const { data: allData, error: allError } = await supabase
-        .from('game_collaborations')
-        .select('*')
-        .eq('invite_code', input);
-      
-      console.log('所有協作碼結果:', { allData, allError });
-      
-      // 過濾出有效的邀請
-      const validInvite = allData?.find(d => 
-        d.status === 'pending' && 
-        (!d.collaborator_email || d.collaborator_email === user?.email?.toLowerCase())
-      );
-      
-      console.log('有效邀請:', validInvite);
-
-      if (allError) {
-        console.error('協作碼查詢錯誤:', allError);
-        Alert.alert('錯誤', '查詢失敗：' + allError.message);
-        return;
-      }
-      
-      if (!validInvite) {
-        if (allData && allData.length > 0) {
-          // 有找到但不符合條件
-          const invite = allData[0];
-          if (invite.status !== 'pending') {
-            Alert.alert('錯誤', '此協作碼已被使用或已過期');
-          } else if (invite.collaborator_email && invite.collaborator_email !== user?.email?.toLowerCase()) {
-            Alert.alert('錯誤', '此協作碼是發給其他用戶的');
-          } else {
-            Alert.alert('錯誤', '協作碼無效');
-          }
+      if (!targetGameId) {
+        // 嘗試將整個輸入作為 gameId（UUID 格式）
+        if (/^[a-f0-9-]{36}$/.test(input)) {
+          targetGameId = input;
         } else {
-          Alert.alert('錯誤', '找不到此協作碼，請確認輸入正確');
+          Alert.alert('錯誤', '無效的協作碼或連結格式');
+          return;
         }
+      }
+      
+      // 直接查詢遊戲資訊
+      console.log('查詢遊戲:', targetGameId);
+      const { data: gameData, error: gameError } = await supabase
+        .from('games')
+        .select('id, name, user_id')
+        .eq('id', targetGameId)
+        .maybeSingle();
+      
+      console.log('遊戲查詢結果:', { gameData, gameError });
+      
+      if (gameError || !gameData) {
+        Alert.alert('錯誤', '找不到該牌局');
         return;
       }
       
-      const data = validInvite;
-
-      // 檢查是否過期
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        Alert.alert('錯誤', '此邀請已過期');
+      // 檢查是否是自己的遊戲
+      if (gameData.user_id === user?.uid) {
+        Alert.alert('錯誤', '不能加入自己創建的牌局');
         return;
       }
-
-      // 檢查是否是自己發的邀請
-      if (data.owner_id === user?.uid) {
-        Alert.alert('錯誤', '不能加入自己創建的牌局邀請');
-        return;
+      
+      // 獲取擁有者名稱
+      let ownerName = '用戶';
+      try {
+        const { data: ownerData } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('id', gameData.user_id)
+          .maybeSingle();
+        if (ownerData) {
+          ownerName = ownerData.display_name || ownerData.email || '用戶';
+        }
+      } catch (e) {
+        console.log('無法獲取擁有者名稱');
       }
-
-      await fetchInviteDetails(data);
+      
+      // 設置邀請信息（不需要從 game_collaborations 查詢）
+      setInviteInfo({
+        id: targetGameId, // 使用 gameId 作為 id
+        game_name: gameData.name,
+        owner_name: ownerName,
+        chip_payer: 'owner', // 預設擁有者付費
+        chip_consumed: false,
+        game_id: targetGameId,
+        owner_id: gameData.user_id,
+      });
+      
+      console.log('設置邀請信息成功');
     } catch (error: any) {
       console.error('查詢邀請錯誤:', error);
       Alert.alert('錯誤', error.message || '查詢失敗，請稍後重試');
@@ -176,117 +181,55 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
     }
   };
 
-  // 獲取邀請詳細信息
-  const fetchInviteDetails = async (data: any) => {
-    try {
-      console.log('獲取邀請詳情:', data);
-      
-      // 獲取遊戲名稱（可能因 RLS 失敗）
-      let gameName = data.game_id;
-      try {
-        const { data: gameData } = await supabase
-          .from('games')
-          .select('name')
-          .eq('id', data.game_id)
-          .maybeSingle();
-        if (gameData?.name) {
-          gameName = gameData.name;
-        }
-      } catch (e) {
-        console.log('無法獲取遊戲名稱（可能是 RLS 限制）');
-      }
-
-      // 獲取邀請者名稱
-      let ownerName = '用戶';
-      try {
-        const { data: ownerData } = await supabase
-          .from('profiles')
-          .select('display_name, email')
-          .eq('id', data.owner_id)
-          .maybeSingle();
-        if (ownerData) {
-          ownerName = ownerData.display_name || ownerData.email || '用戶';
-        }
-      } catch (e) {
-        console.log('無法獲取邀請者名稱');
-      }
-
-      console.log('設置邀請信息:', { gameName, ownerName });
-      setInviteInfo({
-        id: data.id,
-        game_name: gameName,
-        owner_name: ownerName,
-        chip_payer: data.chip_payer,
-        chip_consumed: data.chip_consumed,
-      });
-    } catch (error) {
-      console.error('fetchInviteDetails 錯誤:', error);
-      // 即使獲取詳情失敗，也設置基本信息
-      setInviteInfo({
-        id: data.id,
-        game_name: '牌局',
-        owner_name: '用戶',
-        chip_payer: data.chip_payer,
-        chip_consumed: data.chip_consumed,
-      });
-    }
-  };
-
   // 接受邀請
   const handleAccept = async () => {
     if (!inviteInfo) return;
 
-    // 如果需要協作者付費且未扣費
-    if (inviteInfo.chip_payer === 'collaborator' && !inviteInfo.chip_consumed) {
-      if (chips < 1) {
-        Alert.alert(
-          'Chips 不足',
-          '接受邀請需要 1 Chip，請先購買 Chips。',
-          [
-            { text: '取消', style: 'cancel' },
-            { 
-              text: '購買 Chips', 
-              onPress: () => {
-                onClose();
-                openPurchaseModal();
-              }
-            },
-          ]
-        );
-        return;
-      }
-
-      // 確認扣費
-      const confirmMessage = `接受邀請將消耗 1 Chip。目前餘額：${chips} Chips`;
-      if (Platform.OS === 'web') {
-        if (!window.confirm(confirmMessage)) return;
-      }
-    }
-
     setLoading(true);
     try {
-      const apiUrl = Platform.OS === 'web' && typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'https://lunchips.com'
-        : '';
-
-      const response = await fetch(`${apiUrl}/api/collaboration/accept`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inviteId: inviteInfo.id,
-          userId: user?.uid,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || '接受邀請失敗');
+      const gameId = inviteInfo.game_id || inviteInfo.id;
+      const ownerId = inviteInfo.owner_id;
+      
+      console.log('接受邀請:', { gameId, ownerId, userId: user?.uid });
+      
+      // 檢查是否已經是協作者
+      const { data: existingCollab } = await supabase
+        .from('game_collaborations')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('collaborator_id', user?.uid)
+        .eq('status', 'accepted')
+        .maybeSingle();
+      
+      if (existingCollab) {
+        Alert.alert('提示', '你已經是這個牌局的協作者');
+        if (onJoined) {
+          onJoined(gameId);
+        }
+        onClose();
+        return;
       }
-
+      
+      // 創建協作記錄
+      const { error: insertError } = await supabase
+        .from('game_collaborations')
+        .insert({
+          game_id: gameId,
+          owner_id: ownerId,
+          collaborator_id: user?.uid,
+          collaborator_email: user?.email?.toLowerCase(),
+          status: 'accepted',
+          chip_payer: 'owner', // 擁有者付費
+          chip_consumed: true,
+          invite_code: generateFixedCode(gameId),
+        });
+      
+      if (insertError) {
+        console.error('創建協作記錄失敗:', insertError);
+        throw new Error('加入牌局失敗：' + insertError.message);
+      }
+      
+      console.log('協作記錄創建成功');
       Alert.alert('成功', '已成功加入協作牌局');
       await loadChipsBalance();
       
@@ -295,7 +238,7 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       setInviteInfo(null);
       
       if (onJoined) {
-        onJoined(result.gameId);
+        onJoined(gameId);
       }
       onClose();
     } catch (error: any) {
