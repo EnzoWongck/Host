@@ -7,12 +7,16 @@ import {
   StyleSheet,
   Linking,
   Platform,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 
 const WHATSAPP_NUMBER = '+85264658664';
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER.replace(/[^0-9]/g, '')}`;
+
+// WhatsApp icon
+const whatsappIcon = require('../../assets/icons/whatsapp.png');
 
 const CustomerServiceButton: React.FC = () => {
   const { theme } = useTheme();
@@ -89,30 +93,23 @@ const CustomerServiceButton: React.FC = () => {
       color: theme.colors.text,
       marginBottom: 20,
     },
-    whatsappButton: {
+    contactRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#25D366',
-      paddingVertical: 14,
-      paddingHorizontal: 24,
-      borderRadius: 12,
-      marginBottom: 12,
-      width: '100%',
       justifyContent: 'center',
+      marginTop: 8,
     },
-    whatsappIconText: {
-      fontSize: 24,
-      marginRight: 10,
+    whatsappIconContainer: {
+      marginRight: 12,
     },
-    whatsappText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#fff',
+    whatsappIcon: {
+      width: 32,
+      height: 32,
     },
     phoneNumber: {
-      fontSize: 16,
-      color: theme.colors.textSecondary,
-      marginTop: 8,
+      fontSize: 18,
+      fontWeight: '500',
+      color: theme.colors.text,
     },
     closeButton: {
       marginTop: 16,
@@ -157,16 +154,15 @@ const CustomerServiceButton: React.FC = () => {
             <Text style={styles.modalTitle}>客戶服務</Text>
             
             <TouchableOpacity
-              style={styles.whatsappButton}
+              style={styles.contactRow}
               onPress={handleOpenWhatsApp}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              {/* WhatsApp Icon using emoji/text for cross-platform compatibility */}
-              <Text style={styles.whatsappIconText}>📱</Text>
-              <Text style={styles.whatsappText}>WhatsApp 聯繫</Text>
+              <View style={styles.whatsappIconContainer}>
+                <Image source={whatsappIcon} style={styles.whatsappIcon} />
+              </View>
+              <Text style={styles.phoneNumber}>+852 6465 8664</Text>
             </TouchableOpacity>
-            
-            <Text style={styles.phoneNumber}>+852 6465 8664</Text>
             
             <TouchableOpacity
               style={styles.closeButton}
