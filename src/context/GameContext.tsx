@@ -1470,15 +1470,41 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ============================================
   // Supabase Realtime 訂閱（協作同步）
   // ============================================
+  
+  // 重新載入單個遊戲（更高效）
+  const reloadCurrentGame = useCallback(async (gameId: string) => {
+    console.log('🔄 即時同步：重新載入遊戲', gameId);
+    try {
+      const game = await fetchGameWithRelations(gameId);
+      if (game) {
+        dispatch({ type: 'UPDATE_GAME', payload: game });
+        if (state.currentGame?.id === gameId) {
+          dispatch({ type: 'SET_CURRENT_GAME', payload: game });
+        }
+      }
+    } catch (error) {
+      console.error('重新載入遊戲失敗:', error);
+    }
+  }, [state.currentGame?.id]);
+  
   useEffect(() => {
     if (!user?.uid || !state.currentGame?.id) return;
 
     const gameId = state.currentGame.id;
-    console.log('設置 Realtime 訂閱，遊戲ID:', gameId);
+    console.log('🔔 設置 Realtime 訂閱，遊戲ID:', gameId);
+
+    // 使用防抖避免頻繁更新
+    let debounceTimer: NodeJS.Timeout | null = null;
+    const debouncedReload = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        reloadCurrentGame(gameId);
+      }, 300); // 300ms 防抖
+    };
 
     // 訂閱 games 表變更
     const gamesChannel = supabase
-      .channel(`game-${gameId}`)
+      .channel(`game-realtime-${gameId}`)
       .on(
         'postgres_changes',
         {
@@ -1488,11 +1514,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('遊戲更新:', payload);
-          if (payload.eventType === 'UPDATE') {
-            // 重新載入遊戲數據
-            loadGames();
-          }
+          console.log('📝 遊戲更新:', payload.eventType);
+          debouncedReload();
         }
       )
       .on(
@@ -1504,8 +1527,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('玩家變更:', payload);
-          loadGames();
+          console.log('👤 玩家變更:', payload.eventType);
+          debouncedReload();
         }
       )
       .on(
@@ -1517,8 +1540,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('發牌員變更:', payload);
-          loadGames();
+          console.log('🎴 發牌員變更:', payload.eventType);
+          debouncedReload();
         }
       )
       .on(
@@ -1530,8 +1553,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('支出變更:', payload);
-          loadGames();
+          console.log('💰 支出變更:', payload.eventType);
+          debouncedReload();
         }
       )
       .on(
@@ -1543,8 +1566,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('抽水變更:', payload);
-          loadGames();
+          console.log('🎰 抽水變更:', payload.eventType);
+          debouncedReload();
         }
       )
       .on(
@@ -1556,19 +1579,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('保險變更:', payload);
-          loadGames();
+          console.log('🛡️ 保險變更:', payload.eventType);
+          debouncedReload();
         }
       )
       .subscribe((status) => {
-        console.log('Realtime 訂閱狀態:', status);
+        console.log('🔔 Realtime 訂閱狀態:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime 訂閱成功！協作同步已啟用');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Realtime 訂閱失敗，請確認 Supabase Realtime 已啟用');
+        }
       });
 
     return () => {
-      console.log('取消 Realtime 訂閱');
+      console.log('🔕 取消 Realtime 訂閱');
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(gamesChannel);
     };
-  }, [user?.uid, state.currentGame?.id, loadGames]);
+  }, [user?.uid, state.currentGame?.id, reloadCurrentGame]);
 
   const contextValue: GameContextType = useMemo(() => ({
     state,
