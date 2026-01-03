@@ -42,6 +42,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     return Platform.OS !== 'web';
   }, []);
 
+  // 獲取視窗高度用於計算固定位置
+  const windowHeight = Platform.OS === 'web' && typeof window !== 'undefined' 
+    ? window.innerHeight 
+    : 800;
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -56,32 +61,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       backgroundColor: 'rgba(0, 0, 0, 0.5)', // 半透明黑色遮罩，淡化背景
     },
     content: {
-      flexGrow: 1,
-      justifyContent: 'center', // 讓中間區塊（Logo + LunChips + 文字）垂直置中
+      flex: 1,
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
-      paddingTop: isMobile ? theme.spacing.xl * 4 : theme.spacing.xl * 3, // 手機版增加 paddingTop，向下移動
-      paddingBottom: isMobile ? theme.spacing.xl * 2 : theme.spacing.xl * 3,
-      minHeight: isMobile ? undefined : '100%', // 電腦版確保最小高度
+      // 使用固定百分比定位，讓內容在背景圖片上保持相同位置
+      paddingTop: windowHeight * 0.18, // 從頂部 18% 開始
     },
     logoContainer: {
       alignItems: 'center',
-      marginBottom: isMobile ? theme.spacing.md : theme.spacing.xl,
-      marginTop: isMobile ? theme.spacing.xl * 2 : 0, // 手機版 logo 向上移動
     },
     logoImage: {
-      width: isMobile ? 140 : 280, // 電腦版稍微縮小
-      height: isMobile ? 140 : 280,
-      marginBottom: theme.spacing.xs, // 減少與文字的距離
-      marginTop: isMobile ? 0 : theme.spacing.xl,
+      width: isMobile ? 130 : 200,
+      height: isMobile ? 130 : 200,
     },
     hostTitle: {
-      fontSize: isMobile ? 46 : 50, // 手機版：LunChips 放大
+      fontSize: isMobile ? 44 : 50,
       fontWeight: '700',
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
-      color: '#FFFFFF', // 兩種模式都固定白色
+      color: '#FFFFFF',
       letterSpacing: -1,
-      marginTop: isMobile ? theme.spacing.xl * 2.7 : theme.spacing.xl * 1.5, // 手機版 LunChips 微調
+      marginTop: windowHeight * 0.08, // 從 Logo 下方 8% 視窗高度
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
@@ -96,9 +95,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
     featureList: {
       width: '100%',
       maxWidth: 400,
-      marginBottom: isMobile ? theme.spacing.lg : theme.spacing.xl, // 手機版：與按鈕之間距離縮小
+      marginBottom: theme.spacing.lg,
       paddingHorizontal: theme.spacing.lg,
-      marginTop: isMobile ? theme.spacing.xs : theme.spacing.md, // 回復之前位置
+      marginTop: windowHeight * 0.03, // 從標題下方 3% 視窗高度
     },
     featureItem: {
       flexDirection: 'row',
