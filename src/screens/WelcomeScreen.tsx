@@ -65,10 +65,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xl,
       // 使用固定百分比定位，讓內容在背景圖片上保持相同位置
-      paddingTop: windowHeight * 0.18, // 從頂部 18% 開始
+      paddingTop: windowHeight * 0.12, // 從頂部 12% 開始
     },
     logoContainer: {
       alignItems: 'center',
+      marginTop: windowHeight * 0.08, // Logo 額外下移 8%
     },
     logoImage: {
       width: isMobile ? 130 : 200,
@@ -80,7 +81,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       fontFamily: Platform.OS === 'web' ? 'Satoshi, -apple-system, BlinkMacSystemFont, sans-serif' : 'Satoshi',
       color: '#FFFFFF',
       letterSpacing: -1,
-      marginTop: windowHeight * 0.08, // 從 Logo 下方 8% 視窗高度
+      marginTop: windowHeight * 0.12, // 從 Logo 下方 12% 視窗高度
     },
     subtitle: {
       fontSize: theme.fontSize.lg,
