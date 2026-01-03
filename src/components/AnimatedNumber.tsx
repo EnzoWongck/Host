@@ -69,3 +69,4 @@ const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
 export default AnimatedNumber;
 
 
+

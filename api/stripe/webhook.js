@@ -65,42 +65,57 @@ module.exports = async (req, res) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         
-        console.log('收到付款完成事件:', session.id);
+        console.log('=== 收到付款完成事件 ===');
+        console.log('Session ID:', session.id);
+        console.log('Metadata:', JSON.stringify(session.metadata));
         
         const userId = session.metadata?.userId;
         const priceId = session.metadata?.priceId;
         
         if (!userId || !priceId) {
-          console.error('缺少必要的 metadata:', { userId, priceId });
-          break;
+          console.error('❌ 缺少必要的 metadata:', { userId, priceId });
+          // 仍返回 200 避免 Stripe 重試，但記錄錯誤
+          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ received: true, warning: 'Missing metadata' }));
+          return;
         }
 
         // 獲取購買的 Chips 數量
         const chipsToAdd = PRICE_TO_CHIPS[priceId] || 0;
+        console.log('PriceId:', priceId, '-> Chips:', chipsToAdd);
         
         if (chipsToAdd === 0) {
-          console.error('未知的 priceId:', priceId);
-          break;
+          console.error('❌ 未知的 priceId:', priceId);
+          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ received: true, warning: 'Unknown priceId' }));
+          return;
         }
 
         // 檢查用戶是否存在（使用 profiles 表）
+        console.log('查詢用戶 profiles:', userId);
         const { data: existingUser, error: fetchError } = await supabase
           .from('profiles')
           .select('chips')
           .eq('id', userId)
           .single();
 
-        console.log('查詢用戶資料:', { userId, existingUser, fetchError });
+        console.log('查詢結果:', { existingUser, fetchError: fetchError?.message });
 
         if (fetchError && fetchError.code !== 'PGRST116') {
           // PGRST116 = 找不到記錄，其他錯誤需要處理
-          console.error('獲取用戶數據失敗:', fetchError);
-          break;
+          console.error('❌ 獲取用戶數據失敗:', fetchError);
+          // 返回 500 讓 Stripe 重試
+          res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Database error: ' + fetchError.message }));
+          return;
         }
+
+        let success = false;
+        let newChips = 0;
 
         if (existingUser) {
           // 更新現有用戶的 Chips
-          const newChips = (existingUser.chips || 0) + chipsToAdd;
+          newChips = (existingUser.chips || 0) + chipsToAdd;
           console.log('更新 Chips:', { 原始: existingUser.chips, 增加: chipsToAdd, 新餘額: newChips });
           
           const { error: updateError } = await supabase
@@ -112,14 +127,19 @@ module.exports = async (req, res) => {
             .eq('id', userId);
 
           if (updateError) {
-            console.error('更新用戶 Chips 失敗:', updateError);
-            break;
+            console.error('❌ 更新用戶 Chips 失敗:', updateError);
+            res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Update error: ' + updateError.message }));
+            return;
           }
           
-          console.log(`成功更新用戶 ${userId} 的 Chips 餘額為 ${newChips}`);
+          success = true;
+          console.log(`✅ 成功更新用戶 ${userId} 的 Chips 餘額為 ${newChips}`);
         } else {
           // 創建新用戶記錄（profiles 表）
+          newChips = chipsToAdd;
           console.log('用戶不存在，創建新記錄');
+          
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
@@ -130,33 +150,41 @@ module.exports = async (req, res) => {
             });
 
           if (insertError) {
-            console.error('創建用戶記錄失敗:', insertError);
-            break;
+            console.error('❌ 創建用戶記錄失敗:', insertError);
+            res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Insert error: ' + insertError.message }));
+            return;
           }
           
-          console.log(`成功為新用戶 ${userId} 創建記錄，Chips: ${chipsToAdd}`);
+          success = true;
+          console.log(`✅ 成功為新用戶 ${userId} 創建記錄，Chips: ${chipsToAdd}`);
         }
 
-        // 記錄交易
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: userId,
-            type: 'purchase',
-            chips_amount: chipsToAdd,
-            price_id: priceId,
-            session_id: session.id,
-            amount_paid: session.amount_total,
-            currency: session.currency,
-            created_at: new Date().toISOString()
-          });
-
-        if (transactionError) {
-          console.error('記錄交易失敗:', transactionError);
+        // 記錄交易（可選，失敗不影響主流程）
+        try {
+          await supabase
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              type: 'purchase',
+              chips_amount: chipsToAdd,
+              price_id: priceId,
+              session_id: session.id,
+              amount_paid: session.amount_total,
+              currency: session.currency,
+              created_at: new Date().toISOString()
+            });
+          console.log('交易記錄已保存');
+        } catch (txError) {
+          // 交易記錄失敗不影響主流程
+          console.warn('⚠️ 記錄交易失敗（不影響 Chips 更新）:', txError);
         }
 
-        console.log(`成功為用戶 ${userId} 增加 ${chipsToAdd} Chips`);
-        break;
+        console.log(`=== 完成處理：用戶 ${userId} 現有 ${newChips} Chips ===`);
+        
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ received: true, success, newChips }));
+        return;
       }
 
       default:
@@ -167,9 +195,9 @@ module.exports = async (req, res) => {
     res.end(JSON.stringify({ received: true }));
 
   } catch (error) {
-    console.error('處理 Webhook 事件錯誤:', error);
+    console.error('❌ 處理 Webhook 事件錯誤:', error);
     res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Webhook handler failed' }));
+    res.end(JSON.stringify({ error: 'Webhook handler failed: ' + error.message }));
   }
 };
 
