@@ -75,6 +75,7 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
   const [countryCode, setCountryCode] = useState('+852');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [phoneAlreadyUsedModalVisible, setPhoneAlreadyUsedModalVisible] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -129,7 +130,7 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: cleanedPhoneNumber }),
+        body: JSON.stringify({ phoneNumber: cleanedPhoneNumber, userId: user?.uid }),
       });
 
       // 檢查響應狀態
@@ -138,6 +139,11 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json();
+          // 檢查是否是電話號碼已被使用的錯誤
+          if (errorData.code === 'PHONE_ALREADY_USED' || errorData.error === 'phone_already_used') {
+            setPhoneAlreadyUsedModalVisible(true);
+            return;
+          }
           setError(errorData.message || errorData.error || `請求失敗 (${response.status})`);
         } else {
           const text = await response.text();
@@ -800,6 +806,82 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* 電話號碼已被使用 Modal */}
+      <Modal
+        visible={phoneAlreadyUsedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPhoneAlreadyUsedModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 24,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: 16,
+              padding: 24,
+              width: '100%',
+              maxWidth: 340,
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: theme.colors.text,
+                marginBottom: 12,
+                textAlign: 'center',
+              }}
+            >
+              該號碼已被使用
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: theme.colors.textSecondary,
+                marginBottom: 24,
+                textAlign: 'center',
+                lineHeight: 20,
+              }}
+            >
+              此電話號碼已經被另一個帳戶驗證，每個電話號碼只能綁定一個帳戶。
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: theme.colors.primary,
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                width: '100%',
+                alignItems: 'center',
+              }}
+              onPress={() => {
+                setPhoneAlreadyUsedModalVisible(false);
+                setPhoneNumber('');
+              }}
+            >
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 16,
+                  fontWeight: '600',
+                }}
+              >
+                返回修改號碼
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

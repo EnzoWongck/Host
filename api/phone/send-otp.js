@@ -2,10 +2,17 @@
 // POST /api/phone/send-otp
 
 const twilio = require('twilio');
+const { createClient } = require('@supabase/supabase-js');
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+// 初始化 Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // 檢查環境變量
 if (!accountSid || !authToken || !verifyServiceSid) {
@@ -71,12 +78,35 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const { phoneNumber } = parsedBody;
+    const { phoneNumber, userId } = parsedBody;
 
     if (!phoneNumber) {
       res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Missing phoneNumber' }));
       return;
+    }
+
+    // 檢查電話號碼是否已被其他帳戶使用
+    const { data: existingProfiles, error: checkError } = await supabase
+      .from('profiles')
+      .select('id, phone')
+      .eq('phone', phoneNumber);
+    
+    if (checkError) {
+      console.error('檢查電話號碼失敗:', checkError);
+    } else if (existingProfiles && existingProfiles.length > 0) {
+      // 如果有用戶使用此號碼，檢查是否是當前用戶
+      const isCurrentUser = userId && existingProfiles.some(p => p.id === userId);
+      if (!isCurrentUser) {
+        console.log('電話號碼已被使用:', phoneNumber);
+        res.writeHead(409, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'phone_already_used',
+          message: '該號碼已被使用',
+          code: 'PHONE_ALREADY_USED',
+        }));
+        return;
+      }
     }
 
     // 發送 OTP
