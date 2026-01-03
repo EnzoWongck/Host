@@ -310,12 +310,12 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
 
             {isSignedIn && (
               <TouchableOpacity
-                style={[styles.option, { backgroundColor: theme.colors.danger + '15', marginTop: theme.spacing.sm }]}
+                style={styles.option}
                 onPress={handleLogout}
               >
                 <View style={styles.optionRow}>
                   <View style={styles.optionContent}>
-                    <Text style={[styles.optionText, { color: theme.colors.danger }]}>
+                    <Text style={styles.optionText}>
                       登出
                     </Text>
                   </View>
