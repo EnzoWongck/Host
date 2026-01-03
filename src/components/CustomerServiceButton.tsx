@@ -41,14 +41,14 @@ const CustomerServiceButton: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      top: insets.top + 10,
+      top: insets.top + 20,
       left: 16,
       zIndex: 9999,
     },
     button: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       backgroundColor: theme.colors.surface,
       justifyContent: 'center',
       alignItems: 'center',
@@ -61,9 +61,9 @@ const CustomerServiceButton: React.FC = () => {
       elevation: 3,
     },
     buttonText: {
-      fontSize: 20,
+      fontSize: 16,
       fontWeight: '600',
-      color: theme.colors.primary,
+      color: theme.colors.text,
     },
     modalOverlay: {
       flex: 1,
