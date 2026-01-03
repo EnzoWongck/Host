@@ -44,6 +44,7 @@ import DoubleTabBar from './src/components/DoubleTabBar';
 import TrialEndedPaywall from './src/components/TrialEndedPaywall';
 import NewUserWelcomeModal from './src/components/NewUserWelcomeModal';
 import { SignupSuccessHandler } from './src/components/SignupSuccessHandler';
+import CustomerServiceButton from './src/components/CustomerServiceButton';
 // Types
 import { RootTabParamList } from './src/types/navigation';
 
@@ -1143,6 +1144,7 @@ export default function App() {
                     <ChipsProvider>
                       <NavigationProvider>
                         <AppWithFont />
+                        <CustomerServiceButton />
                         <SignupSuccessHandlerWrapper />
                         <PaywallGuard />
                         <ChipsGuard />
