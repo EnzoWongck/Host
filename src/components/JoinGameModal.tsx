@@ -283,16 +283,35 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
         }
       }
       
-      // 檢查是否已有該遊戲的協作碼記錄
-      const inviteCode = generateFixedCode(gameId);
-      const { data: existingInvite } = await supabase
+      // 直接嘗試 upsert - 使用 game_id 和 collaborator_id 作為識別
+      // 先檢查是否已有這個遊戲的協作記錄（狀態為 pending）
+      console.log('嘗試查詢現有協作記錄...');
+      const { data: existingRecords, error: queryError } = await supabase
         .from('game_collaborations')
-        .select('id')
-        .eq('invite_code', inviteCode)
-        .maybeSingle();
+        .select('id, status')
+        .eq('game_id', gameId)
+        .or(`status.eq.pending,collaborator_id.eq.${user?.uid}`);
       
-      if (existingInvite) {
-        // 更新現有記錄
+      console.log('現有協作記錄查詢結果:', { existingRecords, queryError });
+      
+      // 找到一個可以使用的記錄（優先找 pending 狀態的）
+      const pendingRecord = existingRecords?.find(r => r.status === 'pending');
+      const myRecord = existingRecords?.find(r => r.status === 'accepted');
+      
+      if (myRecord) {
+        // 已經是協作者
+        console.log('已經是協作者');
+        Alert.alert('提示', '你已經是這個牌局的協作者');
+        if (onJoined) {
+          onJoined(gameId);
+        }
+        onClose();
+        return;
+      }
+      
+      if (pendingRecord) {
+        // 更新現有 pending 記錄
+        console.log('更新現有 pending 記錄:', pendingRecord.id);
         const { error: updateError } = await supabase
           .from('game_collaborations')
           .update({
@@ -302,14 +321,15 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
             chip_payer: chipPayer,
             chip_consumed: true,
           })
-          .eq('id', existingInvite.id);
+          .eq('id', pendingRecord.id);
         
         if (updateError) {
           console.error('更新協作記錄失敗:', updateError);
           throw new Error('加入牌局失敗：' + updateError.message);
         }
       } else {
-        // 創建新協作記錄（不使用 invite_code 避免衝突）
+        // 創建新協作記錄（完全不設置 invite_code）
+        console.log('創建新協作記錄');
         const { error: insertError } = await supabase
           .from('game_collaborations')
           .insert({
@@ -320,7 +340,6 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
             status: 'accepted',
             chip_payer: chipPayer,
             chip_consumed: true,
-            invite_code: null, // 不設置 invite_code 避免唯一約束衝突
           });
         
         if (insertError) {
