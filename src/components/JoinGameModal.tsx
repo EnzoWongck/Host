@@ -33,12 +33,13 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
   const { chips, loadChipsBalance, openPurchaseModal } = useChips();
   const [loading, setLoading] = useState(false);
   const [codeOrLink, setCodeOrLink] = useState('');
+  const [chipPayer, setChipPayer] = useState<'owner' | 'collaborator'>('owner');
   const [inviteInfo, setInviteInfo] = useState<{
     id: string;
     game_name: string;
     owner_name: string;
-    chip_payer: 'owner' | 'collaborator';
-    chip_consumed: boolean;
+    game_id?: string;
+    owner_id?: string;
   } | null>(null);
 
   // 檢測是否為手機
@@ -167,11 +168,9 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       
       // 設置邀請信息（不需要從 game_collaborations 查詢）
       setInviteInfo({
-        id: targetGameId, // 使用 gameId 作為 id
+        id: targetGameId,
         game_name: gameData.name,
         owner_name: ownerName,
-        chip_payer: 'owner', // 預設擁有者付費
-        chip_consumed: false,
         game_id: targetGameId,
         owner_id: gameData.user_id,
       });
@@ -189,12 +188,47 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
   const handleAccept = async () => {
     if (!inviteInfo) return;
 
+    const gameId = inviteInfo.game_id || inviteInfo.id;
+    const ownerId = inviteInfo.owner_id;
+    
+    // 如果協作者付費，檢查自己的 Chips
+    if (chipPayer === 'collaborator') {
+      if (chips < 1) {
+        Alert.alert(
+          'Chips 不足',
+          '加入牌局需要 1 Chip，請先購買 Chips。',
+          [
+            { text: '取消', style: 'cancel' },
+            { 
+              text: '購買 Chips', 
+              onPress: () => {
+                onClose();
+                openPurchaseModal();
+              }
+            },
+          ]
+        );
+        return;
+      }
+    }
+    
+    // 如果邀請人付費，檢查邀請人的 Chips
+    if (chipPayer === 'owner' && ownerId) {
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('chips')
+        .eq('id', ownerId)
+        .maybeSingle();
+      
+      if (!ownerProfile || (ownerProfile.chips || 0) < 1) {
+        Alert.alert('無法加入', '邀請人 Chip 餘額不足，無法加入牌局。');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const gameId = inviteInfo.game_id || inviteInfo.id;
-      const ownerId = inviteInfo.owner_id;
-      
-      console.log('接受邀請:', { gameId, ownerId, userId: user?.uid });
+      console.log('接受邀請:', { gameId, ownerId, userId: user?.uid, chipPayer });
       
       // 檢查是否已經是協作者
       const { data: existingCollab } = await supabase
@@ -214,6 +248,29 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
         return;
       }
       
+      // 扣除 Chips
+      if (chipPayer === 'collaborator') {
+        // 扣除自己的 Chip
+        await supabase
+          .from('profiles')
+          .update({ chips: chips - 1 })
+          .eq('id', user?.uid);
+      } else if (chipPayer === 'owner' && ownerId) {
+        // 扣除邀請人的 Chip
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('chips')
+          .eq('id', ownerId)
+          .maybeSingle();
+        
+        if (ownerProfile) {
+          await supabase
+            .from('profiles')
+            .update({ chips: (ownerProfile.chips || 0) - 1 })
+            .eq('id', ownerId);
+        }
+      }
+      
       // 創建協作記錄
       const { error: insertError } = await supabase
         .from('game_collaborations')
@@ -223,7 +280,7 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
           collaborator_id: user?.uid,
           collaborator_email: user?.email?.toLowerCase(),
           status: 'accepted',
-          chip_payer: 'owner', // 擁有者付費
+          chip_payer: chipPayer,
           chip_consumed: true,
           invite_code: generateFixedCode(gameId),
         });
@@ -240,6 +297,7 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
       // 重置狀態
       setCodeOrLink('');
       setInviteInfo(null);
+      setChipPayer('owner');
       
       if (onJoined) {
         onJoined(gameId);
@@ -410,24 +468,78 @@ const JoinGameModal: React.FC<JoinGameModalProps> = ({
             ) : (
               <>
                 <View style={styles.inviteCard}>
-                  <Text style={styles.inviteTitle}>{inviteInfo.game_name}</Text>
+                  <Text style={styles.inviteTitle}>牌局：{inviteInfo.game_name}</Text>
                   <Text style={styles.inviteDetail}>邀請人：{inviteInfo.owner_name}</Text>
-                  <Text style={styles.inviteDetail}>
-                    扣費方：{inviteInfo.chip_payer === 'owner' ? '對方付費' : '你付費'}
-                  </Text>
-                  {inviteInfo.chip_payer === 'collaborator' && !inviteInfo.chip_consumed && (
-                    <Text style={styles.chipWarning}>
-                      ⚠️ 接受邀請將消耗 1 Chip（目前餘額：{chips}）
-                    </Text>
-                  )}
                 </View>
+                
+                {/* 付費方選擇 */}
+                <View style={{ marginBottom: theme.spacing.md }}>
+                  <Text style={{ fontSize: theme.fontSize.sm, color: theme.colors.textSecondary, marginBottom: theme.spacing.sm }}>
+                    Chip 扣費方：
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: theme.spacing.sm,
+                        paddingHorizontal: theme.spacing.md,
+                        borderRadius: theme.borderRadius.md,
+                        borderWidth: 1,
+                        borderColor: chipPayer === 'owner' ? theme.colors.primary : theme.colors.border,
+                        backgroundColor: chipPayer === 'owner' ? `${theme.colors.primary}20` : 'transparent',
+                        opacity: chipPayer === 'owner' ? 1 : 0.5,
+                      }}
+                      onPress={() => setChipPayer('owner')}
+                    >
+                      <Text style={{
+                        textAlign: 'center',
+                        color: theme.colors.text,
+                        fontWeight: chipPayer === 'owner' ? '600' : '400',
+                      }}>
+                        邀請人付費
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: theme.spacing.sm,
+                        paddingHorizontal: theme.spacing.md,
+                        borderRadius: theme.borderRadius.md,
+                        borderWidth: 1,
+                        borderColor: chipPayer === 'collaborator' ? theme.colors.primary : theme.colors.border,
+                        backgroundColor: chipPayer === 'collaborator' ? `${theme.colors.primary}20` : 'transparent',
+                        opacity: chipPayer === 'collaborator' ? 1 : 0.5,
+                      }}
+                      onPress={() => setChipPayer('collaborator')}
+                    >
+                      <Text style={{
+                        textAlign: 'center',
+                        color: theme.colors.text,
+                        fontWeight: chipPayer === 'collaborator' ? '600' : '400',
+                      }}>
+                        我付費
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                
+                {/* 付費警告 */}
+                {chipPayer === 'collaborator' && (
+                  <Text style={styles.chipWarning}>
+                    ⚠️ 加入牌局將消耗你一個 Chip（目前餘額：{chips}）
+                  </Text>
+                )}
+                
                 <View style={styles.buttonRow}>
                   <Button
                     title="返回"
                     variant="secondary"
                     size="md"
                     style={{ flex: 1 }}
-                    onPress={() => setInviteInfo(null)}
+                    onPress={() => {
+                      setInviteInfo(null);
+                      setChipPayer('owner');
+                    }}
                   />
                   <Button
                     title={loading ? '處理中...' : '加入牌局'}
