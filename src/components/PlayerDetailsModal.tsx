@@ -22,7 +22,7 @@ interface PlayerDetailsModalProps {
 const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClose, player }) => {
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
-  const { state, addBuyInEntry, updateBuyInEntry, deleteBuyInEntry } = useGame();
+  const { state, addBuyInEntry, updateBuyInEntry, deleteBuyInEntry, deletePlayer } = useGame();
   const currentGame = state.currentGame!;
   
   // 從 state 中獲取最新的 player 數據，確保界面能立即更新
@@ -34,6 +34,7 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
   const [editAmount, setEditAmount] = useState('');
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<BuyInEntry | null>(null);
+  const [deletePlayerConfirmVisible, setDeletePlayerConfirmVisible] = useState(false);
   const [cashOutModalVisible, setCashOutModalVisible] = useState(false);
   const [buyInRecordsExpanded, setBuyInRecordsExpanded] = useState(false);
   const [cashOutRecordsExpanded, setCashOutRecordsExpanded] = useState(false);
@@ -140,6 +141,34 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
     }
   };
 
+  // 刪除玩家
+  const handleDeletePlayer = () => {
+    if (Platform.OS === 'web') {
+      setDeletePlayerConfirmVisible(true);
+    } else {
+      Alert.alert('刪除確認', `確定刪除玩家「${currentPlayer?.name}」？`, [
+        { text: '取消', style: 'cancel' },
+        { 
+          text: '刪除', 
+          style: 'destructive', 
+          onPress: () => {
+            if (currentPlayer) {
+              deletePlayer(currentGame.id, currentPlayer.id);
+              onClose();
+            }
+          }
+        }
+      ]);
+    }
+  };
+
+  const handleConfirmDeletePlayer = () => {
+    if (!currentPlayer) return;
+    deletePlayer(currentGame.id, currentPlayer.id);
+    setDeletePlayerConfirmVisible(false);
+    onClose();
+  };
+
   const totalBuyIn = useMemo(() => {
     const list = currentPlayer?.buyIns || [];
     return list.reduce((s, e) => s + e.amount, 0);
@@ -159,6 +188,23 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
             <View style={styles.totalBuyInRow}>
               <Text style={[styles.totalBuyInText, { color: colorMode === 'light' ? '#000000' : '#FFD700' }]}>$ {totalBuyIn.toLocaleString()}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+                {/* 刪除玩家按鈕 */}
+                <TouchableOpacity 
+                  onPress={handleDeletePlayer}
+                  activeOpacity={0.7}
+                  style={{ 
+                    paddingHorizontal: theme.spacing.sm, 
+                    paddingVertical: theme.spacing.xs,
+                  }}
+                >
+                  <Text style={{ 
+                    color: theme.colors.error, 
+                    fontSize: theme.fontSize.sm,
+                    fontWeight: '600',
+                  }}>
+                    刪除
+                  </Text>
+                </TouchableOpacity>
                 {isCashedOut && (
                   <TouchableOpacity 
                     onPress={() => setEditCashOutModalVisible(true)}
@@ -350,6 +396,16 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
             }, 100);
           }
         }}
+      />
+      <ConfirmModal
+        visible={deletePlayerConfirmVisible}
+        onClose={() => setDeletePlayerConfirmVisible(false)}
+        title="刪除玩家"
+        message={`確定刪除玩家「${currentPlayer?.name}」？此操作無法復原。`}
+        onConfirm={handleConfirmDeletePlayer}
+        confirmText="刪除"
+        cancelText="取消"
+        confirmVariant="danger"
       />
     </Modal>
   );
