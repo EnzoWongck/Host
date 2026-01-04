@@ -939,9 +939,10 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
 
   // 計算保險相關收支（Host & 分成者），以及保險專用轉帳明細
   // insuranceByName：每個人（Host 或保險分成者）的保險淨收支
-  // insuranceTransfers：保險轉帳箭頭（支付者 → 收款者 轉帳 $X）
+  // insuranceTransfers：保險轉帳箭頭（支付者 → 收款者 轉帳 $X）- 整合同一分成者
   const insuranceByName: Record<string, number> = {};
-  const insuranceTransfers: Array<{ from: string; to: string; amount: number }> = [];
+  // 使用 Map 來整合同一對 from-to 的轉帳金額
+  const insuranceTransferMap: Record<string, { from: string; to: string; amount: number }> = {};
 
   currentGame.insurances.forEach(ins => {
     const amt = ins.amount || 0; // >0：這筆保險整體贏錢；<0：整體輸錢
@@ -974,24 +975,81 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
         // → Host 對每個分成者支付 shareAbs
         insuranceByName[mainHostName] -= shareAbs;
         insuranceByName[p.name] += shareAbs;
-        insuranceTransfers.push({
-          from: mainHostName,
-          to: p.name,
-          amount: shareAbs,
-        });
+        // 整合同一分成者的轉帳
+        const key = `${mainHostName}→${p.name}`;
+        if (insuranceTransferMap[key]) {
+          insuranceTransferMap[key].amount += shareAbs;
+        } else {
+          insuranceTransferMap[key] = {
+            from: mainHostName,
+            to: p.name,
+            amount: shareAbs,
+          };
+        }
       } else if (amt < 0) {
         // 保險整體輸錢：
         // Host 幫玩家賠了 |amt|，分成者按比例補回 shareAbs 給 Host
         // → 每個分成者支付 shareAbs 給 Host
         insuranceByName[mainHostName] += shareAbs;
         insuranceByName[p.name] -= shareAbs;
-        insuranceTransfers.push({
-          from: p.name,
-          to: mainHostName,
-          amount: shareAbs,
-        });
+        // 整合同一分成者的轉帳
+        const key = `${p.name}→${mainHostName}`;
+        if (insuranceTransferMap[key]) {
+          insuranceTransferMap[key].amount += shareAbs;
+        } else {
+          insuranceTransferMap[key] = {
+            from: p.name,
+            to: mainHostName,
+            amount: shareAbs,
+          };
+        }
       }
     });
+  });
+
+  // 將 Map 轉換為陣列，並處理正負相抵
+  const insuranceTransfers: Array<{ from: string; to: string; amount: number }> = [];
+  const processedPairs = new Set<string>();
+  
+  Object.values(insuranceTransferMap).forEach(transfer => {
+    const reverseKey = `${transfer.to}→${transfer.from}`;
+    const forwardKey = `${transfer.from}→${transfer.to}`;
+    
+    // 如果已處理過這對，跳過
+    if (processedPairs.has(forwardKey) || processedPairs.has(reverseKey)) {
+      return;
+    }
+    
+    const reverseTransfer = insuranceTransferMap[reverseKey];
+    
+    if (reverseTransfer) {
+      // 有反向轉帳，計算淨額
+      const netAmount = transfer.amount - reverseTransfer.amount;
+      processedPairs.add(forwardKey);
+      processedPairs.add(reverseKey);
+      
+      if (Math.abs(netAmount) > 0.01) {
+        if (netAmount > 0) {
+          insuranceTransfers.push({
+            from: transfer.from,
+            to: transfer.to,
+            amount: netAmount,
+          });
+        } else {
+          insuranceTransfers.push({
+            from: transfer.to,
+            to: transfer.from,
+            amount: -netAmount,
+          });
+        }
+      }
+    } else {
+      // 沒有反向轉帳，直接加入
+      processedPairs.add(forwardKey);
+      if (transfer.amount > 0.01) {
+        insuranceTransfers.push(transfer);
+      }
+    }
   });
 
   // 生成轉帳明細的函數
