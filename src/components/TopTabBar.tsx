@@ -124,7 +124,7 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
     rightContainer: {
       position: 'absolute',
       top: theme.spacing.sm,
-      right: theme.spacing.lg,
+      right: theme.spacing.sm,
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.sm,
