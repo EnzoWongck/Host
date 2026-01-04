@@ -184,27 +184,29 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
       {currentPlayer && (
         <View>
           <View style={styles.section}>
+            {/* 刪除玩家按鈕 - 獨立一行，右對齊 */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: theme.spacing.xs }}>
+              <TouchableOpacity 
+                onPress={handleDeletePlayer}
+                activeOpacity={0.7}
+                style={{ 
+                  paddingHorizontal: theme.spacing.sm, 
+                  paddingVertical: theme.spacing.xs,
+                }}
+              >
+                <Text style={{ 
+                  color: theme.colors.error, 
+                  fontSize: theme.fontSize.sm,
+                  fontWeight: '600',
+                }}>
+                  刪除
+                </Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.title}>{t('playerDetails.totalBuyIn')}</Text>
             <View style={styles.totalBuyInRow}>
               <Text style={[styles.totalBuyInText, { color: colorMode === 'light' ? '#000000' : '#FFD700' }]}>$ {totalBuyIn.toLocaleString()}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-                {/* 刪除玩家按鈕 */}
-                <TouchableOpacity 
-                  onPress={handleDeletePlayer}
-                  activeOpacity={0.7}
-                  style={{ 
-                    paddingHorizontal: theme.spacing.sm, 
-                    paddingVertical: theme.spacing.xs,
-                  }}
-                >
-                  <Text style={{ 
-                    color: theme.colors.error, 
-                    fontSize: theme.fontSize.sm,
-                    fontWeight: '600',
-                  }}>
-                    刪除
-                  </Text>
-                </TouchableOpacity>
                 {isCashedOut && (
                   <TouchableOpacity 
                     onPress={() => setEditCashOutModalVisible(true)}
