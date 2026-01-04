@@ -839,12 +839,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 先更新本地狀態，確保 UI 立即反映變化
       dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
       
-      // 然後從數據庫刪除
-      const { error } = await supabase
+      // 從數據庫刪除，使用 select() 來獲取刪除的資料確認刪除成功
+      const { data: deletedData, error } = await supabase
         .from('players')
         .delete()
         .eq('id', playerId)
-        .eq('game_id', gameId);
+        .eq('game_id', gameId)
+        .select();
 
       if (error) {
         console.error('❌ 數據庫刪除玩家失敗:', error);
@@ -859,13 +860,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      console.log('✅ 玩家刪除成功:', playerId);
+      console.log('🗑️ 刪除操作返回:', deletedData);
       
-      // 5秒後移除標記（給足夠時間讓 Realtime 事件處理完）
-      setTimeout(() => {
-        recentlyDeletedPlayersRef.current.delete(playerId);
-        console.log('🗑️ 清除刪除標記:', playerId);
-      }, 5000);
+      if (!deletedData || deletedData.length === 0) {
+        console.error('⚠️ 刪除操作返回 0 行！RLS 可能阻止了刪除');
+        // 驗證玩家是否真的被刪除
+        const { data: checkData } = await supabase
+          .from('players')
+          .select('id')
+          .eq('id', playerId)
+          .single();
+        
+        if (checkData) {
+          console.error('⚠️ 確認玩家仍存在於資料庫:', playerId);
+          // 玩家沒有被刪除，移除標記並恢復狀態
+          recentlyDeletedPlayersRef.current.delete(playerId);
+          const game = await fetchGameWithRelations(gameId);
+          if (game) {
+            dispatch({ type: 'UPDATE_GAME', payload: game });
+            dispatch({ type: 'SET_CURRENT_GAME', payload: game });
+          }
+          return;
+        }
+      }
+      
+      console.log('✅ 玩家刪除成功:', playerId, '刪除數量:', deletedData?.length || 0);
+      
+      // 永久保留刪除標記（不再自動清除）
+      console.log('🗑️ 玩家刪除標記已設置:', playerId);
     } catch (error) {
       console.error('刪除玩家失敗:', error);
     }
