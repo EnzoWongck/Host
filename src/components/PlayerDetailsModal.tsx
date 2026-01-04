@@ -88,7 +88,7 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
 
   const handleAdd = () => {
     const amount = parseFloat(newAmount);
-    if (isNaN(amount) || amount <= 0 || !currentPlayer) { Alert.alert('錯誤', '請輸入有效金額'); return; }
+    if (isNaN(amount) || amount < 0 || !currentPlayer) { Alert.alert('錯誤', '請輸入有效金額'); return; }
     addBuyInEntry(currentGame.id, currentPlayer.id, amount);
     setNewAmount('');
   };

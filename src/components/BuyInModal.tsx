@@ -194,7 +194,7 @@ const BuyInModal: React.FC<BuyInModalProps> = ({ visible, onClose }) => {
     }
 
     const amount = parseFloat(buyInAmount);
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(amount) || amount < 0) {
       Alert.alert(t('common.error') || '錯誤', t('buyIn.errorAmountRequired'));
       return;
     }
