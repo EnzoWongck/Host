@@ -828,14 +828,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deletePlayer = useCallback(async (gameId: string, playerId: string) => {
     try {
-      const { error } = await supabase
+      console.log('🗑️ 開始刪除玩家:', playerId, '從遊戲:', gameId);
+      
+      // 先更新本地狀態，確保 UI 立即反映變化
+      dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
+      
+      // 然後從數據庫刪除
+      const { error, count } = await supabase
         .from('players')
         .delete()
-        .eq('id', playerId);
+        .eq('id', playerId)
+        .eq('game_id', gameId);
 
-      if (error) throw error;
-
-      dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
+      if (error) {
+        console.error('❌ 數據庫刪除玩家失敗:', error);
+        // 如果數據庫刪除失敗，重新載入遊戲以恢復正確狀態
+        const game = await fetchGameWithRelations(gameId);
+        if (game) {
+          dispatch({ type: 'UPDATE_GAME', payload: game });
+          dispatch({ type: 'SET_CURRENT_GAME', payload: game });
+        }
+        throw error;
+      }
+      
+      console.log('✅ 玩家刪除成功:', playerId, '刪除數量:', count);
     } catch (error) {
       console.error('刪除玩家失敗:', error);
     }
@@ -1527,7 +1543,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          console.log('👤 玩家變更:', payload.eventType);
+          console.log('👤 玩家變更:', payload.eventType, payload.old, payload.new);
+          // DELETE 事件不需要重新載入，因為本地已經處理了
+          if (payload.eventType === 'DELETE') {
+            console.log('👤 玩家刪除事件，跳過重新載入');
+            return;
+          }
           debouncedReload();
         }
       )
