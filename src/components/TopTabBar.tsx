@@ -160,9 +160,9 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
     },
     modalContent: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.lg,
-      minWidth: 200,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.sm,
+      minWidth: 140,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -173,10 +173,10 @@ const TopTabBar: React.FC<TopTabBarProps> = ({ title, rightComponent, transparen
       elevation: 8,
     },
     option: {
-      paddingVertical: theme.spacing.md,
-      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
       borderRadius: theme.borderRadius.sm,
-      marginBottom: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
       backgroundColor: theme.colors.background,
     },
     optionSelected: {
