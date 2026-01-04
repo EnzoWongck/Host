@@ -826,15 +826,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // 記錄最近刪除的玩家 ID，避免 Realtime 重新載入時把他們加回來
+  const recentlyDeletedPlayersRef = React.useRef<Set<string>>(new Set());
+
   const deletePlayer = useCallback(async (gameId: string, playerId: string) => {
     try {
       console.log('🗑️ 開始刪除玩家:', playerId, '從遊戲:', gameId);
+      
+      // 標記為最近刪除，避免 Realtime 重新載入
+      recentlyDeletedPlayersRef.current.add(playerId);
       
       // 先更新本地狀態，確保 UI 立即反映變化
       dispatch({ type: 'DELETE_PLAYER', payload: { gameId, playerId } });
       
       // 然後從數據庫刪除
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from('players')
         .delete()
         .eq('id', playerId)
@@ -842,6 +848,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('❌ 數據庫刪除玩家失敗:', error);
+        // 移除標記
+        recentlyDeletedPlayersRef.current.delete(playerId);
         // 如果數據庫刪除失敗，重新載入遊戲以恢復正確狀態
         const game = await fetchGameWithRelations(gameId);
         if (game) {
@@ -851,7 +859,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      console.log('✅ 玩家刪除成功:', playerId, '刪除數量:', count);
+      console.log('✅ 玩家刪除成功:', playerId);
+      
+      // 5秒後移除標記（給足夠時間讓 Realtime 事件處理完）
+      setTimeout(() => {
+        recentlyDeletedPlayersRef.current.delete(playerId);
+        console.log('🗑️ 清除刪除標記:', playerId);
+      }, 5000);
     } catch (error) {
       console.error('刪除玩家失敗:', error);
     }
@@ -1493,6 +1507,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const game = await fetchGameWithRelations(gameId);
       if (game) {
+        // 過濾掉最近刪除的玩家，避免他們被重新加入
+        const deletedIds = recentlyDeletedPlayersRef.current;
+        if (deletedIds.size > 0) {
+          console.log('🔄 過濾已刪除玩家:', Array.from(deletedIds));
+          game.players = game.players.filter(p => !deletedIds.has(p.id));
+        }
+        
         dispatch({ type: 'UPDATE_GAME', payload: game });
         if (state.currentGame?.id === gameId) {
           dispatch({ type: 'SET_CURRENT_GAME', payload: game });
