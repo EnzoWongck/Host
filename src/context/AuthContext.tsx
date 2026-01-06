@@ -521,11 +521,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     let isRefreshing = false;
+    let refreshTimeout: NodeJS.Timeout | null = null;
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && !isRefreshing) {
         console.log('頁面重新變為可見，檢查會話狀態...');
         isRefreshing = true;
+        
+        // 設置超時，防止無限等待
+        refreshTimeout = setTimeout(() => {
+          console.log('會話恢復超時，重置狀態');
+          isRefreshing = false;
+          setLoading(false);
+        }, 5000);
 
         try {
           // 刷新 Supabase 會話
@@ -537,6 +545,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshError) {
               console.error('刷新會話失敗:', refreshError);
+              // 會話完全失效，清除用戶狀態
+              setUser(null);
             } else if (refreshData.session?.user) {
               console.log('會話已刷新');
               const authUser = await transformUser(refreshData.session.user);
@@ -549,10 +559,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(authUser);
           } else {
             console.log('無有效會話');
+            setUser(null);
           }
         } catch (error) {
           console.error('頁面可見性變化處理錯誤:', error);
+          // 發生錯誤時確保不會卡住
+          setLoading(false);
         } finally {
+          // 清除超時
+          if (refreshTimeout) {
+            clearTimeout(refreshTimeout);
+            refreshTimeout = null;
+          }
+          // 確保 loading 狀態被重置
+          setLoading(false);
           // 延遲重置刷新狀態，避免短時間內重複刷新
           setTimeout(() => {
             isRefreshing = false;
@@ -568,16 +588,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('focus', handleVisibilityChange);
 
     // 監聯 pageshow 事件（用於處理 bfcache 返回的情況）
-    window.addEventListener('pageshow', (event) => {
+    const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('頁面從 bfcache 恢復');
         handleVisibilityChange();
       }
-    });
+    };
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
     };
   }, [transformUser]);
 

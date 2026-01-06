@@ -183,6 +183,26 @@ const AppNavigator: React.FC = () => {
   
   const { user, isSignedIn, signInWithEmail, loading, signOut, refreshUser } = useAuth();
   
+  // 載入超時處理：防止應用卡在載入狀態
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  useEffect(() => {
+    if (loading && !loadingTimedOut) {
+      const timeout = setTimeout(() => {
+        console.log('⚠️ 載入超時，強制結束載入狀態');
+        setLoadingTimedOut(true);
+      }, 8000); // 8秒超時
+      
+      return () => clearTimeout(timeout);
+    }
+    // 如果載入完成，重置超時狀態
+    if (!loading && loadingTimedOut) {
+      setLoadingTimedOut(false);
+    }
+  }, [loading, loadingTimedOut]);
+  
+  // 實際使用的載入狀態（考慮超時）
+  const effectiveLoading = loading && !loadingTimedOut;
+  
   // 開發者帳戶白名單（這些帳戶不需要電話驗證）
   const DEVELOPER_EMAILS = [
     'pokerhostdeveloper@gmail.com',
@@ -304,7 +324,7 @@ const AppNavigator: React.FC = () => {
   // 檢查初始狀態：如果已登入，直接進入主畫面
   useEffect(() => {
     // 等待認證狀態載入完成
-    if (loading) return;
+    if (effectiveLoading) return;
     
     // 如果跳過登入，不執行此邏輯
     if (shouldSkipAuth) return;
@@ -656,7 +676,7 @@ const AppNavigator: React.FC = () => {
   }
 
   // 顯示全局加載動畫（認證狀態加載中）
-  if (loading) {
+  if (effectiveLoading) {
     return (
       <View style={loadingStyles.container}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -666,7 +686,7 @@ const AppNavigator: React.FC = () => {
 
   // 如果未登入但當前畫面是 main，強制返回 welcome
   // 這是一個安全檢查，防止在認證狀態加載完成前顯示主畫面
-  if (!loading && !isSignedIn && currentScreen === 'main') {
+  if (!effectiveLoading && !isSignedIn && currentScreen === 'main') {
     console.log('安全檢查：未登入但當前畫面是 main，返回 welcome');
     setCurrentScreenWithStorage('welcome');
     return <WelcomeScreen onGetStarted={handleWelcomeGetStarted} />;
@@ -894,7 +914,7 @@ const PaywallGuard: React.FC = () => {
 
     // 只有在沒有 chips（chips === 0）時才顯示 paywall
     // 等待 loading 完成後再檢查
-    if (loading) return;
+    if (effectiveLoading) return;
     
     if (chips === 0) {
       // 檢查是否在 1 小時內關閉過
