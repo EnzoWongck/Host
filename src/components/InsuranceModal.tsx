@@ -549,9 +549,9 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
             style={styles.inputInline}
             value={insuranceAmount}
             onChangeText={setInsuranceAmount}
-            placeholder="輸入保險金額"
+            placeholder="輸入保險金額（可為負數）"
             placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
-            keyboardType="decimal-pad"
+            keyboardType="numbers-and-punctuation"
           />
           {insuranceAmount.trim() !== '' && partners.length > 0 && (
             <TouchableOpacity
