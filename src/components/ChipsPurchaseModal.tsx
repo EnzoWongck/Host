@@ -383,37 +383,7 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
               </View>
             </View>
 
-            {/* Bundle Packages */}
-            <Text style={styles.sectionTitle}>優惠套餐</Text>
-            <View style={styles.bundlesContainer}>
-              {bundlePackages.map((pkg) => {
-                const isLoading = loading && selectedPackage?.id === pkg.id;
-                return (
-                  <View key={pkg.id} style={styles.bundleCard}>
-                    <View style={styles.bundleInfo}>
-                      <Text style={styles.bundleName}>{pkg.name}</Text>
-                      <Text style={styles.bundlePrice}>${pkg.priceHKD}</Text>
-                      {pkg.savings && (
-                        <Text style={styles.bundleSavings}>{pkg.savings}</Text>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={styles.bundleButton}
-                      onPress={() => handleBundlePurchase(pkg)}
-                      disabled={loading}
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                      ) : (
-                        <Text style={styles.bundleButtonText}>購買</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Custom Quantity */}
+            {/* Custom Quantity - 自選數量 */}
             <View style={styles.customSection}>
               <Text style={styles.sectionTitle}>自選數量</Text>
               <View style={styles.customCard}>
@@ -459,6 +429,36 @@ const ChipsPurchaseModal: React.FC<ChipsPurchaseModalProps> = ({
                   )}
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Bundle Packages - 優惠套餐 */}
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>優惠套餐</Text>
+            <View style={styles.bundlesContainer}>
+              {bundlePackages.map((pkg) => {
+                const isLoading = loading && selectedPackage?.id === pkg.id;
+                return (
+                  <View key={pkg.id} style={styles.bundleCard}>
+                    <View style={styles.bundleInfo}>
+                      <Text style={styles.bundleName}>{pkg.name}（{pkg.chips} Chips）</Text>
+                      <Text style={styles.bundlePrice}>${pkg.priceHKD}</Text>
+                      {pkg.savings && (
+                        <Text style={styles.bundleSavings}>{pkg.savings}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.bundleButton}
+                      onPress={() => handleBundlePurchase(pkg)}
+                      disabled={loading}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.bundleButtonText}>購買</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
             </View>
           </ScrollView>
 
