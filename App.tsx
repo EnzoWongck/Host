@@ -477,7 +477,7 @@ const AppNavigator: React.FC = () => {
         setCurrentScreenWithStorage('welcome');
       }
     }
-  }, [loading, isSignedIn, user?.uid, user?.email, user?.phoneVerified, shouldSkipAuth, currentScreen, isVerifyingPhone, refreshUser]);
+  }, [effectiveLoading, isSignedIn, user?.uid, user?.email, user?.phoneVerified, shouldSkipAuth, currentScreen, isVerifyingPhone, refreshUser]);
 
   const handleWelcomeGetStarted = () => {
     if (!shouldSkipAuth) {
@@ -943,7 +943,7 @@ const PaywallGuard: React.FC = () => {
     } else {
       setPaywallVisible(false);
     }
-  }, [chips, loading, isSignedIn, authLoading]);
+  }, [chips, effectiveLoading, isSignedIn, authLoading]);
 
   const handleClose = () => {
     setPaywallVisible(false);
