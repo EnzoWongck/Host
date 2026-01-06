@@ -185,20 +185,32 @@ const AppNavigator: React.FC = () => {
   
   // 載入超時處理：防止應用卡在載入狀態
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const loadingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    if (loading && !loadingTimedOut) {
-      const timeout = setTimeout(() => {
+    // 清除之前的超時
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+    
+    if (loading) {
+      // 設置新的超時
+      loadingTimeoutRef.current = setTimeout(() => {
         console.log('⚠️ 載入超時，強制結束載入狀態');
         setLoadingTimedOut(true);
       }, 8000); // 8秒超時
-      
-      return () => clearTimeout(timeout);
-    }
-    // 如果載入完成，重置超時狀態
-    if (!loading && loadingTimedOut) {
+    } else {
+      // 載入完成，重置超時狀態
       setLoadingTimedOut(false);
     }
-  }, [loading, loadingTimedOut]);
+    
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [loading]);
   
   // 實際使用的載入狀態（考慮超時）
   const effectiveLoading = loading && !loadingTimedOut;
@@ -1182,3 +1194,4 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
