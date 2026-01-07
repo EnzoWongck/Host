@@ -134,7 +134,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           reason: 'chip_expired',
         });
         
-        // 如果用戶有 chips，自動消耗一個（12小時後自動續費）
+        // 如果用戶有 chips，自動消耗一個（24小時後自動續費）
         // 注意：這裡不自動消耗，而是顯示 modal 讓用戶選擇
         // 因為用戶可能想先查看數據再決定是否續費
       }, timeUntilExpiry);
@@ -306,7 +306,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
           .single();
         
         if (error || !chipRecord) {
-          // 沒有 chip 記錄，檢查遊戲是否在 12 小時內創建
+          // 沒有 chip 記錄，檢查遊戲是否在 24 小時內創建
           const { data: gameData, error: gameError } = await supabase
             .from('games')
             .select('start_time')
@@ -320,7 +320,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
             const isWithin12Hours = timeSinceStart < CHIPS_CONFIG.CHIP_VALIDITY_DURATION;
             
             if (isWithin12Hours) {
-              // 遊戲在 12 小時內創建，允許使用
+              // 遊戲在 24 小時內創建，允許使用
               const remainingMs = CHIPS_CONFIG.CHIP_VALIDITY_DURATION - timeSinceStart;
               const remainingMinutes = Math.floor(remainingMs / 60000);
               const remainingHours = Math.floor(remainingMinutes / 60);
@@ -346,7 +346,7 @@ export const ChipsProvider: React.FC<ChipsProviderProps> = ({ children }) => {
             }
           }
           
-          // 沒有記錄且不在 12 小時內，需要消耗 Chip
+          // 沒有記錄且不在 24 小時內，需要消耗 Chip
           const status: GameChipStatus = { hasValidChip: false, needsChip: true, reason: 'no_chip_record' };
           setGameChipStatus(status);
           setIsGameLocked(true);

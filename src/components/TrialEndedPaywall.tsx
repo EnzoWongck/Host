@@ -166,7 +166,7 @@ const TrialEndedPaywall: React.FC<TrialEndedPaywallProps> = ({
                 目前餘額：{chips ?? 0} Chips
               </Text>
               <Text style={styles.desc}>
-                每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
+                每 1 Chip 提供 24 小時牌局編輯時間{'\n'}
                 購買 Chips 以繼續記錄牌局
               </Text>
 

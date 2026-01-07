@@ -160,7 +160,7 @@ const NewUserWelcomeModal: React.FC<NewUserWelcomeModalProps> = ({ visible, onCl
             新用戶註冊即獲贈 1 個免費 Chip{'\n'}
             {'\n'}
             每個牌局需要消耗 1 個 Chip{'\n'}
-            每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
+            每 1 Chip 提供 24 小時牌局編輯時間{'\n'}
             {'\n'}
             當牌局編輯時間用完時，需要購買更多 Chips 以繼續使用
           </Text>

@@ -104,8 +104,8 @@ export const CHIPS_CONFIG = {
   // 新用戶贈送的免費 Chips 數量
   FREE_CHIPS_FOR_NEW_USER: 1,
   
-  // 牌局 Chip 有效時長（毫秒）- 12 小時
-  CHIP_VALIDITY_DURATION: 12 * 60 * 60 * 1000,
+  // 牌局 Chip 有效時長（毫秒）- 24 小時
+  CHIP_VALIDITY_DURATION: 24 * 60 * 60 * 1000,
   
   // 提前提醒時間（毫秒）- 提前 30 分鐘提醒
   REMINDER_BEFORE_EXPIRY: 30 * 60 * 1000,

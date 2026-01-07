@@ -1587,9 +1587,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         (payload) => {
           console.log('👤 玩家變更:', payload.eventType, payload.old, payload.new);
-          // DELETE 事件不需要重新載入，因為本地已經處理了
+          // INSERT 和 DELETE 事件不需要重新載入，因為本地已經處理了
+          // 只處理 UPDATE 事件（其他用戶修改了玩家資料）
           if (payload.eventType === 'DELETE') {
             console.log('👤 玩家刪除事件，跳過重新載入');
+            return;
+          }
+          if (payload.eventType === 'INSERT') {
+            console.log('👤 玩家新增事件，跳過重新載入（本地已處理）');
             return;
           }
           debouncedReload();

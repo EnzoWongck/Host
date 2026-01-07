@@ -21,7 +21,7 @@ interface UseGameChipResult {
  * 
  * 功能：
  * 1. 創建遊戲時自動檢查是否需要消耗 Chip
- * 2. 每 12 小時檢查一次是否需要續費
+ * 2. 每 24 小時檢查一次是否需要續費
  * 3. 到期前 30 分鐘發出警告
  * 4. 到期後鎖定編輯功能
  */
@@ -47,7 +47,7 @@ export function useGameChip({
     return Date.now() - start;
   }, [gameStartTime]);
 
-  // 計算需要消耗多少個 Chip（每 12 小時一個）
+  // 計算需要消耗多少個 Chip（每 24 小時一個）
   const getRequiredChipPeriods = useCallback(() => {
     const durationMs = getGameDurationMs();
     return Math.floor(durationMs / CHIPS_CONFIG.CHIP_VALIDITY_DURATION);

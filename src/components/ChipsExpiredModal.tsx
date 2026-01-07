@@ -225,7 +225,7 @@ const ChipsExpiredModal: React.FC<ChipsExpiredModalProps> = ({
           {/* Info Box */}
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              💡 每 1 Chip 提供 12 小時牌局編輯時間{'\n'}
+              💡 每 1 Chip 提供 24 小時牌局編輯時間{'\n'}
               您仍可查看數據，但無法進行編輯操作
             </Text>
           </View>

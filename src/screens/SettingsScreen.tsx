@@ -439,7 +439,7 @@ const SettingsScreen: React.FC = () => {
                       </Text>
                     </View>
                     <Text style={styles.dataItemSubtitle}>
-                      每 1 Chip 提供 12 小時牌局編輯時間
+                      每 1 Chip 提供 24 小時牌局編輯時間
                     </Text>
                   </View>
                 </View>
