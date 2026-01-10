@@ -381,10 +381,10 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
         }
       }
       
-      // 將所有分成者（最多3個）設置為 33.3
+      // 將所有分成者（最多3個）設置為 33.3、33.3、33.4，確保總和為 100%
       updatedInputs = updatedInputs.slice(0, 3).map((input, index) => ({
         ...input,
-        percentage: '33.3',
+        percentage: index === 2 ? '33.4' : '33.3', // 最後一個設置為 33.4，前兩個為 33.3
       }));
       
       setCustomPartnerInputs(updatedInputs);
@@ -399,10 +399,15 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
   };
 
   const calculateCustomTotalPercentage = () => {
-    return customPartnerInputs.reduce((sum, input) => {
+    const total = customPartnerInputs.reduce((sum, input) => {
       const pct = parseFloat(input.percentage) || 0;
       return sum + pct;
     }, 0);
+    // 如果總和接近100%（99.9-100.1之間），顯示為100%
+    if (Math.abs(total - 100) <= 0.1 && total > 0) {
+      return 100;
+    }
+    return total;
   };
 
   const customTotalPercentage = calculateCustomTotalPercentage();

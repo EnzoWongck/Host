@@ -913,25 +913,27 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
   });
   
   // 更新 Host 數據並計算 transferAmount
-  // 先計算所有 Host 的實際收入總和（用於分成計算）
+  // 先計算所有 Host 的實際收入總和（用於分成計算，不包含保險）
+  // 實際收入 = playerCollected - cost - dealerSalary
+  // 其中 playerCollected 來自玩家盈虧（買入 - 兌現），不包含保險相關金額
   let totalActualIncome = 0;
   hosts.forEach(h => {
     const playerProfit = profitByHost[h.name] || 0;
-    const playerCollected = -playerProfit; // Host 從玩家實際收取的金額（玩家總盈虧 × -1）
+    const playerCollected = -playerProfit; // Host 從玩家實際收取的金額（玩家總盈虧 × -1，不含保險）
     const cost = costByHost[h.name] || 0;
     const dealerSalary = dealerSalaryByHost[h.name] || 0;
-    // 每個 Host 的實際收入 = playerCollected - cost - dealerSalary
+    // 每個 Host 的實際收入 = playerCollected - cost - dealerSalary（不含保險）
     totalActualIncome += (playerCollected - cost - dealerSalary);
   });
   
   const updatedHosts: Host[] = hosts.map(h => {
     const playerProfit = profitByHost[h.name] || 0;
-    const playerCollected = -playerProfit; // Host 從玩家實際收取的金額（玩家總盈虧 × -1）
+    const playerCollected = -playerProfit; // Host 從玩家實際收取的金額（玩家總盈虧 × -1，不含保險）
     const cost = costByHost[h.name] || 0;
     const dealerSalary = dealerSalaryByHost[h.name] || 0;
     const shareRatio = h.shareRatio || equalShare;
     
-    // Host 應得分成 = 實際收入總和 × shareRatio（基於實際收入而非淨收入）
+    // Host 應得分成 = 實際收入總和 × shareRatio（基於實際收入，不包含保險）
     // Host 核心牌局實際「賺到的金額」 = playerCollected - cost - dealerSalary（不含保險）
     // transferAmount 只比較「核心牌局實際收入」與「應得分成」，保險獨立顯示、不影響轉帳
     //   > 0 代表多賺了，需要「應付」給其他 Host
