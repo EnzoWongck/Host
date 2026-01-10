@@ -8,20 +8,15 @@ import {
   Alert,
   Dimensions,
   Platform,
-  Image,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
-import Icon from './Icon';
 import SwipeHint from './SwipeHint';
 import ConfirmModal from './ConfirmModal';
 import { Expense } from '../types/game';
-// 靜態導入圖片
-import EditIconImage from '../../assets/icons/edit.png';
-import EditBlackIconImage from '../../assets/icons/edit.black.png';
 
 interface ExpenseRecordsModalProps {
   visible: boolean;
@@ -86,6 +81,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
       minHeight: 44,
@@ -94,7 +90,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       flex: 1, 
       color: theme.colors.text,
       fontSize: theme.fontSize.md,
-      marginRight: theme.spacing.md,
+      marginRight: theme.spacing.sm,
       flexShrink: 1,
     },
     expenseItemAmount: { 
@@ -103,14 +99,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       fontWeight: '600', 
       color: theme.colors.text,
       fontSize: theme.fontSize.md,
-      marginRight: theme.spacing.md,
-    },
-    editIconContainer: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: theme.spacing.xs,
+      marginRight: theme.spacing.sm,
     },
     emptyMessage: {
       color: theme.colors.textSecondary,
@@ -150,84 +139,43 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     };
 
     const recordContent = (
-      <View style={styles.expenseItemRow}>
+      <TouchableOpacity
+        style={styles.expenseItemRow}
+        onPress={handleEdit}
+        activeOpacity={0.7}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
-          {expense.category === 'venue' ? (
-            <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-          ) : expense.category === 'miscellaneous' ? (
-            <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-          ) : expense.category === 'taxi' ? (
-            <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-          ) : expense.category === 'takeout' ? (
-            <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-          ) : expense.category === 'other' ? (
-            <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-          ) : null}
           <Text 
             style={styles.expenseItemLeft}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {categoryLabelMap[expense.category]}
-            {expense.host ? ` · ${expense.host}` : ''}
+            {expense.host ? ` ${expense.host}` : ''}
           </Text>
         </View>
         <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
-        <TouchableOpacity
-          style={styles.editIconContainer}
-          onPress={handleEdit}
-          activeOpacity={0.7}
-        >
-          <Image 
-            source={colorMode === 'dark' 
-              ? EditBlackIconImage 
-              : EditIconImage} 
-            style={{ width: 20, height: 20 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
 
     // Web 平台直接顯示點擊可編輯的記錄，並添加刪除按鈕
     if (Platform.OS === 'web') {
       return (
-        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
-            {expense.category === 'venue' ? (
-              <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-            ) : expense.category === 'miscellaneous' ? (
-              <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-            ) : expense.category === 'taxi' ? (
-              <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-            ) : expense.category === 'takeout' ? (
-              <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-            ) : expense.category === 'other' ? (
-              <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
-            ) : null}
-            <Text 
-              style={styles.expenseItemLeft}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {categoryLabelMap[expense.category]}
-              {expense.host ? ` · ${expense.host}` : ''}
-            </Text>
-          </View>
-          <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
-          <TouchableOpacity
-            style={styles.editIconContainer}
-            onPress={handleEdit}
-            activeOpacity={0.7}
+        <TouchableOpacity
+          key={expense.id}
+          style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.sm }}
+          onPress={handleEdit}
+          activeOpacity={0.7}
+        >
+          <Text 
+            style={styles.expenseItemLeft}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
-            <Image 
-              source={colorMode === 'dark' 
-                ? EditBlackIconImage 
-                : EditIconImage} 
-              style={{ width: 20, height: 20 }}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+            {categoryLabelMap[expense.category]}
+            {expense.host ? ` ${expense.host}` : ''}
+          </Text>
+          <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
             onPress={(e) => {
@@ -242,7 +190,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
               {t('common.delete')}
             </Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       );
     }
 
