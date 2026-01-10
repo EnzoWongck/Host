@@ -368,7 +368,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     playerBuyIn: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
-      marginTop: theme.spacing.xs,
+      marginTop: theme.spacing.md, // 向下移動，避免被狀態欄遮擋
       textAlign: 'right',
     },
     playerProfit: {
@@ -1768,16 +1768,19 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                                 </Text>
                               )}
                             </View>
-                            <View style={{ alignItems: 'flex-end' }}>
+                            <View style={{ alignItems: 'flex-end', marginTop: theme.spacing.sm }}>
                               <Text style={styles.playerBuyIn}>
                                 {t('game.buyIn')}: {formatCurrency(player.buyIn)}
                               </Text>
-                              <Text style={[
-                                styles.playerProfit,
-                                player.profit >= 0 ? styles.positiveProfit : styles.negativeProfit
-                              ]}>
-                                {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
-                              </Text>
+                              {/* 只有已兌現的玩家才顯示盈虧 */}
+                              {player.status === 'cashed_out' && (
+                                <Text style={[
+                                  styles.playerProfit,
+                                  player.profit >= 0 ? styles.positiveProfit : styles.negativeProfit
+                                ]}>
+                                  {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
+                                </Text>
+                              )}
                             </View>
                           </View>
                         </TouchableOpacity>
