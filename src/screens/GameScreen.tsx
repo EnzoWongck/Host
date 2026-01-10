@@ -585,9 +585,10 @@ const GameScreen: React.FC = () => {
     blurCardContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-end', // 內容底部對齊
+      alignItems: 'stretch', // 拉伸以填充高度
       paddingHorizontal: theme.spacing.md, // 左右內邊距
-      paddingVertical: theme.spacing.md, // 增加上下內邊距
+      paddingTop: theme.spacing.md, // 頂部內邊距
+      paddingBottom: theme.spacing.lg, // 增加底部內邊距，向下移動
       minHeight: 100, // 增加高度確保有足夠空間
       position: 'relative',
     },
@@ -812,11 +813,15 @@ const GameScreen: React.FC = () => {
                       <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
                       <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'center', flex: 1 }}>
-                      <Text style={styles.blurCardProfit}>
-                        {formatCurrency(netIncome)}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: theme.spacing.sm, pointerEvents: 'none' }}>
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'space-between', flex: 1, position: 'relative', minHeight: 80 }}>
+                      {/* 牌局盈虧：上下置中 */}
+                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
+                        <Text style={styles.blurCardProfit}>
+                          {formatCurrency(netIncome)}
+                        </Text>
+                      </View>
+                      {/* 三角形與文字：貼住底部 */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', pointerEvents: 'none', marginTop: 'auto' }}>
                         <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
                         <Text style={{ 
                           fontSize: theme.fontSize.md, 
