@@ -586,10 +586,10 @@ const GameScreen: React.FC = () => {
     blurCardContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'stretch', // 拉伸子元素以填充高度
+      alignItems: 'center', // 內容垂直居中
       paddingHorizontal: theme.spacing.md, // 左右內邊距
-      paddingTop: theme.spacing.lg, // 頂部內邊距，增加空間
-      paddingBottom: theme.spacing.xl + theme.spacing.xs, // 增加底部內邊距，為底部標籤留出空間
+      paddingTop: theme.spacing.md, // 頂部內邊距
+      paddingBottom: theme.spacing.lg + theme.spacing.sm, // 增加底部內邊距，為底部標籤留出空間
       minHeight: 120, // 增加高度確保有足夠空間
       position: 'relative',
     },
@@ -602,11 +602,13 @@ const GameScreen: React.FC = () => {
       flex: 1,
       paddingRight: theme.spacing.md, // 左側內容右邊距
       justifyContent: 'center', // 垂直居中
+      alignSelf: 'stretch', // 拉伸以填充高度
     },
     blurCardRight: {
       alignItems: 'flex-end',
       justifyContent: 'center', // 垂直居中
       flex: 1,
+      alignSelf: 'stretch', // 拉伸以填充高度
     },
     blurCardGameName: {
       fontSize: theme.fontSize.xl, // 標題文字放大
@@ -627,7 +629,7 @@ const GameScreen: React.FC = () => {
     },
     blurCardBottomLabel: {
       position: 'absolute',
-      bottom: theme.spacing.xs,
+      bottom: theme.spacing.sm, // 貼住底部，留一點間距
       right: theme.spacing.md,
       flexDirection: 'row',
       alignItems: 'center',
