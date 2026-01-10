@@ -23,6 +23,7 @@ import Icon from '../components/Icon';
 import NewGameModal from '../components/NewGameModal';
 import JoinGameModal from '../components/JoinGameModal';
 import TopTabBar from '../components/TopTabBar';
+import ConfirmModal from '../components/ConfirmModal';
 import { Language } from '../types/language';
 
 const HomeScreen: React.FC = () => {
@@ -636,97 +637,27 @@ const HomeScreen: React.FC = () => {
       </Modal>
 
       {/* Delete Game Confirm Modal */}
-      <Modal
+      <ConfirmModal
         visible={deleteConfirmVisible}
-        transparent
-        animationType="none"
-        onRequestClose={() => setDeleteConfirmVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <View
-            style={{
-              width: '80%',
-              backgroundColor: theme.colors.surface,
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.lg,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: theme.fontSize.lg,
-                fontWeight: '700',
-                color: theme.colors.text,
-                marginBottom: theme.spacing.sm,
-              }}
-            >
-              {t('common.delete') || '刪除牌局'}
-            </Text>
-            <Text
-              style={{
-                fontSize: theme.fontSize.sm,
-                color: theme.colors.textSecondary,
-                marginBottom: theme.spacing.lg,
-              }}
-            >
-              {gameToDelete
-                ? `確定要刪除牌局「${gameToDelete.name}」嗎？`
-                : '確定要刪除這個牌局嗎？'}
-            </Text>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: theme.spacing.md,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => setDeleteConfirmVisible(false)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.colors.textSecondary,
-                    fontWeight: '600',
-                  }}
-                >
-                  {t('common.cancel') || '取消'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  if (gameToDelete) {
-                    const remainingGames = state.games.filter(g => g.id !== gameToDelete.id);
-                    deleteGame(gameToDelete.id);
-                    // 刪除後檢查是否可以新增牌局
-                  }
-                  setDeleteConfirmVisible(false);
-                  setGameToDelete(null);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.colors.error,
-                    fontWeight: '700',
-                  }}
-                >
-                  {t('common.delete') || '刪除'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => {
+          setDeleteConfirmVisible(false);
+          setGameToDelete(null);
+        }}
+        title={t('common.delete') || '刪除牌局'}
+        message={gameToDelete
+          ? `確定要刪除牌局「${gameToDelete.name}」嗎？`
+          : '確定要刪除這個牌局嗎？'}
+        onConfirm={() => {
+          if (gameToDelete) {
+            deleteGame(gameToDelete.id);
+          }
+          setDeleteConfirmVisible(false);
+          setGameToDelete(null);
+        }}
+        confirmText={t('common.delete') || '刪除'}
+        cancelText={t('common.cancel') || '取消'}
+        confirmVariant="danger"
+      />
 
 
       {/* Add to Home Screen 教學彈窗（僅 Web 顯示） */}

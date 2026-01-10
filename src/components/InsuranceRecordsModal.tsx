@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Platform, Dimensions } from 'react-native';
 import Modal from './Modal';
 import Button from './Button';
+import ConfirmModal from './ConfirmModal';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -615,56 +616,27 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
         </ScrollView>
       )}
 
-      {/* 刪除保險紀錄確認視窗（避免使用 Alert，在 Web 上也可正常顯示） */}
-      <Modal
+      {/* 刪除保險紀錄確認視窗 */}
+      <ConfirmModal
         visible={deleteConfirmVisible}
         onClose={() => {
           setDeleteConfirmVisible(false);
           setInsuranceToDelete(null);
         }}
         title={t('insurance.delete') || '刪除保險'}
-      >
-        <View style={{ paddingVertical: theme.spacing.md }}>
-          <Text
-            style={{
-              fontSize: theme.fontSize.md,
-              color: theme.colors.text,
-              marginBottom: theme.spacing.lg,
-            }}
-          >
-            {insuranceToDelete
-              ? `${t('insurance.deleteConfirm') || '確定刪除這筆保險紀錄？'}\n\n${insuranceToDelete.label}`
-              : t('insurance.deleteConfirm') || '確定刪除這筆保險紀錄？'}
-          </Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-            <TouchableOpacity
-              onPress={() => {
-                setDeleteConfirmVisible(false);
-                setInsuranceToDelete(null);
-              }}
-              style={{ marginRight: theme.spacing.md }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '600' }}>
-                {t('common.cancel')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                if (!currentGame || !insuranceToDelete) return;
-                deleteInsurance(currentGame.id, insuranceToDelete.id);
-                setDeleteConfirmVisible(false);
-                setInsuranceToDelete(null);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: theme.colors.error, fontWeight: '700' }}>
-                {t('common.delete')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        message={insuranceToDelete
+          ? `${t('insurance.deleteConfirm') || '確定刪除這筆保險紀錄？'}\n\n${insuranceToDelete.label}`
+          : t('insurance.deleteConfirm') || '確定刪除這筆保險紀錄？'}
+        onConfirm={() => {
+          if (!currentGame || !insuranceToDelete) return;
+          deleteInsurance(currentGame.id, insuranceToDelete.id);
+          setDeleteConfirmVisible(false);
+          setInsuranceToDelete(null);
+        }}
+        confirmText={t('common.delete') || '刪除'}
+        cancelText={t('common.cancel') || '取消'}
+        confirmVariant="danger"
+      />
       <InsuranceEditModal
         visible={editVisible}
         onClose={() => setEditVisible(false)}
