@@ -132,47 +132,20 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     },
   });
 
-  const renderRecord = (expense: Expense) => (
-    <Swipeable
-      key={expense.id}
-      renderRightActions={() => (
-        <View style={{ flexDirection: 'row' }}>
-          {onEdit && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
-              onPress={() => {
-                onEdit(expense);
-                onClose();
-              }}
-            >
-              <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>
-                {t('expense.editExpense')}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => {
-              if (!currentGame) return;
-              if (Platform.OS === 'web') {
-                setExpenseToDelete(expense);
-                setDeleteConfirmVisible(true);
-              } else {
-                Alert.alert(t('expense.deleteExpense'), t('expense.deleteConfirm'), [
-                  { text: t('common.cancel'), style: 'cancel' },
-                  { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
-                ]);
-              }
-            }}
-          >
-            <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
-              {t('common.delete')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    >
-      <View style={styles.expenseItemRow}>
+  const renderRecord = (expense: Expense) => {
+    const handleEdit = () => {
+      if (onEdit) {
+        onEdit(expense);
+        onClose();
+      }
+    };
+
+    const recordContent = (
+      <TouchableOpacity 
+        style={styles.expenseItemRow}
+        onPress={handleEdit}
+        activeOpacity={0.7}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           {expense.category === 'venue' ? (
             <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
@@ -198,9 +171,67 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
             minute: '2-digit' 
           })}
         </Text>
-      </View>
-    </Swipeable>
-  );
+      </TouchableOpacity>
+    );
+
+    // Web 平台直接顯示點擊可編輯的記錄，並添加刪除按鈕
+    if (Platform.OS === 'web') {
+      return (
+        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {recordContent}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton, { marginLeft: theme.spacing.sm }]}
+            onPress={() => {
+              if (!currentGame) return;
+              setExpenseToDelete(expense);
+              setDeleteConfirmVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+              {t('common.delete')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <Swipeable
+        key={expense.id}
+        renderRightActions={() => (
+          <View style={{ flexDirection: 'row' }}>
+            {onEdit && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.editButton]}
+                onPress={handleEdit}
+              >
+                <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>
+                  {t('expense.editExpense')}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={() => {
+                if (!currentGame) return;
+                Alert.alert(t('expense.deleteExpense'), t('expense.deleteConfirm'), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
+                ]);
+              }}
+            >
+              <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+                {t('common.delete')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      >
+        {recordContent}
+      </Swipeable>
+    );
+  };
 
   return (
     <Modal

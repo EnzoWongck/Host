@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Modal from './Modal';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Platform, Modal, FlatList } from 'react-native';
+import Modal as CustomModal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
@@ -25,6 +25,7 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   const { theme, colorMode } = useTheme();
   const { state } = useGame();
   const [selectedHost, setSelectedHost] = useState<string | null>(defaultHost || null);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
   
   const currentGame = state.currentGame;
   const hosts = currentGame?.hosts || [];
@@ -49,6 +50,8 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
     { id: 'venue', label: '場地' },
     { id: 'other', label: '其他' },
   ];
+
+  const currentCategoryLabel = categories.find(c => c.id === category)?.label || '選擇類別';
 
   const styles = StyleSheet.create({
     group: { marginBottom: theme.spacing.lg },
@@ -81,6 +84,62 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
       backgroundColor: theme.colors.background,
     },
     chipText: { color: theme.colors.text, fontWeight: '600' },
+    categoryButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      padding: theme.spacing.md,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    categoryButtonText: {
+      color: theme.colors.text,
+      fontSize: theme.fontSize.md,
+    },
+    categoryPickerModal: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    categoryPickerContainer: {
+      width: '80%',
+      maxWidth: 400,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      maxHeight: '60%',
+    },
+    categoryPickerHeader: {
+      padding: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    categoryPickerTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    categoryPickerItem: {
+      padding: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    categoryPickerItemSelected: {
+      backgroundColor: theme.colors.primary + '20',
+    },
+    categoryPickerItemText: {
+      fontSize: theme.fontSize.md,
+      color: theme.colors.text,
+    },
+    categoryPickerItemTextSelected: {
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
     hostChips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     hostChip: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.borderRadius.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background },
     hostChipActive: { borderColor: colorMode === 'dark' ? '#FFFFFF' : theme.colors.text, backgroundColor: theme.colors.background },
@@ -99,25 +158,20 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   };
 
   return (
-    <Modal visible={visible} onClose={onClose} title="編輯支出">
-      <ScrollView>
-        <View style={styles.group}>
-          <Text style={styles.label}>支出類別</Text>
-          <View style={styles.row}>
-            {categories.slice(0,3).map(c => (
-              <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive, { aspectRatio: 2.5 }]} onPress={() => setCategory(c.id)} activeOpacity={1}>
-                <Text style={styles.chipText}>{c.label}</Text>
-              </TouchableOpacity>
-            ))}
+    <>
+      <CustomModal visible={visible} onClose={onClose} title="編輯支出">
+        <ScrollView>
+          <View style={styles.group}>
+            <Text style={styles.label}>支出類別</Text>
+            <TouchableOpacity
+              style={styles.categoryButton}
+              onPress={() => setCategoryPickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.categoryButtonText}>{currentCategoryLabel}</Text>
+              <Text style={{ color: theme.colors.textSecondary }}>▼</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.row}>
-            {categories.slice(3).map(c => (
-              <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive, { aspectRatio: 2.5 }]} onPress={() => setCategory(c.id)} activeOpacity={1}>
-                <Text style={styles.chipText}>{c.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
 
         <View style={styles.group}>
           <Text style={styles.label}>金額</Text>
@@ -159,7 +213,61 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
           style={{ marginBottom: theme.spacing.md }} // 增加底部間距確保陰影顯示
         />
       </ScrollView>
+    </CustomModal>
+
+    {/* 類別選擇滾輪 */}
+    <Modal
+      visible={categoryPickerVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setCategoryPickerVisible(false)}
+    >
+      <TouchableOpacity
+        style={styles.categoryPickerModal}
+        activeOpacity={1}
+        onPress={() => setCategoryPickerVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.categoryPickerContainer}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.categoryPickerHeader}>
+            <Text style={styles.categoryPickerTitle}>選擇類別</Text>
+            <TouchableOpacity onPress={() => setCategoryPickerVisible(false)}>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 24, fontWeight: '300' }}>×</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={categories}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.categoryPickerItem,
+                  category === item.id && styles.categoryPickerItemSelected,
+                ]}
+                onPress={() => {
+                  setCategory(item.id);
+                  setCategoryPickerVisible(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.categoryPickerItemText,
+                    category === item.id && styles.categoryPickerItemTextSelected,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
+    </>
   );
 };
 
