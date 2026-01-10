@@ -146,48 +146,47 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   };
 
   return (
-    <>
-      <CustomModal visible={visible} onClose={onClose} title="編輯支出">
-        <ScrollView>
-          <View style={styles.group}>
-            <Text style={styles.label}>支出類別</Text>
-            <TouchableOpacity
-              style={styles.categoryButton}
-              onPress={() => setCategoryExpanded(!categoryExpanded)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.categoryButtonText}>{currentCategoryLabel}</Text>
-              <Text style={{ color: theme.colors.textSecondary }}>{categoryExpanded ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            {categoryExpanded && (
-              <View style={styles.categoryDropdown}>
-                {categories.map((item, index) => (
-                  <TouchableOpacity
-                    key={item.id}
+    <CustomModal visible={visible} onClose={onClose} title="編輯支出">
+      <ScrollView>
+        <View style={styles.group}>
+          <Text style={styles.label}>支出類別</Text>
+          <TouchableOpacity
+            style={styles.categoryButton}
+            onPress={() => setCategoryExpanded(!categoryExpanded)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.categoryButtonText}>{currentCategoryLabel}</Text>
+            <Text style={{ color: theme.colors.textSecondary }}>{categoryExpanded ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+          {categoryExpanded && (
+            <View style={styles.categoryDropdown}>
+              {categories.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.categoryItem,
+                    index === categories.length - 1 && styles.categoryItemLast,
+                    category === item.id && styles.categoryItemSelected,
+                  ]}
+                  onPress={() => {
+                    setCategory(item.id);
+                    setCategoryExpanded(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
                     style={[
-                      styles.categoryItem,
-                      index === categories.length - 1 && styles.categoryItemLast,
-                      category === item.id && styles.categoryItemSelected,
+                      styles.categoryItemText,
+                      category === item.id && styles.categoryItemTextSelected,
                     ]}
-                    onPress={() => {
-                      setCategory(item.id);
-                      setCategoryExpanded(false);
-                    }}
-                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.categoryItemText,
-                        category === item.id && styles.categoryItemTextSelected,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={styles.group}>
           <Text style={styles.label}>金額</Text>
@@ -226,7 +225,7 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
           onPress={handleSave} 
           size="lg" 
           variant="primary"
-          style={{ marginBottom: theme.spacing.md }} // 增加底部間距確保陰影顯示
+          style={{ marginBottom: theme.spacing.md }}
         />
       </ScrollView>
     </CustomModal>

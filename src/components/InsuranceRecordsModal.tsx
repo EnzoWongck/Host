@@ -83,7 +83,7 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     partnerRow: {
-      marginBottom: theme.spacing.md,
+      marginBottom: theme.spacing.xs,
     },
     partnerInputRow: {
       flexDirection: 'row',
@@ -91,11 +91,11 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
     },
     partnerNameInput: {
       flex: 2,
-      marginRight: theme.spacing.sm,
+      marginRight: theme.spacing.xs,
     },
     partnerPercentageInput: {
       flex: 1,
-      marginRight: theme.spacing.sm,
+      marginRight: theme.spacing.xs,
     },
     partnerRemoveButton: {
       paddingHorizontal: theme.spacing.sm,
