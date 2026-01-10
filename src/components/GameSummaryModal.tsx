@@ -528,7 +528,11 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     );
   }
 
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => {
+    // 轉帳明細金額四捨五入為整數，不顯示小數點
+    const roundedAmount = Math.round(amount);
+    return `$${roundedAmount.toLocaleString()}`;
+  };
   const formatDuration = (start: any, end?: any) => {
     const s = new Date(start);
     const e = end ? new Date(end) : new Date();
