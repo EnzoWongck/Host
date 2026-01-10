@@ -10,6 +10,7 @@ export interface Player {
   buyInTime?: Date; // 買入時間（用於計算入場費）
   cashOutTime?: Date; // 兌現時間（用於計算入場費）
   cashOutAmount?: number;
+  cashOutHost?: string; // 負責兌現的 Host 名稱
   entryFeeDeducted?: boolean;
   customEntryFee?: number; // 自訂入場費（優先於計算值）
 }

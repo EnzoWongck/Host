@@ -238,14 +238,10 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
       status: 'cashed_out',
       cashOutTime: now, // 記錄兌現時間
       cashOutAmount: chips,
+      cashOutHost: hostToUse || undefined, // 設置 cashOutHost
       entryFeeDeducted: isNoRakeMode ? entryFeeDeducted : false,
       updatedAt: now,
-    } as any;
-    
-    // 設置 cashOutHost（如果有多個 Host）
-    if (hostToUse) {
-      (updated as any).cashOutHost = hostToUse;
-    }
+    };
 
     updatePlayer(currentGame.id, updated);
 

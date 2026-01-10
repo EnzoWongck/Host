@@ -471,6 +471,7 @@ function transformSupabaseGame(
       buyInTime: p.buy_in_time ? new Date(p.buy_in_time) : undefined,
       cashOutTime: p.cash_out_time ? new Date(p.cash_out_time) : undefined,
       cashOutAmount: p.cash_out_amount,
+      cashOutHost: p.cash_out_host,
       entryFeeDeducted: p.entry_fee_deducted || false,
       customEntryFee: p.custom_entry_fee,
       createdAt: new Date(p.created_at),
@@ -821,6 +822,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           buy_in_time: player.buyInTime,
           cash_out_time: player.cashOutTime,
           cash_out_amount: player.cashOutAmount,
+          cash_out_host: player.cashOutHost,
           entry_fee_deducted: player.entryFeeDeducted,
           custom_entry_fee: player.customEntryFee,
         })
