@@ -369,11 +369,13 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.xs,
+      textAlign: 'right',
     },
     playerProfit: {
       fontSize: theme.fontSize.md,
       fontWeight: '700',
       marginTop: theme.spacing.xs,
+      textAlign: 'right',
     },
     playerHost: {
       fontSize: theme.fontSize.sm,
@@ -1760,6 +1762,13 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                           <View style={styles.playerHeaderRow}>
                             <View style={{ flex: 1 }}>
                               <Text style={styles.playerName}>{player.name}</Text>
+                              {!!cashOutHost && (
+                                <Text style={styles.playerHost}>
+                                  負責 Host：{cashOutHost}
+                                </Text>
+                              )}
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
                               <Text style={styles.playerBuyIn}>
                                 {t('game.buyIn')}: {formatCurrency(player.buyIn)}
                               </Text>
@@ -1770,11 +1779,6 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                                 {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
                               </Text>
                             </View>
-                            {!!cashOutHost && (
-                              <Text style={styles.playerHost}>
-                                負責 Host：{cashOutHost}
-                              </Text>
-                            )}
                           </View>
                         </TouchableOpacity>
                       );

@@ -441,6 +441,7 @@ const GameScreen: React.FC = () => {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
       marginBottom: theme.spacing.xs,
+      textAlign: 'right',
     },
     playerHost: {
       fontSize: theme.fontSize.sm,
@@ -584,16 +585,13 @@ const GameScreen: React.FC = () => {
     blurCardContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-end', // 金額和三角形向下對齊
+      alignItems: 'flex-end', // 金額和標籤向下對齊
       paddingHorizontal: theme.spacing.md, // 左右內邊距
       paddingVertical: theme.spacing.md, // 增加上下內邊距
       minHeight: 100, // 增加高度確保有足夠空間
       position: 'relative',
     },
     blurCardLabel: {
-      position: 'absolute',
-      bottom: theme.spacing.xs,
-      right: theme.spacing.md,
       fontSize: theme.fontSize.xs,
       color: '#FFFFFF',
       opacity: 0.8,
@@ -814,19 +812,20 @@ const GameScreen: React.FC = () => {
                       <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
                       <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ alignItems: 'flex-end' }}>
                       <Text style={styles.blurCardProfit}>
                         {formatCurrency(netIncome)}
                       </Text>
-                      <Text style={{ 
-                        fontSize: theme.fontSize.md, 
-                        color: '#FFFFFF', 
-                        marginLeft: theme.spacing.sm,
-                        transform: [{ rotate: '-90deg' }]
-                      }}>▼</Text>
-                    </View>
-                    <View style={{ position: 'absolute', bottom: theme.spacing.xs, right: theme.spacing.md, flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
-                      <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: theme.spacing.xs, pointerEvents: 'none' }}>
+                        <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
+                        <Text style={{ 
+                          fontSize: theme.fontSize.md, 
+                          color: '#FFFFFF', 
+                          marginLeft: theme.spacing.xs,
+                          transform: [{ rotate: '-90deg' }],
+                          opacity: 0.8,
+                        }}>▼</Text>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -954,33 +953,25 @@ const GameScreen: React.FC = () => {
                       </Text>
                       <View style={styles.playerInfo}>
                         <Text style={styles.playerName}>{player.name}</Text>
-                        {/* 買入金額在盈虧上一行 */}
-                        <Text style={styles.playerBuyIn}>
-                          {t('game.buyIn')}: <Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>$</Text><Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>{player.buyIn.toLocaleString()}</Text>
-                        </Text>
-                        {/* 盈虧 */}
-                        {player.status === 'cashed_out' && (
-                          <Text style={[
-                            styles.profitAmount,
-                            { color: getProfitColor(player.profit), marginTop: theme.spacing.xs, fontSize: theme.fontSize.md }
-                          ]}>
-                            {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
-                          </Text>
-                        )}
-                        {player.status === 'active' && (
-                          <Text style={[
-                            styles.profitAmount,
-                            { color: getProfitColor(player.profit), marginTop: theme.spacing.xs, fontSize: theme.fontSize.md }
-                          ]}>
-                            {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
-                          </Text>
-                        )}
                         {/* 原來買入金額位置改為顯示負責host名稱（如有） */}
                         {player.status === 'cashed_out' && (player as any).cashOutHost && (
                           <Text style={styles.playerHost}>
                             負責 Host：{(player as any).cashOutHost}
                           </Text>
                         )}
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        {/* 買入金額在盈虧上一行 */}
+                        <Text style={styles.playerBuyIn}>
+                          {t('game.buyIn')}: <Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>$</Text><Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>{player.buyIn.toLocaleString()}</Text>
+                        </Text>
+                        {/* 盈虧 */}
+                        <Text style={[
+                          styles.profitAmount,
+                          { color: getProfitColor(player.profit), marginTop: theme.spacing.xs, fontSize: theme.fontSize.md }
+                        ]}>
+                          {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
+                        </Text>
                       </View>
                     </TouchableOpacity>
                     </Swipeable>
