@@ -1768,7 +1768,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                                 </Text>
                               )}
                             </View>
-                            <View style={{ alignItems: 'flex-end', marginTop: theme.spacing.sm }}>
+                            <View style={{ alignItems: 'flex-end', marginTop: theme.spacing.md }}>
                               <Text style={styles.playerBuyIn}>
                                 {t('game.buyIn')}: {formatCurrency(player.buyIn)}
                               </Text>
