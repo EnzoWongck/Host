@@ -187,10 +187,38 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     // Web 平台直接顯示點擊可編輯的記錄，並添加刪除按鈕
     if (Platform.OS === 'web') {
       return (
-        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-            {recordContent}
+        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            {expense.category === 'venue' ? (
+              <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
+            ) : expense.category === 'miscellaneous' ? (
+              <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm }} />
+            ) : expense.category === 'taxi' ? (
+              <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm }} />
+            ) : expense.category === 'takeout' ? (
+              <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm }} />
+            ) : expense.category === 'other' ? (
+              <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm }} />
+            ) : null}
+            <Text style={styles.expenseItemLeft}>
+              {categoryLabelMap[expense.category]}
+              {expense.host ? ` · ${expense.host}` : ''}
+            </Text>
           </View>
+          <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
+          <TouchableOpacity
+            style={styles.editIconContainer}
+            onPress={handleEdit}
+            activeOpacity={0.7}
+          >
+            <Image 
+              source={colorMode === 'dark' 
+                ? EditBlackIconImage 
+                : EditIconImage} 
+              style={{ width: 20, height: 20 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
             onPress={(e) => {
