@@ -930,7 +930,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
     //   > 0 代表多賺了，需要「應付」給其他 Host
     //   < 0 代表少賺了，需要「應收」其他 Host 補給
     const shareAmount = actualReceipts * shareRatio;
-    const transferAmount = (playerCollected - cost - dealerSalary) - shareAmount;
+    const transferAmount = Math.round((playerCollected - cost - dealerSalary) - shareAmount);
     
     return {
       ...h,
@@ -967,7 +967,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
 
     partners.forEach(p => {
       const pct = (p.percentage || 0) / totalPct;
-      const shareAbs = Math.abs(amt) * pct;
+      const shareAbs = Math.round(Math.abs(amt) * pct); // 四捨五入為整數
 
       if (insuranceByName[p.name] === undefined) {
         insuranceByName[p.name] = 0;
@@ -979,7 +979,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
         // → Host 對每個分成者支付 shareAbs
         insuranceByName[mainHostName] -= shareAbs;
         insuranceByName[p.name] += shareAbs;
-        // 整合同一分成者的轉帳
+        // 整合同一分成者的轉帳（金額已四捨五入為整數）
         const key = `${mainHostName}→${p.name}`;
         if (insuranceTransferMap[key]) {
           insuranceTransferMap[key].amount += shareAbs;
@@ -996,7 +996,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
         // → 每個分成者支付 shareAbs 給 Host
         insuranceByName[mainHostName] += shareAbs;
         insuranceByName[p.name] -= shareAbs;
-        // 整合同一分成者的轉帳
+        // 整合同一分成者的轉帳（金額已四捨五入為整數）
         const key = `${p.name}→${mainHostName}`;
         if (insuranceTransferMap[key]) {
           insuranceTransferMap[key].amount += shareAbs;
@@ -1026,9 +1026,9 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
     
     const reverseTransfer = insuranceTransferMap[reverseKey];
     
-    if (reverseTransfer) {
+      if (reverseTransfer) {
       // 有反向轉帳，計算淨額
-      const netAmount = transfer.amount - reverseTransfer.amount;
+      const netAmount = Math.round(transfer.amount - reverseTransfer.amount);
       processedPairs.add(forwardKey);
       processedPairs.add(reverseKey);
       
@@ -1050,8 +1050,12 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
     } else {
       // 沒有反向轉帳，直接加入
       processedPairs.add(forwardKey);
-      if (transfer.amount > 0.01) {
-        insuranceTransfers.push(transfer);
+      const roundedAmount = Math.round(transfer.amount);
+      if (roundedAmount > 0.01) {
+        insuranceTransfers.push({
+          ...transfer,
+          amount: roundedAmount,
+        });
       }
     }
   });
@@ -1080,7 +1084,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
       const payer = payers[i];
       const receiver = receivers[j];
 
-      const transferAmount = Math.min(payer.amount, receiver.amount);
+      const transferAmount = Math.round(Math.min(payer.amount, receiver.amount));
 
       if (transferAmount > epsilon) {
         transfers.push({
