@@ -555,6 +555,7 @@ const GameScreen: React.FC = () => {
       elevation: 0, // 覆蓋 Card 的 elevation
       minHeight: 120, // 向上放大，與玩家卡片高度一致
       marginTop: -theme.spacing.md, // 向上移動
+      padding: 0, // 移除 Card 的默認 padding，由 blurCardContent 控制
     },
     blurCardBackground: {
       position: 'absolute',
@@ -813,7 +814,7 @@ const GameScreen: React.FC = () => {
         <View style={styles.content}>
           {/* 頂部玻璃態卡片 */}
           {!playersExpanded && (
-          <Card style={styles.blurCard} padding="lg">
+          <Card style={styles.blurCard} padding="md">
             <ImageBackground
               source={resolveImageSource(Background1212Image)}
               style={styles.blurCardBackground}
