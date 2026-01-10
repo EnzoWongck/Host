@@ -561,6 +561,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const stateRef = useRef(state);
   const { user } = useAuth();
   
+  // 記錄最近刪除的玩家 ID，避免重新載入時把他們加回來
+  const recentlyDeletedPlayersRef = React.useRef<Set<string>>(new Set());
+  
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -630,8 +633,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
 
       // 組裝完整的遊戲數據
+      const deletedPlayerIds = recentlyDeletedPlayersRef.current;
       const games: Game[] = gamesData.map(gameData => {
-        const gamePlayers = (playersRes.data || []).filter(p => p.game_id === gameData.id);
+        // 過濾掉最近刪除的玩家
+        let gamePlayers = (playersRes.data || []).filter(p => p.game_id === gameData.id);
+        if (deletedPlayerIds.size > 0) {
+          gamePlayers = gamePlayers.filter(p => !deletedPlayerIds.has(p.id));
+        }
         const gameDealers = (dealersRes.data || []).filter(d => d.game_id === gameData.id);
         const gameExpenses = (expensesRes.data || []).filter(e => e.game_id === gameData.id);
         const gameRakes = (rakesRes.data || []).filter(r => r.game_id === gameData.id);
@@ -825,9 +833,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('更新玩家失敗:', error);
     }
   }, []);
-
-  // 記錄最近刪除的玩家 ID，避免 Realtime 重新載入時把他們加回來
-  const recentlyDeletedPlayersRef = React.useRef<Set<string>>(new Set());
 
   const deletePlayer = useCallback(async (gameId: string, playerId: string) => {
     try {
