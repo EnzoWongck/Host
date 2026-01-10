@@ -585,11 +585,11 @@ const GameScreen: React.FC = () => {
     blurCardContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center', // 垂直居中
+      alignItems: 'stretch', // 拉伸子元素以填充高度
       paddingHorizontal: theme.spacing.md, // 左右內邊距
-      paddingTop: theme.spacing.md, // 頂部內邊距
-      paddingBottom: theme.spacing.lg, // 增加底部內邊距，為底部標籤留出空間
-      minHeight: 100, // 增加高度確保有足夠空間
+      paddingTop: theme.spacing.lg, // 頂部內邊距，增加空間
+      paddingBottom: theme.spacing.xl + theme.spacing.xs, // 增加底部內邊距，為底部標籤留出空間
+      minHeight: 120, // 增加高度確保有足夠空間
       position: 'relative',
     },
     blurCardLabel: {
@@ -600,6 +600,12 @@ const GameScreen: React.FC = () => {
     blurCardLeft: {
       flex: 1,
       paddingRight: theme.spacing.md, // 左側內容右邊距
+      justifyContent: 'center', // 垂直居中
+    },
+    blurCardRight: {
+      alignItems: 'flex-end',
+      justifyContent: 'center', // 垂直居中
+      flex: 1,
     },
     blurCardGameName: {
       fontSize: theme.fontSize.xl, // 標題文字放大
@@ -617,6 +623,21 @@ const GameScreen: React.FC = () => {
       color: netIncome > 0 ? '#FFD700' : netIncome < 0 ? theme.colors.error : theme.colors.textSecondary,
       fontVariant: ['tabular-nums'],
       textAlign: 'right',
+    },
+    blurCardBottomLabel: {
+      position: 'absolute',
+      bottom: theme.spacing.xs,
+      right: theme.spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      pointerEvents: 'none',
+    },
+    blurCardTriangle: {
+      fontSize: theme.fontSize.md,
+      color: '#FFFFFF',
+      marginLeft: theme.spacing.xs,
+      transform: [{ rotate: '-90deg' }],
+      opacity: 0.8,
     },
     // 功能按鈕（去除背景卡片）
     functionsGrid: {
@@ -810,26 +831,20 @@ const GameScreen: React.FC = () => {
                 >
                   <View style={styles.blurCardContent}>
                     {/* 左側：牌局名稱和時長，垂直居中 */}
-                    <View style={[styles.blurCardLeft, { justifyContent: 'center' }]}>
+                    <View style={styles.blurCardLeft}>
                       <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
                       <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
                     </View>
                     {/* 右側：牌局盈虧，垂直居中 */}
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'center', flex: 1, position: 'relative' }}>
+                    <View style={styles.blurCardRight}>
                       <Text style={styles.blurCardProfit}>
                         {formatCurrency(netIncome)}
                       </Text>
                     </View>
                     {/* 「牌局總結/設定」：貼住卡片底部 */}
-                    <View style={{ position: 'absolute', bottom: theme.spacing.xs, right: theme.spacing.md, flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
+                    <View style={styles.blurCardBottomLabel}>
                       <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
-                      <Text style={{ 
-                        fontSize: theme.fontSize.md, 
-                        color: '#FFFFFF', 
-                        marginLeft: theme.spacing.xs,
-                        transform: [{ rotate: '-90deg' }],
-                        opacity: 0.8,
-                      }}>▼</Text>
+                      <Text style={styles.blurCardTriangle}>▼</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
