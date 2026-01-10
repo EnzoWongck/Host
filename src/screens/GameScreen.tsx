@@ -813,15 +813,15 @@ const GameScreen: React.FC = () => {
                       <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
                       <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'space-between', flex: 1, position: 'relative', minHeight: 80 }}>
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'space-between', flex: 1, minHeight: 80 }}>
                       {/* 牌局盈虧：上下置中 */}
-                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
+                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end', width: '100%' }}>
                         <Text style={styles.blurCardProfit}>
                           {formatCurrency(netIncome)}
                         </Text>
                       </View>
                       {/* 三角形與文字：貼住底部 */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', pointerEvents: 'none', marginTop: 'auto' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
                         <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
                         <Text style={{ 
                           fontSize: theme.fontSize.md, 
