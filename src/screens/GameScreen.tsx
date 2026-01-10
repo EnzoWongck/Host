@@ -12,6 +12,7 @@ import {
   ImageBackground,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
@@ -418,13 +419,14 @@ const GameScreen: React.FC = () => {
     playerItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       padding: theme.spacing.md,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.sm,
       marginBottom: theme.spacing.sm,
       borderWidth: 0.5,
       borderColor: theme.colors.border,
+      position: 'relative',
     },
     playerInfo: {
       flex: 1,
@@ -433,24 +435,34 @@ const GameScreen: React.FC = () => {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
       color: theme.colors.text,
+      marginBottom: theme.spacing.xs,
     },
     playerBuyIn: {
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.xs,
+    },
+    playerHost: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
     },
     playerProfit: {
       alignItems: 'flex-end',
+      marginTop: theme.spacing.xs,
     },
     profitAmount: {
       fontSize: theme.fontSize.md,
       fontWeight: '600',
     },
     playerStatus: {
+      position: 'absolute',
+      top: theme.spacing.xs,
+      right: theme.spacing.xs,
       fontSize: theme.fontSize.xs,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: 2,
       borderRadius: 12,
-      marginTop: 4,
+      backgroundColor: colorMode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
     },
     functionButton: {
       width: '48%',
@@ -576,6 +588,15 @@ const GameScreen: React.FC = () => {
       paddingHorizontal: theme.spacing.md, // 左右內邊距
       paddingVertical: theme.spacing.md, // 增加上下內邊距
       minHeight: 100, // 增加高度確保有足夠空間
+      position: 'relative',
+    },
+    blurCardLabel: {
+      position: 'absolute',
+      bottom: theme.spacing.xs,
+      right: theme.spacing.md,
+      fontSize: theme.fontSize.xs,
+      color: '#FFFFFF',
+      opacity: 0.8,
     },
     blurCardLeft: {
       flex: 1,
@@ -741,6 +762,23 @@ const GameScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <TopTabBar showCollaborationButton={true} />
 
+      {/* 加載中顯示轉動中的圓圈 */}
+      {state.loading && (
+        <View style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          zIndex: 9999 
+        }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      )}
+
       <ScrollView 
         ref={mainScrollRef}
         showsVerticalScrollIndicator={false}
@@ -763,9 +801,13 @@ const GameScreen: React.FC = () => {
             >
               <View style={styles.blurCardOverlay}>
                 <TouchableOpacity
-                  onPress={() => setGameSummaryModalVisible(true)}
+                  onPress={() => {
+                    console.log('點擊頂部卡片，打開牌局總結');
+                    setGameSummaryModalVisible(true);
+                  }}
                   activeOpacity={0.8}
-                  style={{ flex: 1, justifyContent: 'center' }}
+                  style={{ flex: 1, justifyContent: 'center', zIndex: 10 }}
+                  delayPressIn={0}
                 >
                   <View style={styles.blurCardContent}>
                     <View style={styles.blurCardLeft}>
@@ -782,6 +824,9 @@ const GameScreen: React.FC = () => {
                         marginLeft: theme.spacing.sm,
                         transform: [{ rotate: '-90deg' }]
                       }}>▼</Text>
+                    </View>
+                    <View style={{ position: 'absolute', bottom: theme.spacing.xs, right: theme.spacing.md, flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
+                      <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -900,27 +945,42 @@ const GameScreen: React.FC = () => {
                       onPress={() => { setDetailsPlayer(player); setDetailsVisible(true); }}
                       activeOpacity={0.7}
                     >
+                      {/* 玩家狀態（右上角） */}
+                      <Text style={[
+                        styles.playerStatus,
+                        getStatusStyle(player.status)
+                      ]}>
+                        {player.status === 'active' ? t('game.inProgress') : t('game.cashedOut')}
+                      </Text>
                       <View style={styles.playerInfo}>
                         <Text style={styles.playerName}>{player.name}</Text>
-                            <Text style={styles.playerBuyIn}>
-                              {t('game.buyIn')}: <Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>$</Text><Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>{player.buyIn.toLocaleString()}</Text>
-                            </Text>
-                      </View>
-                      <View style={styles.playerProfit}>
+                        {/* 買入金額在盈虧上一行 */}
+                        <Text style={styles.playerBuyIn}>
+                          {t('game.buyIn')}: <Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>$</Text><Text style={{ color: colorMode === 'dark' ? '#FFD700' : theme.colors.textSecondary }}>{player.buyIn.toLocaleString()}</Text>
+                        </Text>
+                        {/* 盈虧 */}
                         {player.status === 'cashed_out' && (
                           <Text style={[
                             styles.profitAmount,
-                            { color: getProfitColor(player.profit) }
+                            { color: getProfitColor(player.profit), marginTop: theme.spacing.xs, fontSize: theme.fontSize.md }
                           ]}>
                             {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
                           </Text>
                         )}
-                            <Text style={[
-                              styles.playerStatus,
-                              getStatusStyle(player.status)
-                            ]}>
-                              {player.status === 'active' ? t('game.inProgress') : t('game.cashedOut')}
-                            </Text>
+                        {player.status === 'active' && (
+                          <Text style={[
+                            styles.profitAmount,
+                            { color: getProfitColor(player.profit), marginTop: theme.spacing.xs, fontSize: theme.fontSize.md }
+                          ]}>
+                            {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
+                          </Text>
+                        )}
+                        {/* 原來買入金額位置改為顯示負責host名稱（如有） */}
+                        {player.status === 'cashed_out' && (player as any).cashOutHost && (
+                          <Text style={styles.playerHost}>
+                            負責 Host：{(player as any).cashOutHost}
+                          </Text>
+                        )}
                       </View>
                     </TouchableOpacity>
                     </Swipeable>

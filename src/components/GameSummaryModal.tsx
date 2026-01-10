@@ -346,6 +346,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
       paddingVertical: theme.spacing.md,
       paddingHorizontal: 0,
       marginBottom: theme.spacing.sm,
+      position: 'relative',
     },
     playersItemsContainer: {
       borderRadius: theme.borderRadius.sm,
@@ -356,7 +357,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     playerHeaderRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
     },
     playerName: {
       fontSize: theme.fontSize.md,
@@ -367,16 +368,28 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ visible, onClose })
     playerBuyIn: {
       fontSize: theme.fontSize.sm,
       color: theme.colors.textSecondary,
-      marginRight: theme.spacing.md,
+      marginTop: theme.spacing.xs,
     },
     playerProfit: {
       fontSize: theme.fontSize.md,
       fontWeight: '700',
+      marginTop: theme.spacing.xs,
     },
     playerHost: {
-      marginTop: theme.spacing.xs,
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.textSecondary,
+      marginRight: theme.spacing.md,
+    },
+    playerStatus: {
+      position: 'absolute',
+      top: theme.spacing.xs,
+      right: 0,
       fontSize: theme.fontSize.xs,
       color: theme.colors.textSecondary,
+      backgroundColor: colorMode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: 2,
+      borderRadius: theme.borderRadius.xs,
     },
     positiveProfit: {
       color: theme.colors.success,
@@ -1740,23 +1753,29 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                           }}
                           activeOpacity={0.7}
                         >
+                          {/* 玩家狀態（右上角） */}
+                          <Text style={styles.playerStatus}>
+                            {player.status === 'cashed_out' ? '已兌現' : '進行中'}
+                          </Text>
                           <View style={styles.playerHeaderRow}>
-                            <Text style={styles.playerName}>{player.name}</Text>
-                            <Text style={styles.playerBuyIn}>
-                              {t('game.buyIn')}: {formatCurrency(player.buyIn)}
-                            </Text>
-                            <Text style={[
-                              styles.playerProfit,
-                              player.profit >= 0 ? styles.positiveProfit : styles.negativeProfit
-                            ]}>
-                              {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
-                            </Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.playerName}>{player.name}</Text>
+                              <Text style={styles.playerBuyIn}>
+                                {t('game.buyIn')}: {formatCurrency(player.buyIn)}
+                              </Text>
+                              <Text style={[
+                                styles.playerProfit,
+                                player.profit >= 0 ? styles.positiveProfit : styles.negativeProfit
+                              ]}>
+                                {player.profit >= 0 ? '+' : ''}{formatCurrency(player.profit)}
+                              </Text>
+                            </View>
+                            {!!cashOutHost && (
+                              <Text style={styles.playerHost}>
+                                負責 Host：{cashOutHost}
+                              </Text>
+                            )}
                           </View>
-                          {!!cashOutHost && (
-                            <Text style={styles.playerHost}>
-                              負責 Host：{cashOutHost}
-                            </Text>
-                          )}
                         </TouchableOpacity>
                       );
                     })}

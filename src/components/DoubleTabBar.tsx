@@ -188,12 +188,17 @@ const DoubleTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             title={t('modals.gameSummary')}
             onPress={() => {
               console.log('牌局總結按鈕被點擊');
-              setGameSummaryModalVisible(true);
+              try {
+                setGameSummaryModalVisible(true);
+              } catch (error) {
+                console.error('打開牌局總結失敗:', error);
+              }
             }}
             size="md"
-            style={{ flex: 1 }}
+            style={{ flex: 1, zIndex: 10 }}
             leftIconName="number"
             textStyle={colorMode === 'light' ? { color: '#64748B' } : undefined}
+            disabled={false}
           />
           <Button
             title={t('modals.endGame')}

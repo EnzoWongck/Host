@@ -151,7 +151,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
             ellipsizeMode="tail"
           >
             {categoryLabelMap[expense.category]}
-            {expense.host ? ` ${expense.host}` : ''}
+            {expense.host ? ` · ${expense.host}` : ''}
           </Text>
         </View>
         <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
@@ -173,7 +173,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
             ellipsizeMode="tail"
           >
             {categoryLabelMap[expense.category]}
-            {expense.host ? ` ${expense.host}` : ''}
+            {expense.host ? ` · ${expense.host}` : ''}
           </Text>
           <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
           <TouchableOpacity
