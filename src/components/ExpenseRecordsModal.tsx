@@ -187,7 +187,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     // Web 平台直接顯示點擊可編輯的記錄，並添加刪除按鈕
     if (Platform.OS === 'web') {
       return (
-        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm }}>
+        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             {expense.category === 'venue' ? (
               <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
