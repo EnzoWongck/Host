@@ -585,7 +585,7 @@ const GameScreen: React.FC = () => {
     blurCardContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center', // 內容垂直居中
+      alignItems: 'flex-end', // 內容底部對齊
       paddingHorizontal: theme.spacing.md, // 左右內邊距
       paddingVertical: theme.spacing.md, // 增加上下內邊距
       minHeight: 100, // 增加高度確保有足夠空間
@@ -615,7 +615,7 @@ const GameScreen: React.FC = () => {
       fontWeight: '800',
       color: netIncome > 0 ? '#FFD700' : netIncome < 0 ? theme.colors.error : theme.colors.textSecondary,
       fontVariant: ['tabular-nums'],
-      textAlign: 'center',
+      textAlign: 'right',
     },
     // 功能按鈕（去除背景卡片）
     functionsGrid: {
@@ -812,14 +812,11 @@ const GameScreen: React.FC = () => {
                       <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
                       <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
                     </View>
-                    <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'center', flex: 1 }}>
                       <Text style={styles.blurCardProfit}>
                         {formatCurrency(netIncome)}
                       </Text>
-                    </View>
-                    <View style={{ flex: 1 }} />
-                    <View style={{ position: 'absolute', bottom: theme.spacing.xs, left: 0, right: 0, alignItems: 'center', pointerEvents: 'none' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: theme.spacing.sm, pointerEvents: 'none' }}>
                         <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
                         <Text style={{ 
                           fontSize: theme.fontSize.md, 
