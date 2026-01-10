@@ -485,22 +485,22 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
             } catch (error) {
               console.error('打開購買模態框失敗:', error);
               // 如果打開失敗，使用 Alert 作為備用
-              Alert.alert(
-                'Chips 不足',
-                '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
-                [
-                  { text: '取消', style: 'cancel' },
-                  { 
-                    text: '購買 Chips', 
-                    onPress: () => {
+        Alert.alert(
+          'Chips 不足',
+          '創建新牌局需要消耗 1 Chip，請先購買 Chips。',
+          [
+            { text: '取消', style: 'cancel' },
+            { 
+              text: '購買 Chips', 
+              onPress: () => {
                       // 再次嘗試打開購買模態框
-                      if (openPurchaseModal) {
-                        openPurchaseModal();
-                      }
-                    }
-                  }
-                ]
-              );
+                if (openPurchaseModal) {
+                  openPurchaseModal();
+                }
+              }
+            }
+          ]
+        );
             }
           } else {
             console.error('openPurchaseModal 未定義或不是函數');
@@ -802,11 +802,11 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
             </View>
           ) : (
             <>
-              <Button
-                title={t('newGame.createGame')}
-                onPress={handleCreateGame}
-                size="md"
-              />
+          <Button
+            title={t('newGame.createGame')}
+            onPress={handleCreateGame}
+            size="md"
+          />
               <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.xs, textAlign: 'center', marginTop: theme.spacing.xs }}>
                 建立牌局將消耗 1 Chip
               </Text>

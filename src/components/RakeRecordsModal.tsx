@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
 import Modal from './Modal';
 import Button from './Button';
+import ConfirmModal from './ConfirmModal';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -23,6 +24,8 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
   const [editId, setEditId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editTime, setEditTime] = useState('');
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [rakeToDelete, setRakeToDelete] = useState<string | null>(null);
 
   const styles = StyleSheet.create({
     listContainer: { maxHeight: 420 },
@@ -89,7 +92,7 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
 
   const confirmEdit = (r: Rake) => {
     const amt = parseFloat(editAmount);
-    if (isNaN(amt) || amt <= 0) { Alert.alert(t('common.error') || '錯誤', t('rake.errorAmountRequired')); return; }
+    if (isNaN(amt)) { Alert.alert(t('common.error') || '錯誤', t('rake.errorAmountRequired')); return; }
     const tsBase = r.timestamp ? new Date(r.timestamp) : new Date();
     const [h,m] = (editTime || '').split(':');
     if (h && m) { tsBase.setHours(Number(h)); tsBase.setMinutes(Number(m)); }
@@ -98,10 +101,15 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
   };
 
   const askDelete = (id: string) => {
-    Alert.alert(t('rake.deleteRake') || '刪除抽水', t('rake.deleteConfirm') || '確定刪除這筆抽水？', [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteRake(currentGame!.id, id) },
-    ]);
+    if (Platform.OS === 'web') {
+      setRakeToDelete(id);
+      setDeleteConfirmVisible(true);
+    } else {
+      Alert.alert(t('rake.deleteRake') || '刪除抽水', t('rake.deleteConfirm') || '確定刪除這筆抽水？', [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => deleteRake(currentGame!.id, id) },
+      ]);
+    }
   };
 
   return (
@@ -154,7 +162,7 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
                       {rowContent}
                       {editId === r.id && (
                         <View style={styles.editRow}>
-                          <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} placeholder="$" keyboardType="numeric" />
+                          <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} placeholder="$" keyboardType={Platform.OS === 'web' ? 'default' : 'numbers-and-punctuation'} />
                           <TextInput style={styles.input} value={editTime} onChangeText={setEditTime} placeholder={t('rake.timePlaceholder')} />
                           <View style={styles.editActions}>
                             <Button title={t('common.cancel')} variant="outline" onPress={() => setEditId(null)} size="sm" style={{ marginRight: theme.spacing.sm }} />
@@ -221,6 +229,27 @@ const RakeRecordsModal: React.FC<RakeRecordsModalProps> = ({ visible, onClose })
           </ScrollView>
         </View>
       )}
+      
+      {/* 刪除確認對話框（Web） */}
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        onClose={() => {
+          setDeleteConfirmVisible(false);
+          setRakeToDelete(null);
+        }}
+        title={t('rake.deleteRake') || '刪除抽水'}
+        message={t('rake.deleteConfirm') || '確定刪除這筆抽水？'}
+        onConfirm={() => {
+          if (currentGame && rakeToDelete) {
+            deleteRake(currentGame.id, rakeToDelete);
+          }
+          setDeleteConfirmVisible(false);
+          setRakeToDelete(null);
+        }}
+        confirmText={t('common.delete') || '刪除'}
+        cancelText={t('common.cancel') || '取消'}
+        confirmVariant="danger"
+      />
     </Modal>
   );
 };

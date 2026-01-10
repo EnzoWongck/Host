@@ -41,7 +41,7 @@ const getIsLocalhost = (): boolean => {
     hostname.startsWith('192.168.') ||
     hostname.startsWith('10.') ||
     hostname.endsWith('.local')
-  );
+);
 };
 
 const getIsProduction = (): boolean => {
@@ -51,7 +51,7 @@ const getIsProduction = (): boolean => {
   return (
     hostname === 'lunchips.com' ||
     hostname === 'www.lunchips.com'
-  );
+);
 };
 
 // Sandbox 測試環境配置
@@ -134,8 +134,8 @@ export const PAYPAL_SUBSCRIPTION_PLAN_ID = (() => {
 export const PAYPAL_SDK_URL = (() => {
   try {
     return PAYPAL_USE_SANDBOX 
-      ? 'https://www.sandbox.paypal.com/sdk/js'
-      : 'https://www.paypal.com/sdk/js';
+  ? 'https://www.sandbox.paypal.com/sdk/js'
+  : 'https://www.paypal.com/sdk/js';
   } catch {
     return 'https://www.sandbox.paypal.com/sdk/js';
   }

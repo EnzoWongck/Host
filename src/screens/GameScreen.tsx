@@ -689,7 +689,7 @@ const GameScreen: React.FC = () => {
             }
           }
         } else {
-          Alert.alert(
+      Alert.alert(
             '消耗 Chip',
             '你的牌局編輯時間已用完。是否消耗 1 Chip 繼續編輯？',
             [
@@ -705,7 +705,7 @@ const GameScreen: React.FC = () => {
                 },
               },
             ]
-          );
+      );
         }
       } else {
         // 沒有 chips 餘額，顯示購買 Chips 視窗
