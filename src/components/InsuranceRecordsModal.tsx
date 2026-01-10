@@ -432,9 +432,11 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
                   <View key={input.id} style={styles.partnerRow}>
                     <View style={styles.partnerInputRow}>
                     <View style={styles.partnerNameInput}>
-                      <Text style={styles.label}>
-                        {index === 0 ? (t('insurance.partnerName') || '分成者名稱') : ' '}
-                      </Text>
+                      {index === 0 && (
+                        <Text style={[styles.label, { marginBottom: theme.spacing.xs }]}>
+                          {t('insurance.partnerName') || '分成者名稱'}
+                        </Text>
+                      )}
                       <TextInput
                         style={[
                           styles.input,
@@ -453,9 +455,11 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
                       />
                     </View>
                     <View style={styles.partnerPercentageInput}>
-                      <Text style={styles.label}>
-                        {index === 0 ? (t('insurance.percentage') || '百分比') : ' '}
-                      </Text>
+                      {index === 0 && (
+                        <Text style={[styles.label, { marginBottom: theme.spacing.xs }]}>
+                          {t('insurance.percentage') || '百分比'}
+                        </Text>
+                      )}
                       <TextInput
                         style={[
                           styles.input,

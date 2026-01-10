@@ -49,7 +49,7 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   const categories: { id: ExpenseCategory; label: string }[] = [
     { id: 'takeout', label: '外賣' },
     { id: 'miscellaneous', label: '雜費' },
-    { id: 'taxi', label: '車費' },
+    { id: 'taxi', label: '交通' },
     { id: 'venue', label: '場地' },
     { id: 'other', label: '其他' },
   ];

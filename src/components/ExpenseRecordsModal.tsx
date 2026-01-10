@@ -95,6 +95,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       color: theme.colors.text,
       fontSize: theme.fontSize.md,
       marginRight: theme.spacing.md,
+      flexShrink: 1,
     },
     expenseItemAmount: { 
       width: 100, 
@@ -120,9 +121,9 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     actionButton: {
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: theme.spacing.md,
+      paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.sm,
-      minWidth: 70,
+      minWidth: 60,
     },
     editButton: {
       backgroundColor: '#FFFFFF',
@@ -150,19 +151,23 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
 
     const recordContent = (
       <View style={styles.expenseItemRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
           {expense.category === 'venue' ? (
-            <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
+            <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
           ) : expense.category === 'miscellaneous' ? (
-            <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm }} />
+            <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
           ) : expense.category === 'taxi' ? (
-            <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm }} />
+            <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
           ) : expense.category === 'takeout' ? (
-            <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm }} />
+            <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
           ) : expense.category === 'other' ? (
-            <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm }} />
+            <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
           ) : null}
-          <Text style={styles.expenseItemLeft}>
+          <Text 
+            style={styles.expenseItemLeft}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {categoryLabelMap[expense.category]}
             {expense.host ? ` · ${expense.host}` : ''}
           </Text>
@@ -188,19 +193,23 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     if (Platform.OS === 'web') {
       return (
         <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
             {expense.category === 'venue' ? (
-              <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
+              <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
             ) : expense.category === 'miscellaneous' ? (
-              <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm }} />
+              <Icon name="misc711" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
             ) : expense.category === 'taxi' ? (
-              <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm }} />
+              <Icon name="taxi" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
             ) : expense.category === 'takeout' ? (
-              <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm }} />
+              <Icon name="burger" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
             ) : expense.category === 'other' ? (
-              <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm }} />
+              <Icon name="other" size={20} style={{ marginRight: theme.spacing.sm, flexShrink: 0 }} />
             ) : null}
-            <Text style={styles.expenseItemLeft}>
+            <Text 
+              style={styles.expenseItemLeft}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {categoryLabelMap[expense.category]}
               {expense.host ? ` · ${expense.host}` : ''}
             </Text>
