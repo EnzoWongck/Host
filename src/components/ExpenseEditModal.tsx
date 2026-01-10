@@ -36,10 +36,13 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
     return typeof h === 'string' ? h : h.name;
   };
 
-  // 當 defaultHost 改變時同步 selectedHost
+  // 當 defaultHost 改變時同步 selectedHost，並重置類別展開狀態
   useEffect(() => {
     if (visible && defaultHost !== undefined) {
       setSelectedHost(defaultHost);
+    }
+    if (!visible) {
+      setCategoryExpanded(false);
     }
   }, [visible, defaultHost]);
 
