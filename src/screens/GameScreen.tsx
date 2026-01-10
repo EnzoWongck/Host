@@ -575,6 +575,7 @@ const GameScreen: React.FC = () => {
         ? 'rgba(226, 232, 240, 0.5)' 
         : 'rgba(58, 58, 58, 0.5)',
       borderRadius: theme.borderRadius.lg, // 與 Card 的圓角一致
+      minHeight: 120, // 確保有足夠高度
       ...(Platform.OS === 'web' && {
         // Web 平台使用 CSS backdrop-filter 實現模糊，減少模糊值
         // @ts-ignore
@@ -819,16 +820,16 @@ const GameScreen: React.FC = () => {
               resizeMode="cover"
               blurRadius={Platform.OS === 'web' ? 0 : 1} // 減輕模糊效果
             >
-              <View style={styles.blurCardOverlay}>
-                <TouchableOpacity
-                  onPress={() => {
-                    console.log('點擊頂部卡片，打開牌局總結');
-                    setGameSummaryModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                  style={{ flex: 1, justifyContent: 'center', zIndex: 10 }}
-                  delayPressIn={0}
-                >
+              <TouchableOpacity
+                onPress={() => {
+                  console.log('點擊頂部卡片，打開牌局總結');
+                  setGameSummaryModalVisible(true);
+                }}
+                activeOpacity={0.8}
+                style={{ flex: 1, zIndex: 10 }}
+                delayPressIn={0}
+              >
+                <View style={styles.blurCardOverlay}>
                   <View style={styles.blurCardContent}>
                     {/* 左側：牌局名稱和時長，垂直居中 */}
                     <View style={styles.blurCardLeft}>
@@ -847,8 +848,8 @@ const GameScreen: React.FC = () => {
                       <Text style={styles.blurCardTriangle}>▼</Text>
                     </View>
                   </View>
-                </TouchableOpacity>
-              </View>
+                </View>
+              </TouchableOpacity>
             </ImageBackground>
           </Card>
           )}
