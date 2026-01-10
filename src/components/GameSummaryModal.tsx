@@ -913,18 +913,9 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
   });
   
   // 更新 Host 數據並計算 transferAmount
-  // 先計算所有 Host 的實際收入總和（用於分成計算，不包含保險）
-  // 實際收入 = playerCollected - cost - dealerSalary
-  // 其中 playerCollected 來自玩家盈虧（買入 - 兌現），不包含保險相關金額
-  let totalActualIncome = 0;
-  hosts.forEach(h => {
-    const playerProfit = profitByHost[h.name] || 0;
-    const playerCollected = -playerProfit; // Host 從玩家實際收取的金額（玩家總盈虧 × -1，不含保險）
-    const cost = costByHost[h.name] || 0;
-    const dealerSalary = dealerSalaryByHost[h.name] || 0;
-    // 每個 Host 的實際收入 = playerCollected - cost - dealerSalary（不含保險）
-    totalActualIncome += (playerCollected - cost - dealerSalary);
-  });
+  // 收入分成 = 實際收賬（＝財務報表的實際收賬） × 分成比例
+  // 實際收賬 = 總買入 - 總兌現 - 總支出 - 發牌員薪金 - 保險損益
+  // 注意：實際收賬已經扣除了保險損益，所以分成基於實際收賬（不含保險）
   
   const updatedHosts: Host[] = hosts.map(h => {
     const playerProfit = profitByHost[h.name] || 0;
@@ -933,12 +924,12 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
     const dealerSalary = dealerSalaryByHost[h.name] || 0;
     const shareRatio = h.shareRatio || equalShare;
     
-    // Host 應得分成 = 實際收入總和 × shareRatio（基於實際收入，不包含保險）
+    // Host 應得分成 = 實際收賬 × shareRatio（基於財務報表的實際收賬）
     // Host 核心牌局實際「賺到的金額」 = playerCollected - cost - dealerSalary（不含保險）
     // transferAmount 只比較「核心牌局實際收入」與「應得分成」，保險獨立顯示、不影響轉帳
     //   > 0 代表多賺了，需要「應付」給其他 Host
     //   < 0 代表少賺了，需要「應收」其他 Host 補給
-    const shareAmount = totalActualIncome * shareRatio;
+    const shareAmount = actualReceipts * shareRatio;
     const transferAmount = (playerCollected - cost - dealerSalary) - shareAmount;
     
     return {
@@ -1542,7 +1533,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                     {updatedHosts.map((h) => {
                       const playerNet = profitByHost[h.name] || 0;           // 玩家總盈虧
                       const playerCollected = -playerNet;                    // Host 從玩家收取（或支付）
-                      const shareAmount = totalActualIncome * (h.shareRatio || equalShare);
+                      const shareAmount = actualReceipts * (h.shareRatio || equalShare);
                       const statusText =
                         h.transferAmount > 0
                           ? `應付 ${formatCurrency(h.transferAmount)}`
@@ -1573,7 +1564,7 @@ const actualProfitNoRake = currentGame.gameMode === 'noRake'
                               : `已支付 ${formatCurrency(Math.abs(playerCollected))}`}
                           </Text>
                           <Text style={styles.settlementFormula}>
-                            收入分成：{formatCurrency(shareAmount)}（實際收入總和 {formatCurrency(totalActualIncome)} × 分成 {formatPercentage(h.shareRatio || equalShare)}%）
+                            收入分成：{formatCurrency(shareAmount)}（實際收賬 {formatCurrency(actualReceipts)} × 分成 {formatPercentage(h.shareRatio || equalShare)}%）
                           </Text>
                           <Text style={styles.settlementFormula}>
                             支出金額：{formatCurrency(h.cost || 0)}
