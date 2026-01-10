@@ -309,6 +309,37 @@ const InsuranceRecordsModal: React.FC<InsuranceRecordsModalProps> = ({ visible, 
   const updateDefaultPartnerPercentage = (id: string, percentage: string) => {
     // 只允許數字和小數點
     const numericValue = percentage.replace(/[^0-9.]/g, '');
+    
+    // 檢測是否輸入 "33" 且為整數（用於自動設置3等份）
+    const currentInputIndex = defaultPartnerInputs.findIndex(input => input.id === id);
+    const isFirstInput = currentInputIndex === 0;
+    
+    // 如果輸入為 "33" 且沒有小數點，且是第一個輸入欄
+    if (numericValue === '33' && !numericValue.includes('.') && isFirstInput) {
+      // 確保有3個分成者輸入欄
+      let updatedInputs = [...defaultPartnerInputs];
+      
+      // 如果只有一個分成者，添加另外兩個
+      if (updatedInputs.length < 3) {
+        while (updatedInputs.length < 3) {
+          updatedInputs.push({
+            id: Date.now().toString() + Math.random(),
+            name: '',
+            percentage: '',
+          });
+        }
+      }
+      
+      // 將所有分成者（最多3個）設置為 33.3
+      updatedInputs = updatedInputs.slice(0, 3).map((input, index) => ({
+        ...input,
+        percentage: '33.3',
+      }));
+      
+      setDefaultPartnerInputs(updatedInputs);
+      return;
+    }
+    
     setDefaultPartnerInputs(
       defaultPartnerInputs.map(input =>
         input.id === id ? { ...input, percentage: numericValue } : input

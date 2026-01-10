@@ -360,6 +360,37 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
 
   const updateCustomPartnerPercentage = (id: string, percentage: string) => {
     const numericValue = percentage.replace(/[^0-9.]/g, '');
+    
+    // 檢測是否輸入 "33" 且為整數（用於自動設置3等份）
+    const currentInputIndex = customPartnerInputs.findIndex(input => input.id === id);
+    const isFirstInput = currentInputIndex === 0;
+    
+    // 如果輸入為 "33" 且沒有小數點，且是第一個輸入欄
+    if (numericValue === '33' && !numericValue.includes('.') && isFirstInput) {
+      // 確保有3個分成者輸入欄
+      let updatedInputs = [...customPartnerInputs];
+      
+      // 如果只有一個分成者，添加另外兩個
+      if (updatedInputs.length < 3) {
+        while (updatedInputs.length < 3) {
+          updatedInputs.push({
+            id: Date.now().toString() + Math.random(),
+            name: '',
+            percentage: '',
+          });
+        }
+      }
+      
+      // 將所有分成者（最多3個）設置為 33.3
+      updatedInputs = updatedInputs.slice(0, 3).map((input, index) => ({
+        ...input,
+        percentage: '33.3',
+      }));
+      
+      setCustomPartnerInputs(updatedInputs);
+      return;
+    }
+    
     setCustomPartnerInputs(
       customPartnerInputs.map(input =>
         input.id === id ? { ...input, percentage: numericValue } : input
