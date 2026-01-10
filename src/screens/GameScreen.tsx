@@ -585,10 +585,10 @@ const GameScreen: React.FC = () => {
     blurCardContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'stretch', // 拉伸以填充高度
+      alignItems: 'center', // 垂直居中
       paddingHorizontal: theme.spacing.md, // 左右內邊距
       paddingTop: theme.spacing.md, // 頂部內邊距
-      paddingBottom: theme.spacing.lg, // 增加底部內邊距，向下移動
+      paddingBottom: theme.spacing.lg, // 增加底部內邊距，為底部標籤留出空間
       minHeight: 100, // 增加高度確保有足夠空間
       position: 'relative',
     },
@@ -809,28 +809,27 @@ const GameScreen: React.FC = () => {
                   delayPressIn={0}
                 >
                   <View style={styles.blurCardContent}>
-                    <View style={styles.blurCardLeft}>
+                    {/* 左側：牌局名稱和時長，垂直居中 */}
+                    <View style={[styles.blurCardLeft, { justifyContent: 'center' }]}>
                       <Text style={styles.blurCardGameName}>{currentGame.name}</Text>
                       <Text style={styles.blurCardTime}>{elapsedTime || '0時 0分'}</Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'space-between', flex: 1, minHeight: 80 }}>
-                      {/* 牌局盈虧：上下置中 */}
-                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end', width: '100%' }}>
-                        <Text style={styles.blurCardProfit}>
-                          {formatCurrency(netIncome)}
-                        </Text>
-                      </View>
-                      {/* 三角形與文字：貼住底部 */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
-                        <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
-                        <Text style={{ 
-                          fontSize: theme.fontSize.md, 
-                          color: '#FFFFFF', 
-                          marginLeft: theme.spacing.xs,
-                          transform: [{ rotate: '-90deg' }],
-                          opacity: 0.8,
-                        }}>▼</Text>
-                      </View>
+                    {/* 右側：牌局盈虧，垂直居中 */}
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'center', flex: 1, position: 'relative' }}>
+                      <Text style={styles.blurCardProfit}>
+                        {formatCurrency(netIncome)}
+                      </Text>
+                    </View>
+                    {/* 「牌局總結/設定」：貼住卡片底部 */}
+                    <View style={{ position: 'absolute', bottom: theme.spacing.xs, right: theme.spacing.md, flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
+                      <Text style={styles.blurCardLabel}>牌局總結/設定</Text>
+                      <Text style={{ 
+                        fontSize: theme.fontSize.md, 
+                        color: '#FFFFFF', 
+                        marginLeft: theme.spacing.xs,
+                        transform: [{ rotate: '-90deg' }],
+                        opacity: 0.8,
+                      }}>▼</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
