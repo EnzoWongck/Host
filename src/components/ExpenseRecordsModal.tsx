@@ -86,9 +86,9 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+      minHeight: 44,
     },
     expenseItemLeft: { 
       flex: 1, 
@@ -106,9 +106,10 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     },
     editIconContainer: {
       width: 40,
+      height: 40,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: theme.spacing.sm,
+      marginRight: theme.spacing.xs,
     },
     emptyMessage: {
       color: theme.colors.textSecondary,
@@ -119,9 +120,9 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     actionButton: {
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
-      minWidth: 60,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      minWidth: 70,
     },
     editButton: {
       backgroundColor: '#FFFFFF',
@@ -186,10 +187,12 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     // Web 平台直接顯示點擊可編輯的記錄，並添加刪除按鈕
     if (Platform.OS === 'web') {
       return (
-        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-          {recordContent}
+        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            {recordContent}
+          </View>
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton, { marginLeft: 'auto' }]}
+            style={[styles.actionButton, styles.deleteButton]}
             onPress={(e) => {
               e.stopPropagation();
               if (!currentGame) return;
