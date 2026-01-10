@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Platform, Modal, FlatList } from 'react-native';
-import Modal as CustomModal from './Modal';
+import CustomModal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
