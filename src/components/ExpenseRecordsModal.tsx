@@ -8,6 +8,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
@@ -18,6 +19,9 @@ import Icon from './Icon';
 import SwipeHint from './SwipeHint';
 import ConfirmModal from './ConfirmModal';
 import { Expense } from '../types/game';
+// 靜態導入圖片
+import EditIconImage from '../../assets/icons/edit.png';
+import EditBlackIconImage from '../../assets/icons/edit.black.png';
 
 interface ExpenseRecordsModalProps {
   visible: boolean;
@@ -80,9 +84,9 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     },
     expenseItemRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -90,6 +94,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       flex: 1, 
       color: theme.colors.text,
       fontSize: theme.fontSize.md,
+      marginRight: theme.spacing.md,
     },
     expenseItemAmount: { 
       width: 100, 
@@ -97,12 +102,13 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       fontWeight: '600', 
       color: theme.colors.text,
       fontSize: theme.fontSize.md,
+      marginRight: theme.spacing.md,
     },
-    expenseItemTime: { 
-      width: 80, 
-      textAlign: 'right', 
-      color: theme.colors.textSecondary,
-      fontSize: theme.fontSize.sm,
+    editIconContainer: {
+      width: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.sm,
     },
     emptyMessage: {
       color: theme.colors.textSecondary,
@@ -114,7 +120,8 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.sm,
-      marginLeft: 4,
+      paddingVertical: theme.spacing.xs,
+      minWidth: 60,
     },
     editButton: {
       backgroundColor: '#FFFFFF',
@@ -141,11 +148,7 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
     };
 
     const recordContent = (
-      <TouchableOpacity 
-        style={styles.expenseItemRow}
-        onPress={handleEdit}
-        activeOpacity={0.7}
-      >
+      <View style={styles.expenseItemRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           {expense.category === 'venue' ? (
             <Icon name="table" size={20} style={{ marginRight: theme.spacing.sm }} />
@@ -164,24 +167,31 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
           </Text>
         </View>
         <Text style={styles.expenseItemAmount}>$ {expense.amount.toLocaleString()}</Text>
-        <Text style={styles.expenseItemTime}>
-          {new Date(expense.timestamp).toLocaleTimeString('zh-TW', { 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.editIconContainer}
+          onPress={handleEdit}
+          activeOpacity={0.7}
+        >
+          <Image 
+            source={colorMode === 'dark' 
+              ? EditBlackIconImage 
+              : EditIconImage} 
+            style={{ width: 20, height: 20 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
     );
 
     // Web 平台直接顯示點擊可編輯的記錄，並添加刪除按鈕
     if (Platform.OS === 'web') {
       return (
-        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View key={expense.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
           {recordContent}
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton, { marginLeft: theme.spacing.sm }]}
-            onPress={() => {
+            style={[styles.actionButton, styles.deleteButton, { marginLeft: 'auto' }]}
+            onPress={(e) => {
+              e.stopPropagation();
               if (!currentGame) return;
               setExpenseToDelete(expense);
               setDeleteConfirmVisible(true);

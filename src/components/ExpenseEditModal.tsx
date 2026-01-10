@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Platform, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import CustomModal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
@@ -25,7 +25,7 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   const { theme, colorMode } = useTheme();
   const { state } = useGame();
   const [selectedHost, setSelectedHost] = useState<string | null>(defaultHost || null);
-  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [categoryExpanded, setCategoryExpanded] = useState(false);
   
   const currentGame = state.currentGame;
   const hosts = currentGame?.hosts || [];
@@ -98,45 +98,30 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
       color: theme.colors.text,
       fontSize: theme.fontSize.md,
     },
-    categoryPickerModal: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    categoryDropdown: {
+      marginTop: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
+      overflow: 'hidden',
     },
-    categoryPickerContainer: {
-      width: '80%',
-      maxWidth: 400,
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      maxHeight: '60%',
-    },
-    categoryPickerHeader: {
-      padding: theme.spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    categoryPickerTitle: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: '600',
-      color: theme.colors.text,
-    },
-    categoryPickerItem: {
+    categoryItem: {
       padding: theme.spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
-    categoryPickerItemSelected: {
+    categoryItemLast: {
+      borderBottomWidth: 0,
+    },
+    categoryItemSelected: {
       backgroundColor: theme.colors.primary + '20',
     },
-    categoryPickerItemText: {
+    categoryItemText: {
       fontSize: theme.fontSize.md,
       color: theme.colors.text,
     },
-    categoryPickerItemTextSelected: {
+    categoryItemTextSelected: {
       fontWeight: '600',
       color: theme.colors.primary,
     },
@@ -165,12 +150,40 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
             <Text style={styles.label}>支出類別</Text>
             <TouchableOpacity
               style={styles.categoryButton}
-              onPress={() => setCategoryPickerVisible(true)}
+              onPress={() => setCategoryExpanded(!categoryExpanded)}
               activeOpacity={0.7}
             >
               <Text style={styles.categoryButtonText}>{currentCategoryLabel}</Text>
-              <Text style={{ color: theme.colors.textSecondary }}>▼</Text>
+              <Text style={{ color: theme.colors.textSecondary }}>{categoryExpanded ? '▲' : '▼'}</Text>
             </TouchableOpacity>
+            {categoryExpanded && (
+              <View style={styles.categoryDropdown}>
+                {categories.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.categoryItem,
+                      index === categories.length - 1 && styles.categoryItemLast,
+                      category === item.id && styles.categoryItemSelected,
+                    ]}
+                    onPress={() => {
+                      setCategory(item.id);
+                      setCategoryExpanded(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryItemText,
+                        category === item.id && styles.categoryItemTextSelected,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
         <View style={styles.group}>
@@ -214,60 +227,6 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
         />
       </ScrollView>
     </CustomModal>
-
-    {/* 類別選擇滾輪 */}
-    <Modal
-      visible={categoryPickerVisible}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setCategoryPickerVisible(false)}
-    >
-      <TouchableOpacity
-        style={styles.categoryPickerModal}
-        activeOpacity={1}
-        onPress={() => setCategoryPickerVisible(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.categoryPickerContainer}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <View style={styles.categoryPickerHeader}>
-            <Text style={styles.categoryPickerTitle}>選擇類別</Text>
-            <TouchableOpacity onPress={() => setCategoryPickerVisible(false)}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 24, fontWeight: '300' }}>×</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={categories}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryPickerItem,
-                  category === item.id && styles.categoryPickerItemSelected,
-                ]}
-                onPress={() => {
-                  setCategory(item.id);
-                  setCategoryPickerVisible(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryPickerItemText,
-                    category === item.id && styles.categoryPickerItemTextSelected,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
-    </>
   );
 };
 
