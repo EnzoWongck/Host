@@ -466,12 +466,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Effects
   // ============================================
 
-  // 監聽認證狀態變化
+  // 監聯認證狀態變化
   useEffect(() => {
     let isMounted = true;
+    let sessionTimeout: NodeJS.Timeout | null = null;
 
-    // 獲取當前 session
+    // 獲取當前 session（帶超時機制）
     const getInitialSession = async () => {
+      // 設置超時，防止 PWA 從主畫面開啟時無限載入
+      sessionTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.log('⚠️ Session 獲取超時，結束載入狀態');
+          setLoading(false);
+        }
+      }, 5000); // 5秒超時
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (isMounted && session?.user) {
@@ -481,6 +490,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('獲取 session 失敗:', error);
       } finally {
+        if (sessionTimeout) {
+          clearTimeout(sessionTimeout);
+        }
         if (isMounted) {
           setLoading(false);
         }
@@ -512,6 +524,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      if (sessionTimeout) {
+        clearTimeout(sessionTimeout);
+      }
       subscription.unsubscribe();
     };
   }, [transformUser]);
