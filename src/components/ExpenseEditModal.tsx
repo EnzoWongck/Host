@@ -4,8 +4,6 @@ import Modal from './Modal';
 import Button from './Button';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
-import { useLanguage } from '../context/LanguageContext';
-import Icon from './Icon';
 import { Expense } from '../types/game';
 
 type ExpenseCategory = Expense['category'];
@@ -25,7 +23,6 @@ interface ExpenseEditModalProps {
 
 const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, onSave, category, description, amount, setCategory, setDescription, setAmount, defaultHost }) => {
   const { theme, colorMode } = useTheme();
-  const { t } = useLanguage();
   const { state } = useGame();
   const [selectedHost, setSelectedHost] = useState<string | null>(defaultHost || null);
   
@@ -45,12 +42,12 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
     }
   }, [visible, defaultHost]);
 
-  const categories: { id: ExpenseCategory; label: string; icon: any }[] = [
-    { id: 'takeout', label: t('expenseCategories.takeout'), icon: 'burger' },
-    { id: 'miscellaneous', label: t('expenseCategories.miscellaneous'), icon: 'misc711' },
-    { id: 'taxi', label: t('expenseCategories.taxi'), icon: 'taxi' },
-    { id: 'venue', label: t('expenseCategories.venue'), icon: 'table' },
-    { id: 'other', label: t('expenseCategories.other'), icon: 'other' },
+  const categories: { id: ExpenseCategory; label: string }[] = [
+    { id: 'takeout', label: '外賣' },
+    { id: 'miscellaneous', label: '雜費' },
+    { id: 'taxi', label: '車費' },
+    { id: 'venue', label: '場地' },
+    { id: 'other', label: '其他' },
   ];
 
   const styles = StyleSheet.create({
@@ -102,60 +99,40 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
   };
 
   return (
-    <Modal visible={visible} onClose={onClose} title={t('modals.editExpense')}>
+    <Modal visible={visible} onClose={onClose} title="編輯支出">
       <ScrollView>
         <View style={styles.group}>
-          <Text style={styles.label}>{t('modals.expenseCategory')}</Text>
+          <Text style={styles.label}>支出類別</Text>
           <View style={styles.row}>
             {categories.slice(0,3).map(c => (
-              <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive]} onPress={() => setCategory(c.id)} activeOpacity={1}>
-                <View style={styles.chipContent}>
-                  <View style={{ 
-                    flex: 1, 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    marginBottom: c.icon === 'taxi' ? theme.spacing.xs : 0 
-                  }}>
-                    <Icon name={c.icon} size={c.icon === 'taxi' ? 28 : 24} />
-                  </View>
-                  <Text style={[styles.chipText, { marginTop: 'auto', marginBottom: -theme.spacing.xs }]}>{c.label}</Text>
-                </View>
+              <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive, { aspectRatio: 2.5 }]} onPress={() => setCategory(c.id)} activeOpacity={1}>
+                <Text style={styles.chipText}>{c.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
           <View style={styles.row}>
             {categories.slice(3).map(c => (
-              <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive]} onPress={() => setCategory(c.id)} activeOpacity={1}>
-                <View style={styles.chipContent}>
-                  <View style={{ 
-                    flex: 1, 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    marginBottom: c.icon === 'taxi' ? theme.spacing.xs : 0 
-                  }}>
-                    <Icon name={c.icon} size={c.icon === 'taxi' ? 28 : 24} />
-                  </View>
-                  <Text style={[styles.chipText, { marginTop: 'auto', marginBottom: -theme.spacing.xs }]}>{c.label}</Text>
-                </View>
+              <TouchableOpacity key={c.id} style={[styles.chip, category===c.id && styles.chipActive, { aspectRatio: 2.5 }]} onPress={() => setCategory(c.id)} activeOpacity={1}>
+                <Text style={styles.chipText}>{c.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         <View style={styles.group}>
-          <Text style={styles.label}>{t('modals.expenseAmount')}</Text>
+          <Text style={styles.label}>金額</Text>
           <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="$" keyboardType="numeric" placeholderTextColor={theme.colors.textSecondary} />
         </View>
 
         <View style={styles.group}>
-          <Text style={styles.label}>{t('modals.expenseDescriptionOptional')}</Text>
-          <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder={t('modals.enterExpenseDescription')} placeholderTextColor={theme.colors.textSecondary} />
+          <Text style={styles.label}>描述（選填）</Text>
+          <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="輸入描述" placeholderTextColor={theme.colors.textSecondary} />
         </View>
 
         {/* 選擇 Host（多 Host 顯示，單 Host 自動綁定不顯示） */}
         {showHostSelection && (
           <View style={styles.group}>
-            <Text style={styles.label}>{t('modals.selectHost')}</Text>
+            <Text style={styles.label}>選擇 Host</Text>
             <View style={styles.hostChips}>
               {hosts.map(h => {
                 const hostName = getHostName(h);
@@ -175,7 +152,7 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({ visible, onClose, o
         )}
 
         <Button 
-          title={t('common.save')} 
+          title="儲存" 
           onPress={handleSave} 
           size="lg" 
           variant="primary"

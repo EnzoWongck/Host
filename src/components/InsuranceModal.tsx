@@ -80,7 +80,7 @@ const InsuranceModal: React.FC<InsuranceModalProps> = ({ visible, onClose, onCom
       backgroundColor: colorMode === 'light' ? '#F8F9FA' : theme.colors.surface,
     },
     partnerRow: {
-      marginBottom: theme.spacing.md,
+      marginBottom: theme.spacing.xs,
     },
     partnerInputRow: {
       flexDirection: 'row',

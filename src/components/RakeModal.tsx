@@ -173,7 +173,7 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
     }
 
     const rakeAmount = parseFloat(amount);
-    if (isNaN(rakeAmount) || rakeAmount <= 0) {
+    if (isNaN(rakeAmount)) {
       Alert.alert(t('common.error') || '錯誤', t('rake.errorAmountRequired'));
       return;
     }
@@ -280,7 +280,7 @@ const RakeModal: React.FC<RakeModalProps> = ({ visible, onClose }) => {
             onChangeText={setAmount}
             placeholder="輸入服務費金額"
             placeholderTextColor={colorMode === 'dark' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)'}
-            keyboardType="decimal-pad"
+            keyboardType="numbers-and-punctuation"
           />
           {amount.trim() !== '' && (
             <TouchableOpacity

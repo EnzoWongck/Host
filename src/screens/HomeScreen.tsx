@@ -40,6 +40,7 @@ const HomeScreen: React.FC = () => {
   const [gameToDelete, setGameToDelete] = useState<{ id: string; name: string } | null>(null);
   const [pendingGameNavigation, setPendingGameNavigation] = useState<string | null>(null);
   const [showAddToHomeModal, setShowAddToHomeModal] = useState(false);
+  const [completedGamesExpanded, setCompletedGamesExpanded] = useState(false);
 
   const handleLanguageSelect = (lang: Language) => {
     setLanguage(lang);
@@ -358,87 +359,146 @@ const HomeScreen: React.FC = () => {
               <Text style={[styles.gameInfo, { textAlign: 'center' }]}>{t('home.noGames')}</Text>
             </Card>
           ) : (
-            // 排序：先按狀態（active 在前），然後按時間（最新的在前）
-            [...state.games]
-              .sort((a, b) => {
-                // 先按狀態排序：active 在前，completed 在後
-                if (a.status !== b.status) {
-                  return a.status === 'active' ? -1 : 1;
-                }
-                // 相同狀態時，按時間排序：最新的在前
-                const timeA = new Date(a.startTime).getTime();
-                const timeB = new Date(b.startTime).getTime();
-                return timeB - timeA; // 降序：最新的在前
-              })
-              .map((game) => (
-                <TouchableOpacity 
-                  key={game.id} 
-                  onPress={() => {
-                    // 直接進入牌局，不檢查 chip 狀態
-                    // chip 狀態檢查和購買視窗將在 GameScreen 中的按鈕點擊時處理
-                    selectCurrentGame(game.id);
-                    // 設置導航標記，等待 state 更新
-                    setPendingGameNavigation(game.id);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Card style={styles.gameCard}>
-                  <View style={styles.gameHeader}>
-                    <Text style={styles.gameName}>{game.name}</Text>
-                    <View style={styles.gameHeaderRight}>
-                      <Text
-                        style={[
-                          styles.gameStatus,
-                          game.status === 'active' ? styles.activeStatus : styles.completedStatus,
-                        ]}
-                      >
-                        {game.status === 'active' ? t('home.active') : t('home.completed')}
+            <>
+              {/* 進行中牌局 */}
+              {[...state.games]
+                .filter(g => g.status === 'active')
+                .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                .map((game) => (
+                  <TouchableOpacity 
+                    key={game.id} 
+                    onPress={() => {
+                      selectCurrentGame(game.id);
+                      setPendingGameNavigation(game.id);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Card style={styles.gameCard}>
+                      <View style={styles.gameHeader}>
+                        <Text style={styles.gameName}>{game.name}</Text>
+                        <View style={styles.gameHeaderRight}>
+                          <Text style={[styles.gameStatus, styles.activeStatus]}>
+                            {t('home.active')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.gameInfo}>
+                        {`${t('home.startTime')}: ${formatTime(game.startTime)} | ${t('home.inProgressTime')}: ${calculateDuration(game.startTime)}`}
                       </Text>
-                    </View>
-                  </View>
-                  
-                  <Text style={styles.gameInfo}>
-                    {game.status === 'active' 
-                      ? `${t('home.startTime')}: ${formatTime(game.startTime)} | ${t('home.inProgressTime')}: ${calculateDuration(game.startTime)}`
-                      : `${formatDate(game.startTime)} | ${t('home.duration')}: ${calculateDuration(game.startTime, game.endTime)}`
-                    }
-                  </Text>
+                      <View style={styles.gameStats}>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statValue}>{formatCurrency(game.totalBuyIn)}</Text>
+                          <Text style={styles.statLabel}>{t('home.totalBuyIn')}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statValue}>{game.players.length}</Text>
+                          <Text style={styles.statLabel}>{t('home.players')}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={[styles.statValue, { color: theme.colors.warning }]}>
+                            {formatCurrency(game.netProfit)}
+                          </Text>
+                          <Text style={styles.statLabel}>{t('home.currentProfit')}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.gameActionsRow}>
+                        <TouchableOpacity
+                          onPress={(e: any) => {
+                            e?.stopPropagation?.();
+                            handleDeleteGame(game.id, game.name);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.gameActionText, { color: theme.colors.error }]}>刪除</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </Card>
+                  </TouchableOpacity>
+                ))}
 
-                  <View style={styles.gameStats}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{formatCurrency(game.totalBuyIn)}</Text>
-                      <Text style={styles.statLabel}>{t('home.totalBuyIn')}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{game.players.length}</Text>
-                      <Text style={styles.statLabel}>{t('home.players')}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={[styles.statValue, { color: game.status === 'active' ? theme.colors.warning : theme.colors.success }]}>
-                        {formatCurrency(game.netProfit)}
-                      </Text>
-                      <Text style={styles.statLabel}>
-                        {game.status === 'active' ? t('home.currentProfit') : t('home.finalProfit')}
-                      </Text>
-                    </View>
-                  </View>
-                  {/* 操作列：右側刪除按鈕 */}
-                  <View style={styles.gameActionsRow}>
-                    <TouchableOpacity
-                      onPress={(e: any) => {
-                        e?.stopPropagation?.();
-                        handleDeleteGame(game.id, game.name);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.gameActionText, { color: theme.colors.error }]}>
-                        刪除
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            ))
+              {/* 已結束牌局 - 可摺疊 */}
+              {state.games.filter(g => g.status === 'completed').length > 0 && (
+                <>
+                  <TouchableOpacity
+                    onPress={() => setCompletedGamesExpanded(!completedGamesExpanded)}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingVertical: theme.spacing.md,
+                      marginTop: theme.spacing.sm,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: theme.fontSize.md,
+                      fontWeight: '600',
+                      color: theme.colors.textSecondary,
+                    }}>
+                      已結束牌局 ({state.games.filter(g => g.status === 'completed').length})
+                    </Text>
+                    <Text style={{ fontSize: theme.fontSize.md, color: theme.colors.textSecondary }}>
+                      {completedGamesExpanded ? '▲' : '▼'}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {completedGamesExpanded && [...state.games]
+                    .filter(g => g.status === 'completed')
+                    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                    .map((game) => (
+                      <TouchableOpacity 
+                        key={game.id} 
+                        onPress={() => {
+                          selectCurrentGame(game.id);
+                          setPendingGameNavigation(game.id);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Card style={styles.gameCard}>
+                          <View style={styles.gameHeader}>
+                            <Text style={styles.gameName}>{game.name}</Text>
+                            <View style={styles.gameHeaderRight}>
+                              <Text style={[styles.gameStatus, styles.completedStatus]}>
+                                {t('home.completed')}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.gameInfo}>
+                            {`${formatDate(game.startTime)} | ${t('home.duration')}: ${calculateDuration(game.startTime, game.endTime)}`}
+                          </Text>
+                          <View style={styles.gameStats}>
+                            <View style={styles.statItem}>
+                              <Text style={styles.statValue}>{formatCurrency(game.totalBuyIn)}</Text>
+                              <Text style={styles.statLabel}>{t('home.totalBuyIn')}</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                              <Text style={styles.statValue}>{game.players.length}</Text>
+                              <Text style={styles.statLabel}>{t('home.players')}</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                              <Text style={[styles.statValue, { color: theme.colors.success }]}>
+                                {formatCurrency(game.netProfit)}
+                              </Text>
+                              <Text style={styles.statLabel}>{t('home.finalProfit')}</Text>
+                            </View>
+                          </View>
+                          <View style={styles.gameActionsRow}>
+                            <TouchableOpacity
+                              onPress={(e: any) => {
+                                e?.stopPropagation?.();
+                                handleDeleteGame(game.id, game.name);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.gameActionText, { color: theme.colors.error }]}>刪除</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </Card>
+                      </TouchableOpacity>
+                    ))}
+                </>
+              )}
+            </>
           )}
 
           {/* Join Game & New Game Buttons */}

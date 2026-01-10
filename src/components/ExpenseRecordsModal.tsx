@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useLanguage } from '../context/LanguageContext';
 import Modal from './Modal';
 import Icon from './Icon';
 import SwipeHint from './SwipeHint';
+import ConfirmModal from './ConfirmModal';
 import { Expense } from '../types/game';
 
 interface ExpenseRecordsModalProps {
@@ -32,6 +33,8 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
   const { theme, colorMode } = useTheme();
   const { t } = useLanguage();
   const { state, deleteExpense } = useGame();
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
@@ -151,10 +154,15 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
             style={[styles.actionButton, styles.deleteButton]}
             onPress={() => {
               if (!currentGame) return;
-              Alert.alert(t('expense.deleteExpense'), t('expense.deleteConfirm'), [
-                { text: t('common.cancel'), style: 'cancel' },
-                { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
-              ]);
+              if (Platform.OS === 'web') {
+                setExpenseToDelete(expense);
+                setDeleteConfirmVisible(true);
+              } else {
+                Alert.alert(t('expense.deleteExpense'), t('expense.deleteConfirm'), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(currentGame.id, expense.id) },
+                ]);
+              }
             }}
           >
             <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
@@ -234,6 +242,27 @@ const ExpenseRecordsModal: React.FC<ExpenseRecordsModalProps> = ({
           <Text style={styles.emptyMessage}>{t('expense.noRecords')}</Text>
         )}
       </ScrollView>
+      
+      {/* 刪除確認對話框（Web） */}
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        onClose={() => {
+          setDeleteConfirmVisible(false);
+          setExpenseToDelete(null);
+        }}
+        title="刪除支出"
+        message="確定刪除這筆支出紀錄？"
+        onConfirm={() => {
+          if (currentGame && expenseToDelete) {
+            deleteExpense(currentGame.id, expenseToDelete.id);
+          }
+          setDeleteConfirmVisible(false);
+          setExpenseToDelete(null);
+        }}
+        confirmText="刪除"
+        cancelText="取消"
+        confirmVariant="danger"
+      />
     </Modal>
   );
 };

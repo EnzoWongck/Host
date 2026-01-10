@@ -243,14 +243,21 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ visible, onClos
                 activeOpacity={0.7}
               >
                 <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>兌現紀錄</Text>
+                  <Text style={styles.cardTitle}>兌現紀錄{cashOutHost ? ` · ${cashOutHost}` : ''}</Text>
+                  <TouchableOpacity 
+                    onPress={() => setEditCashOutModalVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Image 
+                      source={colorMode === 'dark' 
+                        ? EditBlackIconImage 
+                        : EditIconImage} 
+                      style={{ width: 20, height: 20 }}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.cardContent}>
-                  {cashOutHost && (
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm, marginBottom: theme.spacing.xs }}>
-                      負責 Host：{cashOutHost}
-                    </Text>
-                  )}
                   <Text style={[
                     { fontSize: theme.fontSize.md, fontWeight: '600' },
                     currentPlayer.profit >= 0 ? { color: theme.colors.success } : { color: theme.colors.error }
