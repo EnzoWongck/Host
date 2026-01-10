@@ -49,10 +49,10 @@ const CashOutModal: React.FC<CashOutModalProps> = ({ visible, onClose, defaultPl
     if (visible && defaultPlayer) {
       setSelectedPlayer(defaultPlayer);
       // 編輯模式時，預填現有的兌現金額和 Host
-      if (isEditMode && (defaultPlayer as any)?.cashOutAmount) {
-        setChipAmount(String((defaultPlayer as any).cashOutAmount));
-        if ((defaultPlayer as any)?.cashOutHost) {
-          setSelectedHost((defaultPlayer as any).cashOutHost);
+      if (isEditMode && defaultPlayer?.cashOutAmount) {
+        setChipAmount(String(defaultPlayer.cashOutAmount));
+        if (defaultPlayer.cashOutHost) {
+          setSelectedHost(defaultPlayer.cashOutHost);
         }
       }
     } else if (!visible) {
