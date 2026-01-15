@@ -211,7 +211,8 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
           >
             {/* 標題 */}
             <Text style={dynamicStyles.title}>新增發牌員</Text>
