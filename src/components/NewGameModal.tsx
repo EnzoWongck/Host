@@ -380,10 +380,14 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
     console.log('consumeChip 函數:', typeof consumeChip);
     console.log('loadChipsBalance 函數:', typeof loadChipsBalance);
     
-    // 驗證輸入
-    if (!gameName.trim()) {
-      Alert.alert(t('common.error') || '錯誤', t('newGame.errorNameRequired'));
-      return;
+    // 如果牌局名稱為空，自動設置為當前日期（日/月格式）
+    let finalGameName = gameName.trim();
+    if (!finalGameName) {
+      const now = new Date();
+      const day = now.getDate().toString();
+      const month = (now.getMonth() + 1).toString(); // getMonth() 返回 0-11，需要 +1
+      finalGameName = `${day}/${month}`; // 格式：日/月，例如 "25/12"
+      console.log('牌局名稱為空，自動設置為:', finalGameName);
     }
 
     const validHosts = hosts.filter(host => host.trim() !== '');
@@ -528,7 +532,7 @@ const NewGameModal: React.FC<NewGameModalProps> = ({ visible, onClose }) => {
       
       // 創建新牌局
       const gameId = await createGame({
-        name: gameName.trim(),
+        name: finalGameName,
         hosts: hostObjects,
         smallBlind,
         bigBlind,
