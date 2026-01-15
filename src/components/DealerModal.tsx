@@ -98,26 +98,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       fontWeight: '600',
       color: theme.colors.text,
     },
-    dealerStatus: {
-      fontSize: theme.fontSize.xs,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 4,
-      borderRadius: 12,
-      overflow: 'hidden',
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-    },
-    workingStatus: {
-      // 發牌中：與主頁「進行中」樣式一樣
-      borderColor: colorMode === 'dark' ? theme.colors.border : '#10B981',
-      color: colorMode === 'dark' ? '#FFFFFF' : '#10B981',
-    },
-    offDutyStatus: {
-      // 已結束：深色模式改為紅色邊框和紅色文字
-      borderColor: colorMode === 'dark' ? '#EF4444' : '#EF4444',
-      color: colorMode === 'dark' ? '#EF4444' : '#EF4444',
-      backgroundColor: 'transparent',
-    },
     dealerStats: {
       marginBottom: theme.spacing.sm,
     },
@@ -161,25 +141,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginTop: theme.spacing.md,
-    },
-    statusButton: {
-      flex: 1,
-      paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.md,
-      borderRadius: theme.borderRadius.sm,
-      marginHorizontal: theme.spacing.xs,
-      alignItems: 'center',
-    },
-    workingButton: {
-      backgroundColor: theme.colors.success,
-    },
-    offDutyButton: {
-      backgroundColor: theme.colors.textSecondary,
-    },
-    statusButtonText: {
-      color: '#FFFFFF',
-      fontWeight: '600',
-      fontSize: theme.fontSize.sm,
     },
     addDealerButton: {
       backgroundColor: colorMode === 'light' ? '#E2E8F0' : theme.colors.primary,
@@ -608,22 +569,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
     setShowAddForm(false);
   };
 
-  const handleStatusChange = (dealer: Dealer, newStatus: 'working' | 'off_duty') => {
-    if (!currentGame) {
-      return;
-    }
-
-    const updatedDealer: Dealer = {
-      ...dealer,
-      status: newStatus,
-    };
-
-    try {
-      updateDealer(currentGame.id, updatedDealer);
-    } catch (error) {
-      console.error('Error updating dealer status:', error);
-    }
-  };
 
   const handleDeleteDealer = (dealer: Dealer) => {
     setDealerToDelete(dealer);
@@ -737,22 +682,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
             <Text style={styles.dealerName}>{item.name}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: theme.spacing.md }}>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                handleStatusChange(item, item.status === 'working' ? 'off_duty' : 'working');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.dealerStatus,
-                  item.status === 'working' ? styles.workingStatus : styles.offDutyStatus,
-                ]}
-              >
-                {item.status === 'working' ? t('dealer.working') : t('dealer.offDuty')}
-              </Text>
-            </TouchableOpacity>
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
