@@ -286,9 +286,9 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
 
             {/* 時薪和工時（同一行） */}
             <View style={styles.formGroup}>
-              <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+              <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'flex-start' }}>
                 {/* 時薪 */}
-                <View style={{ flex: 1 }}>
+                <View style={{ width: 150 }}>
                   <View style={dynamicStyles.inputWithSuffix}>
                     <Text style={dynamicStyles.inputSuffix}>$</Text>
                     <TextInput
