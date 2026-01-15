@@ -211,6 +211,7 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
             {/* 標題 */}
             <Text style={dynamicStyles.title}>新增發牌員</Text>
@@ -286,9 +287,9 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
 
             {/* 時薪和工時（同一行） */}
             <View style={styles.formGroup}>
-              <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'flex-start' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                 {/* 時薪 */}
-                <View style={{ width: 150 }}>
+                <View style={{ width: 150, marginRight: theme.spacing.md }}>
                   <View style={dynamicStyles.inputWithSuffix}>
                     <Text style={dynamicStyles.inputSuffix}>$</Text>
                     <TextInput
