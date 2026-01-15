@@ -281,21 +281,46 @@ const AppNavigator: React.FC = () => {
                           hash.includes('provider_token');
     
     if (hasOAuthParams) {
-      console.log('檢測到 OAuth 回調參數，等待 Supabase 處理 session...');
+      console.log('🔐 檢測到 OAuth 回調參數，等待 Supabase 處理 session...');
       
-      // 等待 Supabase 處理 session 後再清理 URL 和檢查電話驗證
-      const timer = setTimeout(() => {
-        // 清理 URL hash
-        const url = new URL(window.location.href);
-        url.hash = '';
-        window.history.replaceState({}, '', url.toString());
-        console.log('已清理 OAuth 回調參數');
-        
-        // 強制刷新用戶狀態以確保電話驗證狀態是最新的
-        if (isSignedIn && user) {
-          refreshUser();
+      // 等待 Supabase 的 onAuthStateChange 處理 session
+      // 需要足夠的時間讓 Supabase 處理完 session 和用戶資料轉換
+      const timer = setTimeout(async () => {
+        try {
+          // 再次檢查 session 確保已處理
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            console.log('✅ OAuth 回調處理完成，用戶已登入:', session.user.email);
+            
+            // 清理 URL hash（避免刷新時重複處理）
+            const url = new URL(window.location.href);
+            url.hash = '';
+            window.history.replaceState({}, '', url.toString());
+            console.log('🧹 已清理 OAuth 回調參數');
+            
+            // 等待一下確保狀態已更新
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // 強制刷新用戶狀態以確保電話驗證狀態是最新的
+            if (isSignedIn || session.user) {
+              await refreshUser();
+            }
+          } else {
+            console.warn('⚠️ OAuth 回調後未檢測到 session，可能需要更長時間處理');
+            // 即使沒有 session，也清理 URL，避免重複處理
+            const url = new URL(window.location.href);
+            url.hash = '';
+            window.history.replaceState({}, '', url.toString());
+          }
+        } catch (error) {
+          console.error('OAuth 回調處理錯誤:', error);
+          // 即使出錯，也清理 URL
+          const url = new URL(window.location.href);
+          url.hash = '';
+          window.history.replaceState({}, '', url.toString());
         }
-      }, 500);
+      }, 1000); // 增加到 1 秒，確保 Supabase 有足夠時間處理
       
       return () => clearTimeout(timer);
     }

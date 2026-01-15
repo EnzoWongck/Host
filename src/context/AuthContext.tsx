@@ -302,13 +302,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let redirectUrl: string;
       
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        // 使用當前頁面的完整 URL
-        redirectUrl = window.location.href.split('#')[0]; // 移除 hash
+        // 始終重定向到根路徑（主頁面），而不是當前頁面
+        // 這可以避免從登入頁面回調時又回到登入頁面的問題
+        redirectUrl = `${window.location.origin}/`;
         console.log('當前頁面 URL:', window.location.href);
         console.log('當前 origin:', window.location.origin);
-        console.log('當前 pathname:', window.location.pathname);
+        console.log('OAuth redirectTo (根路徑):', redirectUrl);
       } else {
-        redirectUrl = 'https://lunchips.com';
+        redirectUrl = 'https://lunchips.com/';
       }
       
       console.log('Google OAuth redirectTo:', redirectUrl);
@@ -325,11 +326,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (error) {
         console.error('Google OAuth 錯誤:', error);
+        // 如果出錯，重置 loading 狀態
+        setLoading(false);
         throw error;
       }
       // OAuth 登入會重定向，不需要在這裡處理 user
-    } finally {
+      // 注意：不應該在 finally 中設置 loading false，因為重定向會發生
+      // loading 狀態將由 onAuthStateChange 或 OAuth 回調處理重置
+    } catch (error) {
+      // 只有當發生錯誤時才重置 loading
       setLoading(false);
+      throw error;
     }
   }, []);
 
@@ -341,13 +348,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let redirectUrl: string;
       
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        // 使用當前頁面的完整 URL
-        redirectUrl = window.location.href.split('#')[0]; // 移除 hash
+        // 始終重定向到根路徑（主頁面），而不是當前頁面
+        redirectUrl = `${window.location.origin}/`;
         console.log('當前頁面 URL:', window.location.href);
         console.log('當前 origin:', window.location.origin);
-        console.log('當前 pathname:', window.location.pathname);
+        console.log('OAuth redirectTo (根路徑):', redirectUrl);
       } else {
-        redirectUrl = 'https://lunchips.com';
+        redirectUrl = 'https://lunchips.com/';
       }
       
       console.log('Apple OAuth redirectTo:', redirectUrl);
@@ -364,10 +371,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (error) {
         console.error('Apple OAuth 錯誤:', error);
+        setLoading(false);
         throw error;
       }
-    } finally {
+      // OAuth 登入會重定向，loading 狀態將由 onAuthStateChange 處理重置
+    } catch (error) {
       setLoading(false);
+      throw error;
     }
   }, []);
 
@@ -509,16 +519,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
+          console.log('✅ 用戶已登入，轉換用戶資料...');
           const authUser = await transformUser(session.user);
           setUser(authUser);
+          setLoading(false);
         } else if (event === 'SIGNED_OUT') {
+          console.log('❌ 用戶已登出');
           setUser(null);
+          setLoading(false);
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          console.log('🔄 Token 已刷新');
           const authUser = await transformUser(session.user);
           setUser(authUser);
+          setLoading(false);
+        } else if (event === 'USER_UPDATED' && session?.user) {
+          console.log('👤 用戶資料已更新');
+          const authUser = await transformUser(session.user);
+          setUser(authUser);
+          setLoading(false);
         }
-        
-        setLoading(false);
+        // 注意：不應該在每個事件中都設置 loading false
+        // 只有在明確的登入/登出事件時才設置
       }
     );
 
@@ -537,11 +558,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let isRefreshing = false;
     let refreshTimeout: NodeJS.Timeout | null = null;
+    let lastRefreshTime = 0;
+    const MIN_REFRESH_INTERVAL = 2000; // 最少 2 秒才能再次刷新
 
     const handleVisibilityChange = async () => {
+      // 檢查是否有 OAuth 回調參數（優先處理 OAuth 回調）
+      const hash = window.location.hash;
+      const hasOAuthParams = hash.includes('access_token') || 
+                            hash.includes('refresh_token') || 
+                            hash.includes('provider_token');
+      
+      // 如果有 OAuth 參數，讓 OAuth 回調處理優先執行，不要干擾
+      if (hasOAuthParams) {
+        console.log('⚠️ 檢測到 OAuth 回調參數，跳過可見性檢查');
+        return;
+      }
+
       if (document.visibilityState === 'visible' && !isRefreshing) {
+        // 防止頻繁刷新
+        const now = Date.now();
+        if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+          console.log('⏱️ 刷新間隔太短，跳過此次檢查');
+          return;
+        }
+        
         console.log('頁面重新變為可見，檢查會話狀態...');
         isRefreshing = true;
+        lastRefreshTime = now;
         
         // 設置超時，防止無限等待
         refreshTimeout = setTimeout(() => {
@@ -579,15 +622,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error('頁面可見性變化處理錯誤:', error);
           // 發生錯誤時確保不會卡住
-          setLoading(false);
         } finally {
           // 清除超時
           if (refreshTimeout) {
             clearTimeout(refreshTimeout);
             refreshTimeout = null;
           }
-          // 確保 loading 狀態被重置
-          setLoading(false);
           // 延遲重置刷新狀態，避免短時間內重複刷新
           setTimeout(() => {
             isRefreshing = false;
