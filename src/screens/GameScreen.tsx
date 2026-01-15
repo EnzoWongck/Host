@@ -931,10 +931,7 @@ const GameScreen: React.FC = () => {
                   showsVerticalScrollIndicator={false}
                   scrollEnabled={true}
                   bounces={true}
-                  decelerationRate="normal"
-                  contentContainerStyle={{
-                    paddingBottom: theme.spacing.xl * 2, // 添加足夠的底部內邊距，防止滾動時彈回
-                  }}
+                  decelerationRate="fast"
                 >
                 {currentGame.players
                   .slice()
