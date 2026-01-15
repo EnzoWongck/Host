@@ -217,7 +217,6 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
 
             {/* 名稱 */}
             <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>名稱</Text>
               <TextInput
                 style={[
                   dynamicStyles.input,
@@ -239,9 +238,9 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
               />
             </View>
 
-            {/* 小費佔成比例 */}
+            {/* 小費分成 */}
             <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>小費佔成比例</Text>
+              <Text style={dynamicStyles.label}>小費分成</Text>
               <View style={dynamicStyles.inputWithSuffix}>
                 <TextInput
                   style={[
@@ -249,11 +248,11 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
                     styles.inputWithSuffixInput,
                     focusedInput === 'tipShare' && dynamicStyles.inputFocused,
                   ]}
-                  value={tipShare.toString()}
+                  value={tipShare > 0 ? tipShare.toString() : ''}
                   onChangeText={(text) => {
                     const numericText = text.replace(/[^0-9]/g, '');
                     if (numericText === '') {
-                      setTipShare(50); // 空值時設為預設值 50
+                      setTipShare(0); // 允許空值
                     } else {
                       const value = parseInt(numericText, 10);
                       if (!isNaN(value) && value >= 0 && value <= 100) {
@@ -265,7 +264,7 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
                   onBlur={() => {
                     setFocusedInput(null);
                     // 如果為空或 0，恢復為預設值 50
-                    if (tipShare === 0) {
+                    if (tipShare === 0 || tipShare === undefined) {
                       setTipShare(50);
                     }
                   }}
@@ -285,62 +284,64 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
               </View>
             </View>
 
-            {/* 時薪（可選） */}
+            {/* 時薪和工時（同一行） */}
             <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>時薪（可選）</Text>
-              <View style={dynamicStyles.inputWithSuffix}>
-                <Text style={dynamicStyles.inputSuffix}>$</Text>
-                <TextInput
-                  style={[
-                    dynamicStyles.input,
-                    styles.inputWithSuffixInput,
-                    focusedInput === 'hourlyRate' && dynamicStyles.inputFocused,
-                  ]}
-                  value={hourlyRate}
-                  onChangeText={setHourlyRate}
-                  placeholder="0"
-                  placeholderTextColor={
-                    focusedInput === 'hourlyRate'
-                      ? 'transparent'
-                      : colorMode === 'dark'
-                        ? theme.colors.textSecondary
-                        : '#6B7280'
-                  }
-                  keyboardType="numeric"
-                  inputMode="decimal"
-                  {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-                  onFocus={() => setFocusedInput('hourlyRate')}
-                  onBlur={() => setFocusedInput(null)}
-                />
+              <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+                {/* 時薪 */}
+                <View style={{ flex: 1 }}>
+                  <View style={dynamicStyles.inputWithSuffix}>
+                    <Text style={dynamicStyles.inputSuffix}>$</Text>
+                    <TextInput
+                      style={[
+                        dynamicStyles.input,
+                        styles.inputWithSuffixInput,
+                        focusedInput === 'hourlyRate' && dynamicStyles.inputFocused,
+                      ]}
+                      value={hourlyRate}
+                      onChangeText={setHourlyRate}
+                      placeholder="時薪"
+                      placeholderTextColor={
+                        focusedInput === 'hourlyRate'
+                          ? 'transparent'
+                          : colorMode === 'dark'
+                            ? theme.colors.textSecondary
+                            : '#6B7280'
+                      }
+                      keyboardType="numeric"
+                      inputMode="decimal"
+                      {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                      onFocus={() => setFocusedInput('hourlyRate')}
+                      onBlur={() => setFocusedInput(null)}
+                    />
+                  </View>
+                </View>
+                {/* 工時 */}
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    style={[
+                      dynamicStyles.input,
+                      focusedInput === 'workHours' && dynamicStyles.inputFocused,
+                    ]}
+                    value={workHours}
+                    onChangeText={setWorkHours}
+                    placeholder="工時（小時）"
+                    placeholderTextColor={
+                      focusedInput === 'workHours'
+                        ? 'transparent'
+                        : colorMode === 'dark'
+                          ? theme.colors.textSecondary
+                          : '#6B7280'
+                    }
+                    keyboardType="numeric"
+                    inputMode="decimal"
+                    {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                    onFocus={() => setFocusedInput('workHours')}
+                    onBlur={() => setFocusedInput(null)}
+                    returnKeyType="done"
+                    onSubmitEditing={handleConfirm}
+                  />
+                </View>
               </View>
-            </View>
-
-            {/* 工時（可選） */}
-            <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>工時（可選）</Text>
-              <TextInput
-                style={[
-                  dynamicStyles.input,
-                  focusedInput === 'workHours' && dynamicStyles.inputFocused,
-                ]}
-                value={workHours}
-                onChangeText={setWorkHours}
-                placeholder="輸入工時（小時）"
-                placeholderTextColor={
-                  focusedInput === 'workHours'
-                    ? 'transparent'
-                    : colorMode === 'dark'
-                      ? theme.colors.textSecondary
-                      : '#6B7280'
-                }
-                keyboardType="numeric"
-                inputMode="decimal"
-                {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-                onFocus={() => setFocusedInput('workHours')}
-                onBlur={() => setFocusedInput(null)}
-                returnKeyType="done"
-                onSubmitEditing={handleConfirm}
-              />
             </View>
 
             {/* 按鈕 */}

@@ -11,9 +11,6 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
 import { useTheme } from '../context/ThemeContext';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -40,17 +37,11 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
   const [tipShare, setTipShare] = useState<50 | 100>(50);
   const [hourlyRate, setHourlyRate] = useState('');
   const [workHours, setWorkHours] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
   const [editingDealer, setEditingDealer] = useState<Dealer | null>(null);
   const [editWorkHours, setEditWorkHours] = useState('');
   const [editTips, setEditTips] = useState('');
   const [editEstimatedSalary, setEditEstimatedSalary] = useState('');
-  const [editStartTime, setEditStartTime] = useState('');
-  const [editEndTime, setEditEndTime] = useState('');
-  const [showStartPicker, setShowStartPicker] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
-  const [showEndPicker, setShowEndPicker] = useState(false);
   const [isEditingSalary, setIsEditingSalary] = useState<Record<string, boolean>>({});
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [dealerToDelete, setDealerToDelete] = useState<Dealer | null>(null);
@@ -456,32 +447,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       }
     }
     
-    // 處理時間（可選）
-    let startTimeDate: Date | undefined;
-    let endTimeDate: Date | undefined;
-    
-    if (editStartTime && String(editStartTime).trim()) {
-      const normalizedStart = normalizeTimeInput(String(editStartTime));
-      if (normalizedStart) {
-        try {
-          startTimeDate = new Date(`2000-01-01 ${normalizedStart}`);
-        } catch (e) {
-          // 忽略時間解析錯誤
-        }
-      }
-    }
-    
-    if (editEndTime && String(editEndTime).trim()) {
-      const normalizedEnd = normalizeTimeInput(String(editEndTime));
-      if (normalizedEnd) {
-        try {
-          endTimeDate = new Date(`2000-01-01 ${normalizedEnd}`);
-        } catch (e) {
-          // 忽略時間解析錯誤
-        }
-      }
-    }
-    
     try {
       // Host 選擇：編輯時優先使用 editHost，其次保留原有 host，若單一 Host 則自動指派
       let hostName = editHost ?? item.host;
@@ -493,8 +458,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
         ...item,
         workHours: hours,
         totalTips: tips,
-        startTime: startTimeDate || item.startTime,
-        endTime: endTimeDate || item.endTime,
         host: hostName,
         estimatedSalary,
       };
@@ -503,8 +466,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       setEditingDealer(null);
       setEditWorkHours('');
       setEditTips('');
-      setEditStartTime('');
-      setEditEndTime('');
       setEditEstimatedSalary('');
       setIsEditingSalary((prev) => {
         const newState = { ...prev };
@@ -554,8 +515,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       tipShare,
       hourlyRate: rate,
       workHours: hours || 0, // 確保至少為 0
-      startTime: startTime ? new Date(`2000-01-01 ${startTime}`) : undefined,
-      endTime: endTime ? new Date(`2000-01-01 ${endTime}`) : undefined,
       status: 'working',
       host: hostName,
     };
@@ -589,16 +548,8 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
     setTipShare(50);
     setHourlyRate('');
     setWorkHours('');
-    setStartTime('');
-    setEndTime('');
     setSelectedHost(null);
   };
-
-  React.useEffect(() => {
-    if (showAddForm) {
-      setStartTime(getCurrentTime());
-    }
-  }, [showAddForm]);
 
   // 每次開啟視窗時，預設顯示「現有發牌員」區塊，隱藏新增表單
   React.useEffect(() => {
@@ -650,25 +601,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       setEditWorkHours(item.workHours ? String(item.workHours) : '');
       // 金額：若原本為 0 或未設定，預設為 '0'
       setEditTips(item.totalTips ? String(item.totalTips) : '0');
-      const locale = language === 'zh-TW' ? 'zh-TW' : 'zh-CN';
-      setEditStartTime(
-        item.startTime
-          ? new Date(item.startTime).toLocaleTimeString(locale, {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })
-          : ''
-      );
-      setEditEndTime(
-        item.endTime
-          ? new Date(item.endTime).toLocaleTimeString(locale, {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })
-          : ''
-      );
     };
 
     return (
@@ -720,152 +652,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
               {editingDealer?.id === item.id ? (
                 <>
                   {/* 編輯模式 */}
-                  <View style={styles.timeInputRow}>
-                    {/* 上班時間：iOS 使用滾輪式時間選擇器，其它平台維持輸入欄 */}
-                    <View style={[styles.inputGroup, styles.timeInput]}>
-                      <Text style={styles.label}>{t('dealer.startTime')}</Text>
-                      {Platform.OS === 'ios' ? (
-                        <>
-                          <TouchableOpacity
-                            style={styles.timePickerButton}
-                            onPress={() => setShowStartPicker(true)}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={styles.timePickerText}>
-                              {editStartTime || '選擇時間'}
-                            </Text>
-                          </TouchableOpacity>
-                          {showStartPicker && (
-                            <DateTimePicker
-                              value={timeStringToDate(editStartTime || '00:00')}
-                              mode="time"
-                              display="spinner"
-                              onChange={(event: DateTimePickerEvent, date?: Date) => {
-                                if (event.type === 'set' && date) {
-                                  const timeStr = dateToTimeString(date);
-                                  setEditStartTime(timeStr);
-                                  // 自動計算工時
-                                  if (timeStr && editEndTime) {
-                                    const normalizedStart = normalizeTimeInput(timeStr);
-                                    const normalizedEnd = normalizeTimeInput(editEndTime);
-                                    if (normalizedStart && normalizedEnd) {
-                                  const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                  setEditWorkHours(String(hours));
-                                  recalculateEstimatedSalary(item, String(hours), editTips || '0');
-                                    }
-                                  }
-                                }
-                                setShowStartPicker(false);
-                              }}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <TextInput
-                          style={[styles.input, focusedInput === 'editStartTime' && styles.inputFocused]}
-                          value={editStartTime}
-                          onFocus={() => setFocusedInput('editStartTime')}
-                          onChangeText={(text) => {
-                            setEditStartTime(text);
-                            if (text && editEndTime) {
-                              const normalizedStart = normalizeTimeInput(text);
-                              const normalizedEnd = normalizeTimeInput(editEndTime);
-                              if (normalizedStart && normalizedEnd) {
-                                const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                setEditWorkHours(String(hours));
-                                recalculateEstimatedSalary(item, String(hours), editTips || '0');
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            setFocusedInput(null);
-                            const normalized = normalizeTimeInput(editStartTime || '');
-                            if (normalized && normalized !== editStartTime) {
-                              setEditStartTime(normalized);
-                            }
-                          }}
-                          placeholder="1400 或 14:00"
-                          placeholderTextColor={
-                            focusedInput === 'editStartTime'
-                              ? 'transparent'
-                              : theme.colors.textSecondary
-                          }
-                        />
-                      )}
-                    </View>
-
-                    {/* 下班時間：iOS 滾輪，其它平台維持輸入欄 */}
-                    <View style={[styles.inputGroup, styles.timeInput]}>
-                      <Text style={styles.label}>{t('dealer.endTime')}</Text>
-                      {Platform.OS === 'ios' ? (
-                        <>
-                          <TouchableOpacity
-                            style={styles.timePickerButton}
-                            onPress={() => setShowEndPicker(true)}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={styles.timePickerText}>
-                              {editEndTime || '選擇時間'}
-                            </Text>
-                          </TouchableOpacity>
-                          {showEndPicker && (
-                            <DateTimePicker
-                              value={timeStringToDate(editEndTime || '00:00')}
-                              mode="time"
-                              display="spinner"
-                              onChange={(event: DateTimePickerEvent, date?: Date) => {
-                                if (event.type === 'set' && date) {
-                                  const timeStr = dateToTimeString(date);
-                                  setEditEndTime(timeStr);
-                                  if (editStartTime && timeStr) {
-                                    const normalizedStart = normalizeTimeInput(editStartTime);
-                                    const normalizedEnd = normalizeTimeInput(timeStr);
-                                    if (normalizedStart && normalizedEnd) {
-                                  const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                  setEditWorkHours(String(hours));
-                                  recalculateEstimatedSalary(item, String(hours), editTips || '0');
-                                    }
-                                  }
-                                }
-                                setShowEndPicker(false);
-                              }}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <TextInput
-                          style={[styles.input, focusedInput === 'editEndTime' && styles.inputFocused]}
-                          value={editEndTime}
-                          onFocus={() => setFocusedInput('editEndTime')}
-                          onChangeText={(text) => {
-                            setEditEndTime(text);
-                            if (editStartTime && text) {
-                              const normalizedStart = normalizeTimeInput(editStartTime);
-                              const normalizedEnd = normalizeTimeInput(text);
-                              if (normalizedStart && normalizedEnd) {
-                                const hours = calculateWorkHours(normalizedStart, normalizedEnd);
-                                setEditWorkHours(String(hours));
-                                recalculateEstimatedSalary(item, String(hours), editTips || '0');
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            setFocusedInput(null);
-                            const normalized = normalizeTimeInput(editEndTime || '');
-                            if (normalized && normalized !== editEndTime) {
-                              setEditEndTime(normalized);
-                            }
-                          }}
-                          placeholder="2200 或 22:00"
-                          placeholderTextColor={
-                            focusedInput === 'editEndTime'
-                              ? 'transparent'
-                              : theme.colors.textSecondary
-                          }
-                        />
-                      )}
-                    </View>
-                  </View>
               {/* 工時 + 小費 同一行 */}
               <View style={styles.inputRow}>
                 <View style={[styles.inputGroup, { flex: 1, marginRight: theme.spacing.sm }]}>
@@ -1036,8 +822,6 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                         setEditingDealer(null);
                         setEditWorkHours('');
                         setEditTips('');
-                        setEditStartTime('');
-                        setEditEndTime('');
                         setIsEditingSalary((prev) => {
                           const newState = { ...prev };
                           delete newState[item.id];
