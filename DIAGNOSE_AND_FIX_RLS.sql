@@ -142,24 +142,50 @@ WHERE schemaname = 'public'
 ORDER BY tablename, policyname;
 
 -- ============================================
--- 步驟 6：診斷查詢（可選）
+-- 步驟 6：診斷查詢（檢查當前用戶和遊戲）
 -- ============================================
--- 如果您想要測試策略是否工作，可以運行以下查詢：
--- （替換 'YOUR_GAME_ID' 和 'YOUR_USER_ID'）
--- 
--- SELECT 
---   EXISTS (
---     SELECT 1 FROM games 
---     WHERE games.id = 'YOUR_GAME_ID' 
---     AND games.user_id = 'YOUR_USER_ID'::uuid
---   ) as game_owner_check,
---   EXISTS (
---     SELECT 1 FROM game_collaborations 
---     WHERE game_collaborations.game_id = 'YOUR_GAME_ID' 
---     AND game_collaborations.collaborator_id = auth.uid()
---     AND game_collaborations.status = 'accepted'
---     AND game_collaborations.chip_consumed = TRUE
---   ) as collaborator_check;
+-- 檢查當前用戶的 session 和擁有的遊戲
+SELECT 
+  auth.uid() as current_user_id,
+  COUNT(*) as owned_games_count
+FROM games 
+WHERE games.user_id = auth.uid();
+
+-- 檢查當前用戶是否有協作遊戲
+SELECT 
+  auth.uid() as current_user_id,
+  COUNT(*) as collaboration_count
+FROM game_collaborations 
+WHERE game_collaborations.collaborator_id = auth.uid()
+  AND game_collaborations.status = 'accepted'
+  AND game_collaborations.chip_consumed = TRUE;
+
+-- 列出當前用戶可以訪問的所有遊戲（用於測試）
+SELECT 
+  g.id as game_id,
+  g.name as game_name,
+  g.user_id as owner_id,
+  CASE 
+    WHEN g.user_id = auth.uid() THEN 'owner'
+    WHEN EXISTS (
+      SELECT 1 FROM game_collaborations 
+      WHERE game_collaborations.game_id = g.id 
+      AND game_collaborations.collaborator_id = auth.uid()
+      AND game_collaborations.status = 'accepted'
+      AND game_collaborations.chip_consumed = TRUE
+    ) THEN 'collaborator'
+    ELSE 'no_access'
+  END as access_type
+FROM games g
+WHERE g.user_id = auth.uid()
+   OR EXISTS (
+     SELECT 1 FROM game_collaborations 
+     WHERE game_collaborations.game_id = g.id 
+     AND game_collaborations.collaborator_id = auth.uid()
+     AND game_collaborations.status = 'accepted'
+     AND game_collaborations.chip_consumed = TRUE
+   )
+LIMIT 10;
 
 -- ============================================
 -- 完成！
