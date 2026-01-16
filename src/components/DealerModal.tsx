@@ -33,6 +33,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+  const [selectedDealerId, setSelectedDealerId] = useState<string | null>(null); // 單個發牌員獨立視圖
   const [dealerName, setDealerName] = useState('');
   const [tipShare, setTipShare] = useState<50 | 100>(50);
   const [hourlyRate, setHourlyRate] = useState('');
@@ -439,10 +440,12 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       setExpandedMap({});
       setEditHost(null);
       setEditingDealer(null); // 重置編輯狀態，確保下次打開時顯示卡片視窗
+      setSelectedDealerId(null); // 重置單個發牌員視圖
     } else {
       // 視窗關閉時，自動收起所有卡片並重置編輯狀態
       setExpandedMap({});
       setEditingDealer(null);
+      setSelectedDealerId(null);
     }
   }, [visible]);
 
@@ -471,10 +474,8 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
     const isExpanded = !!expandedMap[item.id];
 
     const handleCardPress = () => {
-      // 展開卡片
-      if (!isExpanded) {
-        setExpandedMap(prev => ({ ...prev, [item.id]: true }));
-      }
+      // 進入單個發牌員獨立視圖
+      setSelectedDealerId(item.id);
       // 進入編輯模式
       setEditingDealer(item);
       // 工時：若原本為 0，編輯時預設留空，避免使用者先刪除 0 才能輸入
@@ -600,16 +601,15 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                   borderRadius: theme.borderRadius.sm,
                   backgroundColor: theme.colors.success + '10',
                   alignSelf: 'center',
-                  width: '70%',
-                  maxWidth: 260,
+                  width: '100%',
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  flexWrap: 'nowrap',
+                  flexWrap: 'wrap',
                 }}
               >
                 <Text
-                  style={[styles.statLabel, { textAlign: 'center' }]}
+                  style={[styles.statLabel, { textAlign: 'center', flexShrink: 0 }]}
                   numberOfLines={1}
                 >
                   薪金預估：
@@ -626,8 +626,9 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                       textAlign: 'left',
                       marginLeft: theme.spacing.xs,
                       marginRight: theme.spacing.xs,
-                      flex: 1,
-                      minWidth: 80,
+                      flexShrink: 1,
+                      minWidth: 60,
+                      maxWidth: 120,
                     },
                   ]}
                   value={
@@ -658,7 +659,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                     }
                   }}
                   activeOpacity={0.7}
-                  style={{ marginLeft: theme.spacing.xs }}
+                  style={{ marginLeft: theme.spacing.xs, flexShrink: 0 }}
                 >
                   <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.sm, fontWeight: '600' }}>
                     編輯
@@ -702,11 +703,13 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                         setEditingDealer(null);
                         setEditWorkHours('');
                         setEditTips('');
+                        setEditEstimatedSalary('');
                         setIsEditingSalary((prev) => {
                           const newState = { ...prev };
                           delete newState[item.id];
                           return newState;
                         });
+                        // 如果在獨立視圖中，取消編輯時保持獨立視圖，不返回列表
                       }}
                       variant="outline"
                       style={[
@@ -767,26 +770,29 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <Text style={styles.statLabel}>薪金預估：</Text>
-                  <TextInput
+                  <Text style={[styles.statLabel, { flexShrink: 0 }]}>薪金預估：</Text>
+                  <Text
                     style={[
                       styles.statValue,
-                      { fontWeight: '700', marginRight: theme.spacing.xs, padding: 0 },
+                      {
+                        fontWeight: '700',
+                        marginRight: theme.spacing.xs,
+                        padding: 0,
+                        flexShrink: 1,
+                        minWidth: 60,
+                        maxWidth: 120,
+                      },
                     ]}
-                    value={
-                      editingDealer?.id === item.id && editEstimatedSalary
-                        ? editEstimatedSalary
-                        : String(
-                            item.estimatedSalary && item.estimatedSalary > 0
-                              ? item.estimatedSalary
-                              : liveEstimatedSalary,
-                          )
-                    }
-                    onChangeText={setEditEstimatedSalary}
-                    keyboardType="numeric"
-                  />
+                  >
+                    {formatCurrency(
+                      item.estimatedSalary && item.estimatedSalary > 0
+                        ? item.estimatedSalary
+                        : liveEstimatedSalary
+                    )}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={{
@@ -813,40 +819,78 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
     <Modal
       visible={visible}
       onClose={onClose}
-      title={showAddForm ? t('dealer.addDealer') : t('game.dealer')}
+      title={showAddForm ? t('dealer.addDealer') : selectedDealerId ? currentGame?.dealers.find(d => d.id === selectedDealerId)?.name || t('game.dealer') : t('game.dealer')}
       maxWidth={isMobile ? screenWidth - 32 : 500}
       maxHeight={isMobile ? screenHeight * 0.9 : undefined}
       containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 500, minWidth: 500, maxWidth: 'none' }}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: 680, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}>
-        {/* 發牌員列表（在新增模式時隱藏） */}
-        {!showAddForm && (
+        {/* 單個發牌員獨立視圖 */}
+        {selectedDealerId && !showAddForm && currentGame?.dealers ? (
           <>
-            {currentGame?.dealers && currentGame.dealers.length > 0 ? (
-              <FlatList
-                data={currentGame.dealers}
-                renderItem={renderDealerItem}
-                keyExtractor={(item) => item.id}
-                style={styles.dealersList}
-                scrollEnabled={false}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>{t('dealer.noDealers')}</Text>
-              </View>
+            {/* 返回按鈕 */}
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedDealerId(null);
+                setEditingDealer(null);
+                setEditWorkHours('');
+                setEditTips('');
+                setEditEstimatedSalary('');
+                setIsEditingSalary({});
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: theme.spacing.md,
+                paddingVertical: theme.spacing.sm,
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.md, marginLeft: -theme.spacing.xs }}>
+                ← {t('common.back')}
+              </Text>
+            </TouchableOpacity>
+            {/* 只顯示選中的發牌員 */}
+            {currentGame.dealers
+              .filter(dealer => dealer.id === selectedDealerId)
+              .map(dealer => (
+                <View key={dealer.id}>
+                  {renderDealerItem({ item: dealer })}
+                </View>
+              ))}
+          </>
+        ) : (
+          <>
+            {/* 發牌員列表（在新增模式時隱藏） */}
+            {!showAddForm && (
+              <>
+                {currentGame?.dealers && currentGame.dealers.length > 0 ? (
+                  <FlatList
+                    data={currentGame.dealers}
+                    renderItem={renderDealerItem}
+                    keyExtractor={(item) => item.id}
+                    style={styles.dealersList}
+                    scrollEnabled={false}
+                  />
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyText}>{t('dealer.noDealers')}</Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* 新增發牌員按鈕 */}
+            {!showAddForm && (
+              <TouchableOpacity
+                style={styles.addDealerButton}
+                onPress={() => setShowAddForm(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.addDealerText}>+ {t('dealer.addDealer')}</Text>
+              </TouchableOpacity>
             )}
           </>
-        )}
-
-        {/* 新增發牌員按鈕 */}
-        {!showAddForm && (
-          <TouchableOpacity
-            style={styles.addDealerButton}
-            onPress={() => setShowAddForm(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.addDealerText}>+ {t('dealer.addDealer')}</Text>
-          </TouchableOpacity>
         )}
       </ScrollView>
 
