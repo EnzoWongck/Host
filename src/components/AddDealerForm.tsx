@@ -32,12 +32,6 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
   const [workHours, setWorkHours] = useState(''); // 工時為可選欄位
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
-  // 佔成比例選項
-  const tipShareOptions: number[] = [0, 25, 50, 75, 100];
-  const tipShareLabels = ['0%', '25%', '50%', '75%', '100%'];
-
-  // 用於存儲進度條寬度的 ref
-  const trackWidthRef = useRef(300);
 
   // 處理確認
   const handleConfirm = () => {
@@ -45,7 +39,7 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
 
     const dealerData: Omit<Dealer, 'id' | 'totalTips' | 'estimatedSalary'> = {
       name: dealerName.trim(),
-      tipShare: (tipShare === 50 || tipShare === 100 ? tipShare : 50) as 50 | 100,
+      tipShare: (tipShare >= 0 && tipShare <= 100 ? tipShare : 50) as 50 | 100,
       // 時薪與工時皆為可選（預設 0），允許只計算小費佔成
       hourlyRate: hourlyRate.trim() ? parseFloat(hourlyRate) || 0 : 0,
       workHours: workHours.trim() ? parseFloat(workHours) || 0 : 0,
@@ -64,105 +58,6 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
     onClose();
   };
 
-  // 滑塊組件（模擬 iOS 滑塊）
-  const renderTipShareSlider = () => {
-    const currentIndex = tipShareOptions.findIndex(opt => opt === tipShare);
-    const percentage = currentIndex >= 0 ? (currentIndex / (tipShareOptions.length - 1)) * 100 : 0;
-
-    // 根據深色模式動態創建滑塊樣式
-    const sliderStyles = StyleSheet.create({
-      sliderTrack: {
-        height: 6,
-        backgroundColor: colorMode === 'dark' ? theme.colors.border : '#E5E5E5',
-        borderRadius: 3,
-        marginBottom: 16,
-        overflow: 'hidden',
-      },
-      sliderLabelText: {
-        fontSize: 14,
-        color: colorMode === 'dark' ? theme.colors.textSecondary : '#999999',
-        fontFamily: Platform.select({
-          ios: '-apple-system',
-          android: 'Roboto',
-          web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        }),
-      },
-      sliderValueText: {
-        fontSize: 32,
-        fontWeight: '700',
-        color: '#0066FF',
-        fontFamily: Platform.select({
-          ios: '-apple-system',
-          android: 'Roboto',
-          web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        }),
-      },
-    });
-
-    const handleSliderPress = (e: any) => {
-      const nativeEvent = e.nativeEvent;
-      // 優先使用 locationX（React Native），否則使用 pageX（Web）
-      let locationX = 0;
-      if (nativeEvent.locationX !== undefined) {
-        locationX = nativeEvent.locationX;
-      } else if (nativeEvent.pageX !== undefined && e.currentTarget) {
-        const rect = (e.currentTarget as any).getBoundingClientRect?.();
-        if (rect) {
-          locationX = nativeEvent.pageX - rect.left;
-        }
-      }
-      
-      const width = trackWidthRef.current;
-      if (width > 0 && locationX >= 0) {
-        const clickPercentage = (locationX / width) * 100;
-        const normalizedPercentage = Math.max(0, Math.min(100, clickPercentage));
-        const segmentSize = 100 / (tipShareOptions.length - 1);
-        const segmentIndex = Math.round(normalizedPercentage / segmentSize);
-        const closestValue = tipShareOptions[Math.max(0, Math.min(tipShareOptions.length - 1, segmentIndex))];
-        setTipShare(closestValue);
-      }
-    };
-
-    return (
-      <View style={styles.sliderContainer}>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={handleSliderPress}
-          onLayout={(event) => {
-            const { width } = event.nativeEvent.layout;
-            if (width > 0) {
-              trackWidthRef.current = width;
-            }
-          }}
-        >
-          <View style={sliderStyles.sliderTrack}>
-            <View style={[styles.sliderFill, { width: `${percentage}%` }]} />
-          </View>
-        </TouchableOpacity>
-        <View style={styles.sliderLabels}>
-          {tipShareLabels.map((label, index) => {
-            const optionValue = tipShareOptions[index];
-            return (
-              <TouchableOpacity
-                key={label}
-                style={styles.sliderLabel}
-                onPress={() => setTipShare(optionValue)}
-              >
-                <Text
-                  style={[
-                    sliderStyles.sliderLabelText,
-                    optionValue === tipShare && styles.sliderLabelTextActive,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    );
-  };
 
   // 根據深色模式動態創建樣式
   const dynamicStyles = StyleSheet.create({
@@ -322,7 +217,6 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
 
             {/* 名稱 */}
             <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>名稱</Text>
               <TextInput
                 style={[
                   dynamicStyles.input,
@@ -344,26 +238,17 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
               />
             </View>
 
-            {/* 小費佔成比例 */}
+            {/* 小費分成 */}
             <View style={styles.formGroup}>
-              <View style={styles.labelRow}>
-                <Text style={dynamicStyles.label}>小費佔成比例</Text>
+              <Text style={dynamicStyles.label}>小費分成</Text>
+              <View style={dynamicStyles.inputWithSuffix}>
                 <TextInput
                   style={[
-                    dynamicStyles.labelValue,
-                    {
-                      textAlign: 'right',
-                      minWidth: 60,
-                      paddingHorizontal: theme.spacing.xs,
-                      borderWidth: focusedInput === 'tipShare' ? 1 : 0,
-                      borderColor: colorMode === 'dark' ? theme.colors.border : '#E2E8F0',
-                      borderRadius: theme.borderRadius.xs,
-                      backgroundColor: focusedInput === 'tipShare' 
-                        ? (colorMode === 'dark' ? theme.colors.surface : '#FFFFFF')
-                        : 'transparent',
-                    },
+                    dynamicStyles.input,
+                    styles.inputWithSuffixInput,
+                    focusedInput === 'tipShare' && dynamicStyles.inputFocused,
                   ]}
-                  value={tipShare.toString()}
+                  value={tipShare > 0 ? tipShare.toString() : ''}
                   onChangeText={(text) => {
                     const numericText = text.replace(/[^0-9]/g, '');
                     if (numericText === '') {
@@ -378,74 +263,85 @@ const AddDealerForm: React.FC<AddDealerFormProps> = ({ visible, onClose }) => {
                   onFocus={() => setFocusedInput('tipShare')}
                   onBlur={() => {
                     setFocusedInput(null);
-                    // 允許任意數字，不需要自動調整到選項
+                    // 如果為空或 0，恢復為預設值 50
+                    if (tipShare === 0 || tipShare === undefined) {
+                      setTipShare(50);
+                    }
                   }}
                   keyboardType="numeric"
-                  returnKeyType="done"
+                  inputMode="numeric"
+                  {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
                   placeholder="50"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-                <Text style={[dynamicStyles.labelValue, { marginLeft: 4 }]}>%</Text>
-              </View>
-              {renderTipShareSlider()}
-            </View>
-
-            {/* 時薪（可選） */}
-            <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>時薪（可選）</Text>
-              <View style={dynamicStyles.inputWithSuffix}>
-                <Text style={dynamicStyles.inputSuffix}>$</Text>
-                <TextInput
-                  style={[
-                    dynamicStyles.input,
-                    styles.inputWithSuffixInput,
-                    focusedInput === 'hourlyRate' && dynamicStyles.inputFocused,
-                  ]}
-                  value={hourlyRate}
-                  onChangeText={setHourlyRate}
-                  placeholder="0"
                   placeholderTextColor={
-                    focusedInput === 'hourlyRate'
+                    focusedInput === 'tipShare'
                       ? 'transparent'
                       : colorMode === 'dark'
                         ? theme.colors.textSecondary
                         : '#6B7280'
                   }
-                  keyboardType="numeric"
-                  inputMode="decimal"
-                  {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-                  onFocus={() => setFocusedInput('hourlyRate')}
-                  onBlur={() => setFocusedInput(null)}
                 />
+                <Text style={dynamicStyles.inputSuffix}>%</Text>
               </View>
             </View>
 
-            {/* 工時（可選） */}
+            {/* 時薪和工時（同一行） */}
             <View style={styles.formGroup}>
-              <Text style={dynamicStyles.label}>工時（可選）</Text>
-              <TextInput
-                style={[
-                  dynamicStyles.input,
-                  focusedInput === 'workHours' && dynamicStyles.inputFocused,
-                ]}
-                value={workHours}
-                onChangeText={setWorkHours}
-                placeholder="輸入工時（小時）"
-                placeholderTextColor={
-                  focusedInput === 'workHours'
-                    ? 'transparent'
-                    : colorMode === 'dark'
-                      ? theme.colors.textSecondary
-                      : '#6B7280'
-                }
-                keyboardType="numeric"
-                inputMode="decimal"
-                {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
-                onFocus={() => setFocusedInput('workHours')}
-                onBlur={() => setFocusedInput(null)}
-                returnKeyType="done"
-                onSubmitEditing={handleConfirm}
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                {/* 時薪 */}
+                <View style={{ width: 150, marginRight: theme.spacing.md }}>
+                  <View style={dynamicStyles.inputWithSuffix}>
+                    <Text style={dynamicStyles.inputSuffix}>$</Text>
+                    <TextInput
+                      style={[
+                        dynamicStyles.input,
+                        styles.inputWithSuffixInput,
+                        focusedInput === 'hourlyRate' && dynamicStyles.inputFocused,
+                      ]}
+                      value={hourlyRate}
+                      onChangeText={setHourlyRate}
+                      placeholder="時薪"
+                      placeholderTextColor={
+                        focusedInput === 'hourlyRate'
+                          ? 'transparent'
+                          : colorMode === 'dark'
+                            ? theme.colors.textSecondary
+                            : '#6B7280'
+                      }
+                      keyboardType="numeric"
+                      inputMode="decimal"
+                      {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                      onFocus={() => setFocusedInput('hourlyRate')}
+                      onBlur={() => setFocusedInput(null)}
+                    />
+                  </View>
+                </View>
+                {/* 工時 */}
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    style={[
+                      dynamicStyles.input,
+                      focusedInput === 'workHours' && dynamicStyles.inputFocused,
+                    ]}
+                    value={workHours}
+                    onChangeText={setWorkHours}
+                    placeholder="工時（小時）"
+                    placeholderTextColor={
+                      focusedInput === 'workHours'
+                        ? 'transparent'
+                        : colorMode === 'dark'
+                          ? theme.colors.textSecondary
+                          : '#6B7280'
+                    }
+                    keyboardType="numeric"
+                    inputMode="decimal"
+                    {...(Platform.OS === 'web' ? { pattern: '[0-9]*' } : {})}
+                    onFocus={() => setFocusedInput('workHours')}
+                    onBlur={() => setFocusedInput(null)}
+                    returnKeyType="done"
+                    onSubmitEditing={handleConfirm}
+                  />
+                </View>
+              </View>
             </View>
 
             {/* 按鈕 */}
@@ -592,58 +488,6 @@ const styles = StyleSheet.create({
   },
   inputWithMarginTop: {
     marginTop: 12,
-  },
-  // 滑塊樣式
-  sliderContainer: {
-    marginTop: 8,
-  },
-  sliderTrack: {
-    height: 6,
-    backgroundColor: '#E5E5E5',
-    borderRadius: 3,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  sliderFill: {
-    height: '100%',
-    backgroundColor: '#0066FF',
-    borderRadius: 3,
-  },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sliderLabel: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  sliderLabelText: {
-    fontSize: 14,
-    color: '#999999',
-    fontFamily: Platform.select({
-      ios: '-apple-system',
-      android: 'Roboto',
-      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    }),
-  },
-  sliderLabelTextActive: {
-    color: '#0066FF',
-    fontWeight: '600',
-  },
-  sliderValue: {
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  sliderValueText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#0066FF',
-    fontFamily: Platform.select({
-      ios: '-apple-system',
-      android: 'Roboto',
-      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    }),
   },
   // 按鈕樣式
   buttonGroup: {
