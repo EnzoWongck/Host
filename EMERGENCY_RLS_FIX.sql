@@ -122,12 +122,18 @@ WHERE schemaname = 'public'
 ORDER BY tablename;
 
 -- ============================================
--- 測試插入權限
+-- 重要說明
 -- ============================================
-SELECT 
-  '測試: Session 狀態' as test_name,
-  CASE 
-    WHEN auth.uid() IS NOT NULL THEN '✅ 用戶已登入: ' || auth.uid()::text
-    ELSE '❌ 用戶未登入 - 這是問題所在！'
-  END as result;
+-- ⚠️ 在 SQL Editor 中 auth.uid() 返回 NULL 是正常的！
+-- SQL Editor 使用 postgres 角色執行，不是認證用戶
+-- 
+-- 真正的測試應該在前端應用中進行：
+-- 1. 打開瀏覽器開發者工具
+-- 2. 在 Console 中檢查 localStorage
+-- 3. 嘗試插入數據並查看 Network 請求
+-- 
+-- 如果前端仍然有 403 錯誤，可能是：
+-- 1. Session 過期 - 需要重新登入
+-- 2. Token 未正確傳遞 - 檢查 Network headers
+-- 3. game_id 不匹配 - 確認插入的 game_id 屬於當前用戶
 
