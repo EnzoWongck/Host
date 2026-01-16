@@ -446,20 +446,27 @@ const Modal: React.FC<ModalProps> = ({
                   <Text style={styles.closeButtonText}>×</Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView 
-                ref={scrollViewRef}
-                style={styles.content}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-                showsHorizontalScrollIndicator={false}
-                bounces={false}
-                keyboardShouldPersistTaps="always"
-                keyboardDismissMode="none"
-                nestedScrollEnabled={true}
-                scrollEnabled={true}
+              <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
               >
-                {children}
-              </ScrollView>
+                <ScrollView 
+                  ref={scrollViewRef}
+                  style={styles.content}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  showsHorizontalScrollIndicator={false}
+                  bounces={false}
+                  keyboardShouldPersistTaps="always"
+                  keyboardDismissMode="none"
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                  keyboardAvoidingViewEnabled={true}
+                >
+                  {children}
+                </ScrollView>
+              </KeyboardAvoidingView>
             </View>
           </Pressable>
         </View>

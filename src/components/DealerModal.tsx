@@ -824,7 +824,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
       maxHeight={isMobile ? screenHeight * 0.9 : undefined}
       containerStyle={isMobile ? { width: screenWidth - 32, maxWidth: screenWidth - 32 } : { width: 500, minWidth: 500, maxWidth: 'none' }}
     >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: 680, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}>
+      <View style={{ maxWidth: 680, alignSelf: 'center', width: '100%', paddingHorizontal: theme.spacing.lg }}>
         {/* 單個發牌員獨立視圖 */}
         {selectedDealerId && !showAddForm && currentGame?.dealers ? (
           <>
@@ -892,7 +892,7 @@ const DealerModal: React.FC<DealerModalProps> = ({ visible, onClose }) => {
             )}
           </>
         )}
-      </ScrollView>
+      </View>
 
       <ConfirmModal
         visible={deleteConfirmVisible}
