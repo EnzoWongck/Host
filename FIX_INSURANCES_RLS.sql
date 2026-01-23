@@ -28,22 +28,37 @@ DROP POLICY IF EXISTS "insurances_collaborator_insert" ON public.insurances;
 -- 支持遊戲擁有者和協作者
 -- ============================================
 
--- Insurances 表 INSERT 策略（遊戲擁有者）
+-- Insurances 表 INSERT 策略（遊戲擁有者和協作者）
 CREATE POLICY "insurances_insert" ON public.insurances
   FOR INSERT 
   WITH CHECK (
-    auth.uid() IS NOT NULL AND (
+    -- 確保用戶已登入
+    auth.uid() IS NOT NULL 
+    AND
+    -- 檢查遊戲是否存在
+    EXISTS (
+      SELECT 1 FROM games 
+      WHERE games.id = insurances.game_id
+    )
+    AND
+    (
+      -- 用戶是遊戲擁有者
       EXISTS (
         SELECT 1 FROM games 
         WHERE games.id = insurances.game_id 
         AND games.user_id = auth.uid()
       )
-      OR EXISTS (
-        SELECT 1 FROM game_collaborations 
-        WHERE game_collaborations.game_id = insurances.game_id 
-        AND game_collaborations.collaborator_id = auth.uid()
-        AND game_collaborations.status = 'accepted'
-        AND game_collaborations.chip_consumed = TRUE
+      OR
+      -- 或者用戶是協作者（如果 game_collaborations 表存在）
+      (
+        EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'game_collaborations')
+        AND EXISTS (
+          SELECT 1 FROM game_collaborations 
+          WHERE game_collaborations.game_id = insurances.game_id 
+          AND game_collaborations.collaborator_id = auth.uid()
+          AND game_collaborations.status = 'accepted'
+          AND game_collaborations.chip_consumed = TRUE
+        )
       )
     )
   );
