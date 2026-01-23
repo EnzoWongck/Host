@@ -177,7 +177,7 @@ SELECT
   policyname,
   cmd as operation,
   CASE 
-    WHEN using_ IS NOT NULL THEN 'USING defined'
+    WHEN qual IS NOT NULL THEN 'USING defined'
     ELSE 'No USING'
   END as has_using,
   CASE 
